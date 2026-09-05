@@ -70,6 +70,8 @@ the chosen journal's current official instructions.
 ```
    For `BLOCKED`, ask only for the missing user-owned fact/file. If the package changes, use
    the same S24 loop. Do not repeat an independent audit of an unchanged freeze.
+   For any correction, use `tools/rework.py` to route content to its source; only a verified
+   visible-text-preserving layout edit may remain solely in Word at S24.
 
 ## Outputs
 - `08_submission/independent_submission_audit.md`

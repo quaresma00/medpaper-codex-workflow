@@ -104,6 +104,12 @@ S24 does not advance until the user explicitly confirms the revalidated package 
 S25 requires an independent three-lens `PASS`; a changed or deficient package loops back to
 S24 for correction and renewed confirmation.
 
+User-requested revisions do not bypass the pipeline. `tools/rework.py` routes each change to
+the earliest source-owning stage described in `reference/rework-routing.md`. S19 requires the
+assembled manuscript to match its component Markdown. S23 captures DOCX visible-text hashes
+with `tools/package_content.py`; S24 accepts a Word-only change as formatting only when those
+hashes still match.
+
 ## Verify or rebuild the package
 
 ```powershell

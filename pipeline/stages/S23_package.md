@@ -49,7 +49,15 @@ journal-guideline audit.
    the title/abstract, heading transitions, first/last pages, references, figure legends,
    tables, symbols, page breaks and missing glyphs. Fix the source or builder and rebuild
    only affected files.
-9. Write `submission_qc.md` with `Rendered files inspected`, `Citation and cross-reference
+9. After visual corrections are complete and the manifest and all DOCX files are final, bind
+   their visible text to this legitimate S23 build:
+```
+.\.venv\Scripts\python.exe tools/package_content.py capture --project project
+```
+   When S23 is being rerun after a source-routed correction, use `--replace`. Capture is refused
+   outside S23. This baseline permits later Word layout edits while detecting any direct text
+   edit or an upstream source change that was not rebuilt.
+10. Write `submission_qc.md` with `Rendered files inspected`, `Citation and cross-reference
    checks`, `Typography and hyperlinks`, `Tables and figures`, `Defects resolved`. Record
    `submission_files_visually_confirmed YES`, then clean temporary/orphaned files.
 
@@ -57,6 +65,7 @@ journal-guideline audit.
 - `08_submission/cover_letter.md`
 - `08_submission/bundle/SUBMISSION_CHECKLIST.md`
 - `08_submission/bundle/manifest.json`
+- `08_submission/package_content_baseline.json`
 - `08_submission/submission_qc.md`
 - the journal-required Word, figure, table and supplementary upload files
 
@@ -74,6 +83,8 @@ journal-guideline audit.
 - Never invent reviewer contact information or an AI-use disclosure.
 - Do not infer final user approval from this build/QA stage. Present the complete package at
   S24 and preserve any user edits made there.
+- Never recapture the visible-text baseline merely to accept a content edit made directly in
+  Word. Route content changes to their source; use the baseline only to permit format-only edits.
 
 ## Close
 ```

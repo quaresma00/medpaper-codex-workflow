@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.4"
+  version: "1.3.5"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -28,6 +28,13 @@ the active card's declared outputs:
 ```
 
 Never infer the stage, create future-stage artifacts, or bypass a red gate.
+
+When the user requests a revision after an artifact has been presented, read
+[revision routing](../../../reference/rework-routing.md) and run `tools/rework.py` before
+editing. Route content to its earliest owning stage, update the source of truth and rebuild
+only actual dependants. Never patch `full_manuscript.md` or narrative text inside a DOCX as a
+detached file. At S24, a Word-only edit is permitted only when
+`tools/package_content.py verify` proves that visible text is unchanged.
 
 ## Evidence and fact integrity
 

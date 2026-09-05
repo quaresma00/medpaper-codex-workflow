@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.3.4"
+version = "1.3.5"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -50,6 +50,7 @@ invariants = [
   "Do not draft or insert an AI-use disclosure unless the user explicitly requests that exact content; record journal requirements only as a user-controlled compliance item.",
   "Never upload patient-level, private or credential data to an external skill, plugin or service without explicit authorization.",
   "The S23 package is not final until S24 records the user's explicit request for final review and freezes the exact files, then S25 obtains one independent PASS from reader, editor and journal-compliance perspectives. Any post-confirmation change returns to S24.",
+  "A user-requested revision never leaves the workflow. Route it with tools/rework.py to the earliest owning stage, update the source of truth, rebuild only true dependants, and invalidate downstream approvals. Word-only layout edits are allowed at S24 only when the S23 visible-text baseline is unchanged.",
   "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
 ]
 
@@ -506,6 +507,8 @@ headings = ["Materials presented", "Independent verdict", "User-requested revisi
 [[stage.gate]]
 check = "manuscript_structure"
 [[stage.gate]]
+check = "assembly_matches_sources"
+[[stage.gate]]
 check = "citekeys_resolve"
 paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
 [[stage.gate]]
@@ -614,7 +617,7 @@ allowed = ["YES"]
 id = "S23_package"
 title = "Build and visually verify the journal-ready Word submission package"
 card = "stages/S23_package.md"
-outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHECKLIST.md", "08_submission/bundle/manifest.json", "08_submission/submission_qc.md"]
+outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHECKLIST.md", "08_submission/bundle/manifest.json", "08_submission/package_content_baseline.json", "08_submission/submission_qc.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -623,6 +626,8 @@ check = "bundle_complete"
 check = "docx_bundle_ready"
 [[stage.gate]]
 check = "title_page_reference_count"
+[[stage.gate]]
+check = "package_content_matches_baseline"
 [[stage.gate]]
 check = "legend_no_results_restatement"
 path = "07_manuscript/full_manuscript.md"
@@ -666,6 +671,8 @@ check = "docx_bundle_ready"
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
+check = "package_content_matches_baseline"
+[[stage.gate]]
 check = "guidelines_sourced"
 [[stage.gate]]
 check = "bundle_matches_freeze"
@@ -691,6 +698,8 @@ check = "bundle_complete"
 check = "docx_bundle_ready"
 [[stage.gate]]
 check = "title_page_reference_count"
+[[stage.gate]]
+check = "package_content_matches_baseline"
 [[stage.gate]]
 check = "guidelines_sourced"
 [[stage.gate]]

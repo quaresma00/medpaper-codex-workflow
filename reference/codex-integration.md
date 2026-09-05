@@ -47,6 +47,9 @@ Only registered local full texts with substantive notes count toward S15.
   optional supplementary Methods and every table. It is a read-only publication-readiness
   reviewer, not a second orchestrator or writer. Preserve its verdict for the user's S19
   review.
+- S19 and later revisions: read `reference/rework-routing.md`, run `tools/rework.py`, update
+  the earliest source-owning stage and rebuild its actual dependants. The assembled manuscript
+  must match its component Markdown at S19; do not patch it as a detached final file.
 - S23: build each journal-required narrative upload with
   `tools/manuscript/build_docx.py`, including the cover letter and supplementary Methods.
   The builder wraps Pandoc/citeproc, applies the sourced journal style (Times New Roman
@@ -59,6 +62,8 @@ Only registered local full texts with substantive notes count toward S15.
   edits, reconcile scientific-content changes to their canonical sources, rerun affected QA,
   ask for an explicit request to run the final independent reader/editor review, then use
   `tools/package_review.py freeze` to hash the exact package and evidence accepted for review.
+  Verify `package_content_baseline.json`: Word-only layout changes are allowed when visible
+  text is unchanged; any visible-text drift must return to its source and be rebuilt at S23.
 - S25: verify the freeze and spawn exactly one independent read-only subagent. It must inspect
   the actual files first as a new scientific reader for unclear content, then as an editor for
   low-level errors, and finally against the cached official journal guide for omissions and

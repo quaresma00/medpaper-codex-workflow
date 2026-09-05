@@ -14,6 +14,7 @@ REQUIRED_EVIDENCE = (
     "08_submission/guidelines_extract.md",
     "08_submission/docx_style.json",
     "08_submission/submission_qc.md",
+    "08_submission/package_content_baseline.json",
 )
 OPTIONAL_EVIDENCE = (
     "07_manuscript/full_manuscript.md",

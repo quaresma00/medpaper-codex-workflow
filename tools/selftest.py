@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.4",
+           legacy.data["pipeline_version"] == "1.3.5",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -563,6 +563,9 @@ def run_codex_integration() -> None:
         ROOT / ".agents/skills/medpaper-codex-pipeline/agents/openai.yaml",
         ROOT / "reference/codex-integration.md",
         ROOT / "reference/methods-structure.md",
+        ROOT / "reference/rework-routing.md",
+        ROOT / "tools/rework.py",
+        ROOT / "tools/package_content.py",
     ]
     record("repository Codex files exist", all(p.is_file() for p in required),
            ", ".join(str(p.relative_to(ROOT)) for p in required if not p.is_file()))
@@ -579,7 +582,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.4" and 'version: "1.3.4"' in skill,
+           pipe["meta"]["version"] == "1.3.5" and 'version: "1.3.5"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -630,6 +633,16 @@ def run_codex_integration() -> None:
            "objective low-level error" in final_audit_card and
            "never edits the frozen package" in final_audit_card,
            "first-time comprehension + editorial error screen + journal compliance")
+    human_checks = {gate["check"] for gate in human["gate"]}
+    package_checks = {gate["check"] for gate in package_human["gate"]}
+    package_stage = next(s for s in pipe["stage"] if s["id"] == "S23_package")
+    record("user revisions are source-routed and mechanically gated",
+           "assembly_matches_sources" in human_checks and
+           "package_content_matches_baseline" in package_checks and
+           "08_submission/package_content_baseline.json" in package_stage["outputs"] and
+           "tools/rework.py start" in package_human_card and
+           "Never recapture at S24" in package_human_card,
+           "S19 component equality + S23 visible-text baseline + S24 route enforcement")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
                                                   "supplementary Methods", "Figure legends",
@@ -680,6 +693,42 @@ def run_codex_integration() -> None:
            "second visual critic" in policy_text and
            "must not redraw" in policy_text,
            "S11 preserves data geometry and requires a fresh render")
+
+    from rework import resolve_route
+    from wfcore import registry
+    route_pipe = registry.load()
+    record("revision router chooses the earliest owning stage",
+           resolve_route("analysis", "S24_package_human_review", route_pipe) == "S05_analysis" and
+           resolve_route("discussion", "S19_human_review", route_pipe) == "S16_discussion" and
+           resolve_route("manuscript-copyedit", "S19_human_review", route_pipe) ==
+           "S19_human_review" and
+           resolve_route("manuscript-copyedit", "S24_package_human_review", route_pipe) ==
+           "S22_polish" and
+           resolve_route("word-format-only", "S25_submission_audit", route_pipe) ==
+           "S24_package_human_review",
+           "analysis/discussion/copyedit/Word-format routes")
+
+    from wfcore.state import State
+    route_root = Path(tempfile.mkdtemp(prefix="medpaper_rework_route_"))
+    route_project = route_root / "project"
+    route_state = State(route_project, ".wf")
+    route_state.create("medpaper", route_pipe.meta["version"], "S24_package_human_review")
+    route_state.record_decision(
+        "submission_package_user_confirmed", "OK",
+        "The fixture user approved the package before requesting a substantive revision.")
+    route_env = {**os.environ, "MEDPAPER_PROJECT": str(route_project),
+                 "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
+    routed = subprocess.run(
+        [sys.executable, str(ROOT / "tools/rework.py"), "start", "--kind", "discussion",
+         "--why", "Revise the interpretation requested by the user in the Discussion section.",
+         "--project", str(route_project)], capture_output=True, text=True, env=route_env,
+        encoding="utf-8", errors="replace")
+    routed_state = State(route_project, ".wf").load()
+    record("revision router rewinds state and invalidates downstream approval",
+           routed.returncode == 0 and routed_state.current == "S16_discussion" and
+           routed_state.decision("submission_package_user_confirmed") is None,
+           ((routed.stdout or "") + (routed.stderr or "")).strip()[:140])
+    shutil.rmtree(route_root, ignore_errors=True)
 
 
 def run_fulltext_registration(proj: Path) -> None:
@@ -959,6 +1008,9 @@ def run_manuscript_docx(proj: Path) -> None:
     outcome = gate("assembly_matches_sources", "S17_assemble")
     record("source-section omission or divergence is rejected", not outcome.ok,
            outcome.detail[:100])
+    outcome = gate("assembly_matches_sources", "S19_human_review")
+    record("S19 rejects a detached full-manuscript edit", not outcome.ok,
+           outcome.detail[:100])
     full.write_text("# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\n" +
                     good.split("\n\n", 1)[1].split("# Figure legends", 1)[0] +
                     "# Figure legends\n\n", encoding="utf-8")
@@ -1124,6 +1176,45 @@ def run_manuscript_docx(proj: Path) -> None:
     record("manually altered Word reference count is rejected", not outcome.ok,
            outcome.detail[:110])
     title_page_docx.write_bytes(approved_title_page)
+
+    from wfcore.packagecontent import write_baseline
+    baseline_path = write_baseline(proj)
+    outcome = gate("package_content_matches_baseline", "S23_package")
+    record("S23 captures a valid submission visible-text baseline",
+           baseline_path.is_file() and outcome.ok, outcome.detail)
+    baseline_cli = ROOT / "tools/package_content.py"
+    blocked_capture = subprocess.run(
+        [sys.executable, str(baseline_cli), "capture", "--replace", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("content baseline cannot be recaptured outside S23",
+           blocked_capture.returncode != 0 and "allowed only at S23_package" in
+           (blocked_capture.stderr or ""), (blocked_capture.stderr or "").strip()[:110])
+
+    format_only_doc = Document(title_page_docx)
+    format_only_doc.paragraphs[1].runs[0].bold = True
+    format_only_doc.save(title_page_docx)
+    outcome = gate("package_content_matches_baseline", "S24_package_human_review")
+    record("Word formatting-only edits preserve the content baseline",
+           outcome.ok and "formatting-only" in outcome.detail, outcome.detail)
+    title_page_docx.write_bytes(approved_title_page)
+
+    text_changed_doc = Document(title_page_docx)
+    text_changed_doc.paragraphs[1].text = "Different Author"
+    text_changed_doc.save(title_page_docx)
+    outcome = gate("package_content_matches_baseline", "S24_package_human_review")
+    record("direct Word text edits are rejected", not outcome.ok, outcome.detail[:110])
+    title_page_docx.write_bytes(approved_title_page)
+
+    approved_cover_source = cover.read_text(encoding="utf-8")
+    cover.write_text(approved_cover_source + "\nA detached source edit.\n", encoding="utf-8")
+    outcome = gate("package_content_matches_baseline", "S24_package_human_review")
+    record("source edits without an S23 rebuild are rejected", not outcome.ok,
+           outcome.detail[:110])
+    cover.write_text(approved_cover_source, encoding="utf-8")
+    outcome = gate("package_content_matches_baseline", "S24_package_human_review")
+    record("restoring Word text and sources restores the content baseline", outcome.ok,
+           outcome.detail)
+
     proc = subprocess.run(
         [sys.executable, str(builder), "audit", "--manifest", str(manifest_path),
          "--style-config", str(style_path)], capture_output=True, text=True, env=env,
@@ -1170,6 +1261,9 @@ def run_manuscript_docx(proj: Path) -> None:
     record("restoring the approved package clears freeze gate", verified.returncode == 0,
            ((verified.stdout or "") + (verified.stderr or "")).strip()[:120])
     freeze_payload = json.loads((submission / "package_review_freeze.json").read_text(encoding="utf-8"))
+    record("final freeze includes the S23 content baseline",
+           any(item.get("path") == "08_submission/package_content_baseline.json"
+               for item in freeze_payload.get("files", [])))
     audit_path = submission / "independent_submission_audit.md"
     audit_path.write_text("# Verdict\n\nPASS\n", encoding="utf-8")
     outcome = gate("submission_audit_matches_freeze", "S25_submission_audit")
