@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.3.2"
+version = "1.3.3"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -560,6 +560,8 @@ keys = ["authors", "affiliations", "corresponding", "funding", "conflicts", "eth
 [[stage.gate]]
 check = "manuscript_structure"
 [[stage.gate]]
+check = "title_page_reference_count"
+[[stage.gate]]
 check = "abbreviations_centralized"
 [[stage.gate]]
 check = "forbidden_symbols_absent"
@@ -582,6 +584,8 @@ check = "style_consistent"
 check = "journal_limits_met"
 [[stage.gate]]
 check = "manuscript_structure"
+[[stage.gate]]
+check = "title_page_reference_count"
 [[stage.gate]]
 check = "legend_no_results_restatement"
 path = "07_manuscript/full_manuscript.md"
@@ -617,6 +621,8 @@ check = "outputs_exist"
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+[[stage.gate]]
+check = "title_page_reference_count"
 [[stage.gate]]
 check = "legend_no_results_restatement"
 path = "07_manuscript/full_manuscript.md"
@@ -658,6 +664,8 @@ check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
 [[stage.gate]]
+check = "title_page_reference_count"
+[[stage.gate]]
 check = "guidelines_sourced"
 [[stage.gate]]
 check = "bundle_matches_freeze"
@@ -681,6 +689,8 @@ headings = ["Verdict", "Guideline compliance", "Required files and omissions", "
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+[[stage.gate]]
+check = "title_page_reference_count"
 [[stage.gate]]
 check = "guidelines_sourced"
 [[stage.gate]]

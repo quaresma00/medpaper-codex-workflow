@@ -22,6 +22,17 @@ otherwise package administrative facts separately. Keep the centralized Abbrevia
 in the manuscript, and respect author blinding for administrative content. Do not move Keywords,
 References or Figure legends, or duplicate the Declarations and Statements heading.
 
+Read the official title-page instructions or journal template to determine whether a reference
+count must appear. Inspect and synchronize the count with the distinct Pandoc citekeys actually
+used in the canonical manuscript:
+```
+.\.venv\Scripts\python.exe tools/manuscript/reference_count.py show
+.\.venv\Scripts\python.exe tools/manuscript/reference_count.py sync
+```
+Normal `sync` updates an existing field but does not invent an optional field. Use `sync --add`
+only when the official guide requires a title-page reference count. The 45--60-paper literature
+library is a research resource, not the number to report on the title page.
+
 Preserve the verified abbreviation list prepared at S17. Reconcile any later additions
 across figure legends, table captions and finished workbooks. When there are more than eight
 unique defined terms or a local list exceeds 50 words, keep `## Abbreviations` under
@@ -43,6 +54,8 @@ requires local definitions, retain them only when `target_journal.json` records
 - Do not alter the selected scientific title merely to accommodate the title page.
 - Do not draft or insert an AI-use disclosure unless the user explicitly requested that
   exact content.
+- If the title page reports a reference count, it must equal the number of distinct citekeys
+  actually used in `full_manuscript.md`, never the size of `library.json` or `refs.bib`.
 - Do not use the literal down-arrow character or manual line breaks as visible layout marks.
 
 ## Close

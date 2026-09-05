@@ -21,6 +21,8 @@ consistent.
    or earlier QA. It must compare the package with the official guide and report:
    - required, missing, extra or incorrectly formatted upload items and filenames;
    - article type, title page, abstract, keywords, word/reference limits and reference style;
+   - any title-page reference count against the distinct citations actually used in the
+     manuscript, never against the candidate-library or bibliography-file size;
    - author/affiliation/correspondence facts, declarations, ethics, funding, conflicts and
      data-availability consistency across all applicable files, without inventing facts;
    - figure/table callouts, numbering, legends/captions, abbreviations, file types, resolution
@@ -58,6 +60,8 @@ consistent.
 - Earlier S18 publishability review and S23 automated/visual QA do not substitute for this
   journal-specific final audit.
 - A checklist assertion is not evidence; inspect the actual file and official rule.
+- A reference-count field is optional when the journal is silent, but if present it must match
+  the actual citation set in both the canonical title page and frozen Word file.
 - `PASS` is required to complete the pipeline. Portal-only user tasks may be listed, but an
   unmet required local upload or unresolved cross-file mismatch is not a pass.
 

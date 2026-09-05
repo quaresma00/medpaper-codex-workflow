@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.2",
+           legacy.data["pipeline_version"] == "1.3.3",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -579,7 +579,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.2" and 'version: "1.3.2"' in skill,
+           pipe["meta"]["version"] == "1.3.3" and 'version: "1.3.3"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -955,6 +955,41 @@ def run_manuscript_docx(proj: Path) -> None:
     record("empty planned figure legend is rejected", not outcome.ok, outcome.detail[:100])
     full.write_text(good, encoding="utf-8")
 
+    # A title-page count is optional, but when present it must be derived from the
+    # distinct citekeys used by the canonical manuscript rather than library size.
+    title_page = manuscript / "title_page.md"
+    title_page.write_text(
+        "# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\n"
+        "Fixture Author\n\nNumber of references: 50\n", encoding="utf-8")
+    outcome = gate("title_page_reference_count", "S21_authors")
+    record("incorrect title-page reference count is rejected", not outcome.ok,
+           outcome.detail[:110])
+    counter = ROOT / "tools/manuscript/reference_count.py"
+    synced = subprocess.run(
+        [sys.executable, str(counter), "sync", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("actual citation count synchronizes title page",
+           synced.returncode == 0 and "Number of references: 1" in
+           title_page.read_text(encoding="utf-8"),
+           ((synced.stdout or "") + (synced.stderr or "")).strip()[:110])
+    outcome = gate("title_page_reference_count", "S21_authors")
+    record("title-page reference count gate passes after synchronization", outcome.ok,
+           outcome.detail)
+
+    title_page.write_text(
+        "# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\nFixture Author\n",
+        encoding="utf-8")
+    outcome = gate("title_page_reference_count", "S21_authors")
+    record("reference count remains optional when journal does not request it", outcome.ok,
+           outcome.detail)
+    added = subprocess.run(
+        [sys.executable, str(counter), "sync", "--add", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("reference count field is added only on explicit request",
+           added.returncode == 0 and title_page.read_text(encoding="utf-8").count(
+               "Number of references: 1") == 1,
+           ((added.stdout or "") + (added.stderr or "")).strip()[:110])
+
     style = {
         "font_family": "Times New Roman", "body_font_pt": 12, "title_font_pt": 14,
         "section_heading_font_pt": 12, "subsection_heading_font_pt": 12,
@@ -977,9 +1012,6 @@ def run_manuscript_docx(proj: Path) -> None:
     record("journal-silent non-Times font is rejected", not outcome.ok, outcome.detail[:100])
     style_path.write_text(json.dumps(style, indent=2), encoding="utf-8")
 
-    (manuscript / "title_page.md").write_text(
-        "# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\nFixture Author\n",
-        encoding="utf-8")
     cover = submission / "cover_letter.md"
     cover.write_text("# Cover letter\n\nDear Editor,\n\nPlease consider this cohort study.\n",
                      encoding="utf-8")
@@ -1067,6 +1099,20 @@ def run_manuscript_docx(proj: Path) -> None:
     outcome = gate("docx_bundle_ready", "S23_package")
     record("Word bundle gate accepts normalized DOCX files", builds_ok and outcome.ok,
            outcome.detail)
+    outcome = gate("title_page_reference_count", "S23_package")
+    record("Word title-page reference count matches canonical manuscript", outcome.ok,
+           outcome.detail)
+    title_page_docx = bundle / "title_page.docx"
+    approved_title_page = title_page_docx.read_bytes()
+    altered_title = Document(title_page_docx)
+    for paragraph in altered_title.paragraphs:
+        if "Number of references:" in paragraph.text:
+            paragraph.text = "Number of references: 50"
+    altered_title.save(title_page_docx)
+    outcome = gate("title_page_reference_count", "S23_package")
+    record("manually altered Word reference count is rejected", not outcome.ok,
+           outcome.detail[:110])
+    title_page_docx.write_bytes(approved_title_page)
     proc = subprocess.run(
         [sys.executable, str(builder), "audit", "--manifest", str(manifest_path),
          "--style-config", str(style_path)], capture_output=True, text=True, env=env,

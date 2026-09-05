@@ -22,7 +22,9 @@ package.
 3. Re-run `bundle_complete`, `docx_bundle_ready`, the standalone Word manifest audit and
    visual QA for every changed file. Recheck filenames, upload roles, word/keyword/reference
    limits, figure/table/legend numbering, supplements, declarations and cross-file facts
-   against the chosen journal's official guideline snapshot.
+   against the chosen journal's official guideline snapshot. If a title-page reference count
+   is present, verify that both the canonical source and the user-edited DOCX still equal the
+   number of distinct citekeys actually used in `full_manuscript.md`, not the library size.
 4. Write `project/08_submission/package_human_review.md` with headings `Package presented`,
    `User modifications`, `Revalidation`, `User confirmation`, `Frozen package`.
 5. After the user's edits have been revalidated, ask exactly one clear confirmation question:

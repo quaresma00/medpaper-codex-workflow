@@ -9,7 +9,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import zipfile
 from datetime import date, datetime
+from xml.etree import ElementTree as ET
 
 from . import Ctx, Result, check
 
@@ -23,6 +25,16 @@ FENCE_RE = re.compile(r"```.*?```", re.S)
 BRACKET_CITE_RE = re.compile(r"\[([^\]]*@[^\]]*)\]")
 KEY_RE = re.compile(r"@([A-Za-z][\w:.#$%&+?<>~/-]*)")
 BIB_ENTRY_RE = re.compile(r"@(\w+)\s*\{\s*([^,\s}]+)\s*,", re.M)
+TITLE_REFERENCE_COUNT_RE = re.compile(
+    r"(?im)^\s*(?:[-+*]\s+)?(?:\*\*)?"
+    r"(?:number\s+of\s+references|reference\s+count|references)"
+    r"\s*:\s*(?:\*\*)?\s*(\d+)\b"
+)
+TITLE_REFERENCE_COUNT_SUB_RE = re.compile(
+    r"(?im)^(\s*(?:[-+*]\s+)?(?:\*\*)?"
+    r"(?:number\s+of\s+references|reference\s+count|references)"
+    r"\s*:\s*(?:\*\*)?\s*)\d+\b"
+)
 
 
 def _file_sha256(path) -> str:
@@ -54,6 +66,109 @@ def citekeys(text: str) -> list[str]:
     stripped = BRACKET_CITE_RE.sub(" ", text)
     keys.extend(KEY_RE.findall(stripped))
     return keys
+
+
+def actual_reference_count(text: str) -> int:
+    """Count distinct Pandoc citekeys actually used by the canonical manuscript."""
+    return len(set(citekeys(text)))
+
+
+def declared_reference_counts(text: str) -> list[int]:
+    """Return explicit reference-count fields, without treating a References heading as one."""
+    return [int(value) for value in TITLE_REFERENCE_COUNT_RE.findall(text)]
+
+
+def synchronize_reference_count(text: str, actual: int, *, add: bool = False) -> tuple[str, bool]:
+    """Update an existing title-page count; add one only when explicitly requested."""
+    fields = declared_reference_counts(text)
+    if len(fields) > 1:
+        raise ValueError("title page contains more than one reference-count field")
+    if fields:
+        updated = TITLE_REFERENCE_COUNT_SUB_RE.sub(rf"\g<1>{actual}", text, count=1)
+        return updated, updated != text
+    if not add:
+        return text, False
+    separator = "\n" if text.endswith("\n") else "\n\n"
+    return text + separator + f"Number of references: {actual}\n", True
+
+
+def _docx_text(path) -> str:
+    """Read visible title-page text from the main Word document part."""
+    w_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    ns = {"w": w_ns}
+    with zipfile.ZipFile(path) as archive:
+        root = ET.fromstring(archive.read("word/document.xml"))
+    return "\n".join(
+        "".join(node.text or "" for node in paragraph.findall(".//w:t", ns))
+        for paragraph in root.findall(".//w:p", ns)
+    )
+
+
+@check("title_page_reference_count")
+def title_page_reference_count(ctx: Ctx) -> Result:
+    """If a title page declares a count, bind it to citations actually used in the paper."""
+    manuscript_rel = ctx.spec.get("manuscript", "07_manuscript/full_manuscript.md")
+    title_rel = ctx.spec.get("title_page", "07_manuscript/title_page.md")
+    if not ctx.p(manuscript_rel).is_file():
+        return Result(False, "title_page_reference_count", f"{manuscript_rel} missing")
+    if not ctx.p(title_rel).is_file():
+        return Result(False, "title_page_reference_count", f"{title_rel} missing")
+
+    actual = actual_reference_count(ctx.read(manuscript_rel))
+    problems: list[str] = []
+    declared_any = False
+    source_values = declared_reference_counts(ctx.read(title_rel))
+    if len(source_values) > 1:
+        problems.append(f"{title_rel}: more than one reference-count field")
+    elif source_values:
+        declared_any = True
+        if source_values[0] != actual:
+            problems.append(
+                f"{title_rel}: declares {source_values[0]} references but the manuscript uses {actual} distinct citekeys"
+            )
+
+    manifest_path = ctx.p("08_submission/bundle/manifest.json")
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            problems.append(f"08_submission/bundle/manifest.json cannot be read: {exc}")
+            manifest = {}
+        for item in manifest.get("items", []):
+            if str(item.get("role", "")).casefold() != "title_page":
+                continue
+            rel = str(item.get("file", "")).strip()
+            path = ctx.p(rel) if rel else None
+            if path is None or path.suffix.casefold() != ".docx" or not path.is_file():
+                continue
+            try:
+                values = declared_reference_counts(_docx_text(path))
+            except (OSError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
+                problems.append(f"{rel}: cannot inspect reference count ({exc})")
+                continue
+            if len(values) > 1:
+                problems.append(f"{rel}: more than one reference-count field")
+            elif values:
+                declared_any = True
+                if values[0] != actual:
+                    problems.append(
+                        f"{rel}: declares {values[0]} references but the manuscript uses {actual} distinct citekeys"
+                    )
+            elif source_values:
+                problems.append(f"{rel}: lost the reference-count field present in {title_rel}")
+
+    if problems:
+        return Result(
+            False,
+            "title_page_reference_count",
+            "; ".join(problems[:6]),
+            ["Run tools/manuscript/reference_count.py sync; use --add only when the journal requires the field."],
+        )
+    if declared_any:
+        return Result(True, "title_page_reference_count",
+                      f"title-page count matches {actual} distinct citekey(s) actually used")
+    return Result(True, "title_page_reference_count",
+                  f"manuscript uses {actual} distinct citekey(s); title page does not declare a count")
 
 
 def bib_keys(text: str) -> set[str]:
