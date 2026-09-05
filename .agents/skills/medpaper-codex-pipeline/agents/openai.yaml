@@ -1,0 +1,6 @@
+interface:
+  display_name: "Medpaper Pipeline"
+  short_description: "Gated medical manuscript and submission workflow"
+  default_prompt: "Use $medpaper-codex-pipeline to resume this medical-paper project from its current verified stage."
+policy:
+  allow_implicit_invocation: false

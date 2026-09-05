@@ -1,0 +1,52 @@
+MIT License
+
+Copyright (c) 2026 medpaper pipeline contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Third-party material
+--------------------------------------------------------------------------------
+
+reference/archetypes.toml
+  The figure archetype taxonomy (five domains, 17 chart types) and the per-type
+  mandatory-element lists are adapted from:
+    quaresma00/medical-sci-figure-skill  (MIT License, Copyright (c) 2026 quaresma00)
+    https://github.com/quaresma00/medical-sci-figure-skill
+  Element lists were reduced to what is mechanically verifiable; the detectors in
+  tools/figures/elements.py are original. Text was rephrased.
+
+tools/figures/elements.py
+  glyph_warnings() and tick_label_collisions() are adapted from the QA engine of
+  quaresma00/medical-sci-figure-skill (MIT), which credits scipilot-figure-skill
+  for the originals. Reimplemented to emit structured results for the gate rather
+  than printing.
+
+tools/figures/style.py
+  Journal palette values (NEJM, Lancet, JAMA, JCO, Nature) as published in ggsci
+  (Nan Xiao; ggsci is GPL-3, the colour values themselves are the journals' own
+  brand colours and are used here as data, not as code).
+  Sizing and rcParams conventions informed by SciencePlots, tueplots and
+  publication-plot-settings; no code was copied.
+
+reference/figure-standards.md
+  Publisher requirements summarised, with links, from Wiley Author Services,
+  Springer submission guidelines, IEEE graphics guidelines, ASPET digital art
+  guidelines, Nature artwork guidance and Canadian Science Publishing. Content
+  was rephrased; verify the binding requirements against your target journal.

@@ -1,0 +1,721 @@
+# ==============================================================================
+# medpaper pipeline - Single Source of Truth
+# ==============================================================================
+# This file is the ONLY authoritative definition of the workflow.
+# The CLI (tools/wf.py) reads it; skill/steering files only point at the CLI.
+# Parsed with stdlib tomllib (Python >= 3.11). Engine has no third-party deps.
+#
+# Editing rules:
+#   - stage order == array order
+#   - every artifact a stage produces MUST be listed in `outputs`
+#     (drives: one-file-at-a-time enforcement, orphan scan, clean)
+#   - gates are declarative; `check` names map to tools/wfcore/checks/*.py
+# ==============================================================================
+
+[meta]
+name = "medpaper"
+version = "1.3.2"
+schema = 1
+description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
+
+[layout]
+project_dir = "project"
+state_dir = ".wf"
+temp_dir = "temp"
+
+[layout.dirs]
+"00_input" = "User-supplied inputs only: research idea md, author/affiliation info, raw uploads."
+"01_protocol" = "Normalized idea, feasibility assessment, protocol v1/final, go-no-go records."
+"02_data" = "raw/ (immutable), derived/ (code-built only), codebook.md, provenance.md."
+"03_analysis" = "code/ (scripts), results/ (machine-readable JSON), analysis_log.md, notes.md."
+"04_tables" = "main/ (one xlsx per main table), supplementary/ (single xlsx, one sheet per table)."
+"05_figures" = "code/ (plot scripts), out/ (rendered png+tiff), qc/ (QC reports), legends.md."
+"06_refs" = "refs.bib, refs.ris, library.json, verified.json, fulltext/, deepread/."
+"07_manuscript" = "Section drafts, canonical full_manuscript.md, independent review, and front matter."
+"08_submission" = "Journal shortlist, chosen journal guideline extract, final submission bundle, user confirmation and independent final audit."
+
+# ------------------------------------------------------------------------------
+# Global invariants. Printed by `wf status` on EVERY call so they survive
+# context compaction. Keep short and absolute.
+# ------------------------------------------------------------------------------
+[policy]
+invariants = [
+  "Discovery helpers may find literature, but formal metadata must be fetched, cached and verified through tools/pubmed/. Never type a citation, PMID, DOI, title, journal, year or abstract from memory. A reference that is not in 06_refs/verified.json with verified=true does not exist; external full text must also be registered in the retrieval manifest.",
+  "Every number in the manuscript must already exist in 03_analysis/results/*.json, written there by executed code. Never compute a statistic in your head or in prose.",
+  "Draft scientific sections only at their active stages; the optional supplementary Methods file belongs only to S08. S17 then assembles the canonical full_manuscript.md from the completed, gated sections.",
+  "Language polishing may change wording only. Never a number, never a citation, never a figure/table reference. A snapshot is taken before the pass and the gate diffs against it.",
+  "Do not create files outside the stage's declared `outputs`. Scratch work goes in project/temp/ and is deleted before `wf advance`.",
+  "Figures are verified by looking at the rendered PNG, not by reading the plotting code. Deterministic QC first, then visual.",
+  "No explanatory prose inside figure panels. Explanation belongs in the figure legend.",
+  "Do not draft or insert an AI-use disclosure unless the user explicitly requests that exact content; record journal requirements only as a user-controlled compliance item.",
+  "Never upload patient-level, private or credential data to an external skill, plugin or service without explicit authorization.",
+  "The S23 package is not final until S24 records the user's explicit OK and freezes the exact files, then S25 obtains an independent PASS against the official journal guide. Any post-confirmation change returns to S24.",
+  "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
+]
+
+# `wf advance` refuses to move on unless the agent has recorded a handoff note.
+handoff_required = true
+# Files matching these globs are always allowed anywhere (never flagged as orphans).
+always_allowed = [
+  "**/.gitkeep",
+  "**/README.md",
+  "temp/**",
+  ".wf/**",
+]
+
+# ------------------------------------------------------------------------------
+# Per-project tunables. Override with the project venv: tools/wf.py config set KEY VALUE
+# (stored in project/.wf/config.toml, which wins over these defaults)
+# ------------------------------------------------------------------------------
+[targets]
+reflib_min = 45
+reflib_max = 60
+deepread_count = 5
+intro_words_min = 450
+intro_words_max = 750
+intro_refs_min = 15
+intro_refs_max = 30
+discussion_words_min = 900
+discussion_words_max = 1500
+discussion_refs_min = 25
+discussion_refs_max = 45
+main_figures_max = 6
+main_tables_max = 5
+column_width_mm_single = 90.0
+column_width_mm_double = 180.0
+figure_dpi_min = 300
+figure_font_pt_min = 6.0
+figure_line_pt_min = 0.5
+figure_legend_words_max = 180
+abbreviation_centralize_threshold = 8
+abbreviation_local_words_max = 50
+journal_source_age_days_max = 90
+
+# ==============================================================================
+# STAGES
+# ==============================================================================
+
+[[stage]]
+id = "S01_intake"
+title = "Intake: normalize the research idea"
+card = "stages/S01_intake.md"
+needs_user = true
+outputs = ["01_protocol/idea.json", "03_analysis/notes.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "json_keys"
+path = "01_protocol/idea.json"
+keys = ["title_working", "design", "population", "exposure", "comparator", "outcomes", "claimed_novelty", "data_source_candidates", "open_questions"]
+[[stage.gate]]
+check = "no_future_artifacts"
+
+[[stage]]
+id = "S02_feasibility"
+title = "Feasibility: real literature scan + publishability go/no-go #1"
+card = "stages/S02_feasibility.md"
+outputs = ["01_protocol/feasibility.md", "06_refs/cache/scan_manifest.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "pubmed_cache_fresh"
+manifest = "06_refs/cache/scan_manifest.json"
+min_queries = 3
+min_hits = 20
+[[stage.gate]]
+check = "md_sections"
+path = "01_protocol/feasibility.md"
+headings = ["Search strategy", "What is already published", "Gap this study claims", "Saturation risk", "Verdict"]
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["01_protocol/feasibility.md"]
+allow_unverified = true
+[[stage.gate]]
+check = "decision_recorded"
+name = "go_nogo_1"
+allowed = ["GO", "PIVOT", "STOP"]
+
+[[stage]]
+id = "S03_protocol"
+title = "Protocol v1 + data source and acquisition plan"
+card = "stages/S03_protocol.md"
+outputs = ["01_protocol/protocol_v1.md", "02_data/acquisition_plan.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "01_protocol/protocol_v1.md"
+headings = ["Objective", "Design", "Population and eligibility", "Variables", "Statistical analysis plan", "Sample size / power", "Reporting guideline", "Ethics"]
+[[stage.gate]]
+check = "md_sections"
+path = "02_data/acquisition_plan.md"
+headings = ["Source", "Access route", "Licence and ethics", "Exact retrieval steps", "Expected shape", "Known limitations"]
+
+[[stage]]
+id = "S04_data"
+title = "Acquire data + codebook + provenance"
+card = "stages/S04_data.md"
+outputs = ["02_data/codebook.md", "02_data/provenance.md", "03_analysis/results/dataset_summary.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "file_count"
+glob = "02_data/raw/**"
+min = 1
+[[stage.gate]]
+check = "json_keys"
+path = "03_analysis/results/dataset_summary.json"
+keys = ["n_rows", "n_cols", "variables", "missingness", "source_hash", "built_by"]
+[[stage.gate]]
+check = "temp_clean"
+
+[[stage]]
+id = "S05_analysis"
+title = "Method scan + exploratory analysis (no figures)"
+card = "stages/S05_analysis.md"
+loopable = true
+outputs = ["03_analysis/method_scan.md", "03_analysis/analysis_log.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "pubmed_cache_fresh"
+manifest = "06_refs/cache/scan_manifest.json"
+min_queries = 5
+min_hits = 30
+[[stage.gate]]
+check = "file_count"
+glob = "03_analysis/code/*.*"
+min = 1
+[[stage.gate]]
+check = "file_count"
+glob = "03_analysis/results/*.json"
+min = 2
+[[stage.gate]]
+check = "no_plot_calls"
+glob = "03_analysis/code/*.*"
+[[stage.gate]]
+check = "notes_populated"
+path = "03_analysis/notes.md"
+headings = ["Introduction points", "Discussion points", "Limitations", "Surprises / must-not-forget"]
+[[stage.gate]]
+check = "temp_clean"
+
+[[stage]]
+id = "S06_protocol_final"
+title = "Refine protocol from findings + publishability go/no-go #2"
+card = "stages/S06_protocol_final.md"
+outputs = ["01_protocol/protocol_final.md", "01_protocol/protocol_diff.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "01_protocol/protocol_final.md"
+headings = ["Objective", "Design", "Population and eligibility", "Variables", "Statistical analysis plan", "Sample size / power", "Reporting guideline", "Ethics", "Deviations from protocol v1"]
+[[stage.gate]]
+check = "decision_recorded"
+name = "analysis_converged"
+allowed = ["YES"]
+[[stage.gate]]
+check = "decision_recorded"
+name = "go_nogo_2"
+allowed = ["GO", "PIVOT", "STOP"]
+
+[[stage]]
+id = "S07_artifacts"
+title = "Artifact inventory (benchmarked vs comparable papers) + legends"
+card = "stages/S07_artifacts.md"
+outputs = ["01_protocol/artifact_plan.json", "05_figures/legends.md", "04_tables/table_captions.md", "01_protocol/artifact_benchmark.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "json_keys"
+path = "01_protocol/artifact_plan.json"
+keys = ["main_figures", "main_tables", "supp_figures", "supp_tables", "supp_files"]
+[[stage.gate]]
+check = "artifact_plan_sane"
+path = "01_protocol/artifact_plan.json"
+[[stage.gate]]
+check = "pubmed_cache_fresh"
+manifest = "06_refs/cache/scan_manifest.json"
+min_queries = 6
+min_hits = 30
+[[stage.gate]]
+check = "md_sections"
+path = "01_protocol/artifact_benchmark.md"
+headings = ["Comparable papers surveyed", "Figure/table counts observed", "Chosen inventory and why"]
+[[stage.gate]]
+check = "legends_cover_plan"
+[[stage.gate]]
+check = "legend_no_results_restatement"
+[[stage.gate]]
+check = "forbidden_symbols_absent"
+paths = ["05_figures/legends.md", "04_tables/table_captions.md"]
+
+[[stage]]
+id = "S08_methods"
+title = "Write Methods"
+card = "stages/S08_methods.md"
+outputs = ["07_manuscript/methods.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "outputs_exist"
+optional = ["07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "single_section_written"
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/methods.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/methods.md"
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/supplementary_methods.md"
+optional = true
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/methods.md"
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/supplementary_methods.md"
+optional = true
+
+[[stage]]
+id = "S09_results"
+title = "Write Results (cites planned figures/tables)"
+card = "stages/S09_results.md"
+outputs = ["07_manuscript/results.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "single_section_written"
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/results.md"
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/results.md"]
+require_all_cited = true
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/results.md"
+
+[[stage]]
+id = "S10_tables"
+title = "Build tables (three-line xlsx, reader-facing)"
+card = "stages/S10_tables.md"
+outputs = ["04_tables/code/build_tables.py", "04_tables/manifest.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "tables_match_plan"
+[[stage.gate]]
+check = "tables_threeline"
+[[stage.gate]]
+check = "numbers_have_provenance"
+source = "tables"
+[[stage.gate]]
+check = "temp_clean"
+[[stage.gate]]
+check = "decision_recorded"
+name = "tables_visually_confirmed"
+allowed = ["YES"]
+
+[[stage]]
+id = "S11_figures"
+title = "Render figures + deterministic QC + visual verification loop"
+card = "stages/S11_figures.md"
+outputs = ["05_figures/manifest.json", "05_figures/qc/qc_report.json", "05_figures/moved_to_legend.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "figures_match_plan"
+[[stage.gate]]
+check = "figures_qc_pass"
+[[stage.gate]]
+check = "legend_no_results_restatement"
+[[stage.gate]]
+check = "decision_recorded"
+name = "figures_visually_confirmed"
+allowed = ["YES"]
+[[stage.gate]]
+check = "temp_clean"
+
+[[stage]]
+id = "S12_reconcile"
+title = "Reconcile rendered artifacts against Methods/Results text"
+card = "stages/S12_reconcile.md"
+outputs = ["07_manuscript/reconciliation.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/results.md", "07_manuscript/methods.md"]
+require_all_cited = true
+require_rendered = true
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/results.md"
+[[stage.gate]]
+check = "numbers_cross_match"
+
+[[stage]]
+id = "S13_reflib"
+title = "Build verified reference library (~50, abstracts mandatory)"
+card = "stages/S13_reflib.md"
+outputs = ["06_refs/library.json", "06_refs/verified.json", "06_refs/refs.bib", "06_refs/refs.ris"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "refs_library"
+require_abstract = true
+require_verified = true
+[[stage.gate]]
+check = "bib_ris_match_library"
+
+[[stage]]
+id = "S14_introduction"
+title = "Write Introduction"
+card = "stages/S14_introduction.md"
+outputs = ["07_manuscript/introduction.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "single_section_written"
+[[stage.gate]]
+check = "md_wordcount"
+path = "07_manuscript/introduction.md"
+min_key = "intro_words_min"
+max_key = "intro_words_max"
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/introduction.md"]
+[[stage.gate]]
+check = "citation_count"
+path = "07_manuscript/introduction.md"
+min_key = "intro_refs_min"
+max_key = "intro_refs_max"
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/introduction.md"
+
+[[stage]]
+id = "S15_deepread"
+title = "Fetch and deep-read the ~5 papers that carry the Discussion"
+card = "stages/S15_deepread.md"
+outputs = ["06_refs/deepread/deepread_index.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "deepread_complete"
+
+[[stage]]
+id = "S16_discussion"
+title = "Write Discussion"
+card = "stages/S16_discussion.md"
+outputs = ["07_manuscript/discussion.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "single_section_written"
+[[stage.gate]]
+check = "md_wordcount"
+path = "07_manuscript/discussion.md"
+min_key = "discussion_words_min"
+max_key = "discussion_words_max"
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/discussion.md"]
+[[stage.gate]]
+check = "citation_count"
+path = "07_manuscript/discussion.md"
+min_key = "discussion_refs_min"
+max_key = "discussion_refs_max"
+[[stage.gate]]
+check = "deepread_cited"
+path = "07_manuscript/discussion.md"
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/discussion.md"
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/discussion.md"
+
+[[stage]]
+id = "S17_assemble"
+title = "Automatically select the title and assemble the complete manuscript"
+card = "stages/S17_assemble.md"
+outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md"]
+[[stage.gate]]
+check = "outputs_exist"
+optional = ["07_manuscript/statements.md"]
+[[stage.gate]]
+check = "manuscript_structure"
+[[stage.gate]]
+check = "assembly_matches_sources"
+[[stage.gate]]
+check = "abbreviations_centralized"
+[[stage.gate]]
+check = "legend_no_results_restatement"
+path = "07_manuscript/full_manuscript.md"
+[[stage.gate]]
+check = "forbidden_symbols_absent"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/abstract.md"
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/full_manuscript.md"]
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/full_manuscript.md"]
+require_all_cited = true
+require_rendered = true
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/abstract.md"
+
+[[stage]]
+id = "S18_independent_review"
+title = "Independent publication-readiness review of the frozen manuscript, supplement and tables"
+card = "stages/S18_independent_review.md"
+outputs = ["07_manuscript/independent_publishability_review.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "07_manuscript/independent_publishability_review.md"
+headings = ["Verdict", "Critical barriers", "Scientific validity", "Reporting completeness", "Tables and supplementary material", "Journal suitability", "Required revisions", "Post-revision outlook"]
+[[stage.gate]]
+check = "decision_recorded"
+name = "independent_publishability"
+allowed = ["READY", "REVISE", "NOT_READY"]
+
+[[stage]]
+id = "S19_human_review"
+title = "User review of the full manuscript, supplementary Methods and tables"
+card = "stages/S19_human_review.md"
+needs_user = true
+outputs = ["07_manuscript/human_review.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "07_manuscript/human_review.md"
+headings = ["Materials presented", "Independent verdict", "User-requested revisions", "Revalidation", "Approval to proceed"]
+[[stage.gate]]
+check = "manuscript_structure"
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/full_manuscript.md"
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/full_manuscript.md"]
+require_all_cited = true
+require_rendered = true
+[[stage.gate]]
+check = "decision_recorded"
+name = "manuscript_human_reviewed"
+allowed = ["YES"]
+
+[[stage]]
+id = "S20_journal"
+title = "Select the most realistic current SCIE journal and freeze its requirements"
+card = "stages/S20_journal.md"
+needs_user = true
+outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "08_submission/journal_shortlist.md"
+headings = ["Eligibility screen", "Ranking basis", "Shortlist", "Reject-fallback cascade"]
+[[stage.gate]]
+check = "json_keys"
+path = "08_submission/target_journal.json"
+keys = ["journal", "issn", "publisher", "scie_indexed", "scie_source_url", "scie_verified_at", "jcr_quartile", "jcr_source", "jcr_verified_at", "integrity_status", "integrity_checked_at", "integrity_sources", "guidelines_url", "guidelines_fetched_at", "abbreviation_placement", "abbreviation_rule_source", "chosen_by_user"]
+[[stage.gate]]
+check = "decision_recorded"
+name = "journal_chosen"
+[[stage.gate]]
+check = "guidelines_sourced"
+[[stage.gate]]
+check = "docx_style_config"
+
+[[stage]]
+id = "S21_authors"
+title = "Collect authors and journal-required administrative statements"
+card = "stages/S21_authors.md"
+needs_user = true
+outputs = ["00_input/author_info.json", "07_manuscript/title_page.md", "07_manuscript/statements.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "json_keys"
+path = "00_input/author_info.json"
+keys = ["authors", "affiliations", "corresponding", "funding", "conflicts", "ethics_approval", "data_availability"]
+[[stage.gate]]
+check = "manuscript_structure"
+[[stage.gate]]
+check = "abbreviations_centralized"
+[[stage.gate]]
+check = "forbidden_symbols_absent"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/statements.md", "05_figures/legends.md", "04_tables/table_captions.md"]
+
+[[stage]]
+id = "S22_polish"
+title = "Journal-specific de-AI and academic-English polish, fact-preserving"
+card = "stages/S22_polish.md"
+outputs = ["07_manuscript/polish_report.json", "07_manuscript/polish_log.md"]
+[[stage.gate]]
+check = "polish_snapshot_exists"
+[[stage.gate]]
+check = "polish_preserves_facts"
+[[stage.gate]]
+check = "ai_tells_clean"
+[[stage.gate]]
+check = "style_consistent"
+[[stage.gate]]
+check = "journal_limits_met"
+[[stage.gate]]
+check = "manuscript_structure"
+[[stage.gate]]
+check = "legend_no_results_restatement"
+path = "07_manuscript/full_manuscript.md"
+[[stage.gate]]
+check = "abbreviations_centralized"
+[[stage.gate]]
+check = "forbidden_symbols_absent"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md", "07_manuscript/statements.md"]
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/full_manuscript.md"
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/full_manuscript.md"]
+require_all_cited = true
+require_rendered = true
+[[stage.gate]]
+check = "decision_recorded"
+name = "polish_reviewed"
+allowed = ["YES"]
+
+[[stage]]
+id = "S23_package"
+title = "Build and visually verify the journal-ready Word submission package"
+card = "stages/S23_package.md"
+outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHECKLIST.md", "08_submission/bundle/manifest.json", "08_submission/submission_qc.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "bundle_complete"
+[[stage.gate]]
+check = "docx_bundle_ready"
+[[stage.gate]]
+check = "legend_no_results_restatement"
+path = "07_manuscript/full_manuscript.md"
+[[stage.gate]]
+check = "abbreviations_centralized"
+[[stage.gate]]
+check = "forbidden_symbols_absent"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md", "07_manuscript/statements.md", "08_submission/cover_letter.md"]
+[[stage.gate]]
+check = "citekeys_resolve"
+paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+[[stage.gate]]
+check = "no_orphans"
+[[stage.gate]]
+check = "temp_clean"
+[[stage.gate]]
+check = "md_sections"
+path = "08_submission/submission_qc.md"
+headings = ["Rendered files inspected", "Citation and cross-reference checks", "Typography and hyperlinks", "Tables and figures", "Defects resolved"]
+[[stage.gate]]
+check = "decision_recorded"
+name = "submission_files_visually_confirmed"
+allowed = ["YES"]
+
+[[stage]]
+id = "S24_package_human_review"
+title = "User review, modification and explicit confirmation of the final submission package"
+card = "stages/S24_package_human_review.md"
+needs_user = true
+outputs = ["08_submission/package_human_review.md", "08_submission/package_review_freeze.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "08_submission/package_human_review.md"
+headings = ["Package presented", "User modifications", "Revalidation", "User confirmation", "Frozen package"]
+[[stage.gate]]
+check = "bundle_complete"
+[[stage.gate]]
+check = "docx_bundle_ready"
+[[stage.gate]]
+check = "guidelines_sourced"
+[[stage.gate]]
+check = "bundle_matches_freeze"
+[[stage.gate]]
+check = "decision_recorded"
+name = "submission_package_user_confirmed"
+allowed = ["OK"]
+
+[[stage]]
+id = "S25_submission_audit"
+title = "Independent journal-guideline audit of the user-confirmed frozen submission package"
+card = "stages/S25_submission_audit.md"
+outputs = ["08_submission/independent_submission_audit.md"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "md_sections"
+path = "08_submission/independent_submission_audit.md"
+headings = ["Verdict", "Guideline compliance", "Required files and omissions", "Cross-file consistency", "Formatting and technical checks", "Issues requiring correction", "Final recommendation"]
+[[stage.gate]]
+check = "bundle_complete"
+[[stage.gate]]
+check = "docx_bundle_ready"
+[[stage.gate]]
+check = "guidelines_sourced"
+[[stage.gate]]
+check = "bundle_matches_freeze"
+[[stage.gate]]
+check = "submission_audit_matches_freeze"
+path = "08_submission/independent_submission_audit.md"
+[[stage.gate]]
+check = "decision_recorded"
+name = "submission_package_independent_audit"
+allowed = ["PASS"]
+
+# ------------------------------------------------------------------------------
+# Directories where the agent may legitimately create many files.
+# Anything under project/ that matches neither a stage `outputs` entry nor one of
+# these globs is reported by `wf clean` / the no_orphans check.
+# ------------------------------------------------------------------------------
+[freeform]
+globs = [
+  "00_input/*",
+  "02_data/raw/**",
+  "02_data/derived/*",
+  "03_analysis/code/*",
+  "03_analysis/results/*.json",
+  "04_tables/main/*.xlsx",
+  "04_tables/supplementary/*.xlsx",
+  "05_figures/code/*",
+  "05_figures/out/*",
+  "05_figures/qc/*",
+  "06_refs/cache/**",
+  "06_refs/fulltext/*",
+  "06_refs/deepread/*.md",
+  "07_manuscript/prepolish/*",
+  "07_manuscript/polish_allowlist.tsv",
+  "08_submission/cache/**",
+  "08_submission/*.csl",
+  "08_submission/bundle/**",
+]

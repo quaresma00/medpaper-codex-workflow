@@ -1,0 +1,83 @@
+---
+name: medpaper-codex-pipeline
+description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
+metadata:
+  version: "1.3.2"
+  entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
+---
+
+# Medpaper pipeline
+
+The workflow lives in `pipeline/pipeline.toml` and `pipeline/stages/*.md`. Do not reconstruct
+it from memory or from the conversation.
+
+## Required loop
+
+Run this before project work and again after context compaction:
+
+```powershell
+.\.venv\Scripts\python.exe tools\wf.py status
+```
+
+If `.venv` is absent, run `uv run --python 3.13 python bootstrap.py` first. Then complete only
+the active card's declared outputs:
+
+```powershell
+.\.venv\Scripts\python.exe tools\wf.py check
+.\.venv\Scripts\python.exe tools\wf.py advance --note "what was produced, decided, and remains open"
+```
+
+Never infer the stage, create future-stage artifacts, or bypass a red gate.
+
+## Evidence and fact integrity
+
+- A bibliographic fact is usable only after pipeline metadata retrieval and verification.
+  Discovery may use the available scholarly-search skill, browser, or research plugin, but
+  every selected record must be re-fetched through `tools/pubmed/` and appear in
+  `project/06_refs/verified.json` with `verified: true`.
+- A full text acquired through an open-access or explicitly authorized institutional route
+  must be registered with `tools/pubmed/fulltext.py register`; paywalled abstracts do not
+  count as deep reads. Never use illicit sources or transfer login cookies without explicit
+  authorization.
+- Every reported number must originate in executed analysis code and already exist in
+  `project/03_analysis/results/*.json`. Language edits may not change numbers, citekeys, or
+  figure/table references.
+- Do not draft an AI-use disclosure unless the user explicitly requests that content.
+
+## Working with other skills and plugins
+
+This skill owns sequencing, output paths, and gates. Other capabilities may help only inside
+the active stage:
+
+- Scholarly retrieval: discovery/acquisition helper; pipeline verification remains decisive.
+- Spreadsheets: render and inspect S10 workbooks after the pipeline writer creates them.
+- ImageGen: optional second visual critic at S11 only; it may flag layout and readability
+  defects but must not redraw or edit scientific plots. Fix plotting code and re-render.
+- Independent review: at S18 spawn exactly one read-only subagent for the frozen complete
+  manuscript, optional supplementary Methods and tables; preserve its verdict for S19.
+- Documents/PDF: build, render and inspect S23 submission files without rewriting scientific
+  facts. Use the deterministic DOCX builder so typography, links and heading behavior pass.
+- Final package review: at S24 let the user inspect and modify the actual upload files, ask
+  whether the revalidated package is explicitly `OK`, and freeze that exact revision. At S25
+  give the frozen package and official journal guide to exactly one independent read-only
+  subagent to check compliance, omissions and cross-file mismatches. Only `PASS` completes
+  the workflow; changed packages return to S24 for renewed confirmation.
+- Reporting, de-identification, study-design, or statistical helpers: advisory or code helpers
+  whose outputs must land at the active card's declared path and satisfy its gate.
+
+Do not activate a second end-to-end writing, analysis, reference-management, figure, journal,
+or submission workflow. Read [Codex integration](../../../reference/codex-integration.md) when
+another skill or plugin is relevant.
+
+Figure legends identify the display, map panels and decode symbols; they do not restate the
+direction or numerical findings from Results. When display-item abbreviations become crowded,
+define them once under `Declarations and Statements > Abbreviations` and remove repeated local
+blocks unless the official journal guide explicitly requires them. Final Word files contain no
+literal U+2193 down arrow and no text-wrapping/manual line-break controls.
+
+## Safety and completion
+
+Keep patient-level/private data local unless the user explicitly authorizes an external
+transfer. Inspect every rendered visual artifact before recording its visual-review decision.
+At a stage requiring a material user choice, such as the target journal or private-data
+access, ask once and wait; otherwise keep working until the gate passes and the stage advances.

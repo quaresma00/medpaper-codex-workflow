@@ -1,0 +1,31 @@
+# Local Python environment and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Runtime state, temporary output and logs
+.wf/
+temp/
+*.log
+
+# Research inputs and generated project artifacts
+project/**
+!project/.gitkeep
+
+# Credentials and local configuration
+.env
+.env.*
+*.pem
+*.key
+
+# Local build output
+dist/
+*.zip
+
+# Windows and editor metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
