@@ -1,0 +1,214 @@
+# ==============================================================================
+# Medical figure archetype registry
+# ==============================================================================
+# Every figure in an artifact plan declares an `archetype`. S11 then checks the
+# rendered figure for that archetype's mandatory elements.
+#
+# `requires`  elements detected from the live figure object; a missing one FAILS the gate.
+# `advisory`  elements that code cannot reliably detect; reported, never blocking.
+# `forbids`   elements whose presence FAILS the gate.
+#
+# Detection lives in tools/figures/elements.py. Only put something in `requires`
+# if the detector is genuinely reliable - a gate that cries wolf gets ignored.
+#
+# The archetype taxonomy (5 domains, 17 types) and the per-type mandatory elements
+# are adapted from quaresma00/medical-sci-figure-skill (MIT), which in turn draws on
+# SciencePlots, ggsci and ggprism conventions. Content was rephrased and the
+# element lists were reduced to what is mechanically verifiable here.
+# ==============================================================================
+
+[meta]
+version = "1.0.0"
+universal_requires = ["axis_labels"]
+
+# ---------------------------------------------------------------------------
+# Domain 1: continuous data and group comparisons
+# ---------------------------------------------------------------------------
+[archetype.bar_dot]
+label = "Superimposed dot-bar plot"
+domain = "Group comparison"
+use_for = "RT-qPCR, Western blot densitometry, ELISA, small-animal tumour burden (n = 3-8)"
+requires = ["bar_artist", "baseline_zero", "individual_points", "error_bars"]
+advisory = ["error_type_declared", "open_or_tinted_bar"]
+notes = """A bare bar with no points is a dynamite plot; journals reject it at n < 10.
+State in the legend whether the bar carries SD, SEM or 95% CI - the bar alone is ambiguous."""
+
+[archetype.box_jitter]
+label = "Box plot with jittered scatter"
+domain = "Group comparison"
+use_for = "Clinical cohort biomarkers, serum cytokines, cell assays (n >= 10)"
+requires = ["box_artist", "individual_points"]
+advisory = ["whisker_rule_declared"]
+notes = """Do not use a box plot at n <= 5; quartiles of five points mean nothing - use bar_dot.
+Show the points whenever n < 30. Say in the legend what the whiskers are (1.5x IQR or min-max)."""
+
+[archetype.violin_raincloud]
+label = "Violin or raincloud plot"
+domain = "Group comparison"
+use_for = "Flow-cytometry MFI, single-cell expression distributions (n >= 30)"
+requires = ["violin_artist"]
+advisory = ["interior_box", "jitter_layer"]
+notes = "Kernel density plus an interior mini box plot plus the raw points beneath."
+
+[archetype.paired_dotline]
+label = "Paired dot-line plot"
+domain = "Group comparison"
+use_for = "Before versus after in the same patient (paired t test, Wilcoxon signed rank)"
+requires = ["connected_pairs", "individual_points"]
+advisory = ["paired_test_named"]
+notes = "Connecting lines carry the whole point: each line is one patient's trajectory."
+
+# ---------------------------------------------------------------------------
+# Domain 2: survival and longitudinal
+# ---------------------------------------------------------------------------
+[archetype.km_survival]
+label = "Kaplan-Meier curve with number-at-risk table"
+domain = "Survival"
+use_for = "Trials and oncology survival endpoints (OS, PFS, RFS, DFS)"
+requires = ["step_curve", "censoring_marks", "risk_table", "legend_present", "figure_statistics"]
+advisory = ["median_survival_reported", "hr_with_ci", "logrank_p", "confidence_band"]
+forbids = []
+notes = """A KM curve without a number-at-risk table is incomplete, and censoring ticks are
+not optional. Report median survival with 95% CI, and the HR with its 95% CI and the
+log-rank p. Stop the curve where the risk set is too small to interpret.
+Use lifelines for the estimator - do not hand-roll a product-limit calculation."""
+
+[archetype.longitudinal_trajectory]
+label = "Longitudinal trajectory or growth curve"
+domain = "Survival"
+use_for = "In-vivo drug efficacy, tumour growth, weight tracking, repeated measures"
+requires = ["error_bars", "legend_present"]
+advisory = ["intervention_marker", "n_per_timepoint"]
+notes = "Mark treatment start with an arrow. Give n at each timepoint if it changes."
+
+# ---------------------------------------------------------------------------
+# Domain 3: clinical trials and evidence synthesis
+# ---------------------------------------------------------------------------
+[archetype.flow_diagram]
+label = "CONSORT / PRISMA / STROBE flow diagram"
+domain = "Trials and evidence"
+use_for = "RCTs, meta-analyses, cohort assembly"
+requires = ["box_nodes", "figure_statistics"]
+advisory = ["exclusion_reasons", "itt_pp_split"]
+notes = """One of the few figures where text inside the panel is mandatory. Account for every
+patient: screened, excluded with reasons, enrolled, lost to follow-up, analysed.
+Numbers must reconcile with dataset_summary.json, and the gate checks their provenance."""
+
+[archetype.forest_plot]
+label = "Forest plot (subgroup or meta-analysis)"
+domain = "Trials and evidence"
+use_for = "Hazard/odds ratios across strata; pooled effects"
+requires = ["null_line", "error_bars", "figure_statistics"]
+advisory = ["direction_labels", "summary_diamond", "weight_scaled_markers", "heterogeneity_stats"]
+notes = """Null-effect line at 1.0 for ratio measures, 0.0 for differences. Log axis for ratios.
+Label which side favours which arm. For a meta-analysis show the summary diamond and I-squared."""
+
+[archetype.roc_curve]
+label = "ROC or precision-recall curve"
+domain = "Trials and evidence"
+use_for = "Diagnostic accuracy, clinical risk-prediction discrimination"
+requires = ["reference_diagonal", "legend_present", "figure_statistics", "equal_axes_limits"]
+advisory = ["auc_with_ci", "operating_point_marked"]
+notes = """Equal 0-1 axes, thin grey chance diagonal, AUC with its 95% CI in the legend.
+If a threshold is used clinically, mark that operating point.
+For imbalanced outcomes add the precision-recall curve; AUROC alone flatters the model."""
+
+[archetype.nomogram_calibration]
+label = "Nomogram or calibration curve"
+domain = "Trials and evidence"
+use_for = "Prognostic scoring systems, model calibration"
+requires = ["reference_diagonal"]
+advisory = ["bootstrap_corrected_curve", "predicted_risk_distribution", "brier_or_slope"]
+notes = "Calibration needs the 45-degree ideal line, the bootstrap-corrected curve, and the distribution of predicted risk beneath."
+
+[archetype.bland_altman]
+label = "Bland-Altman agreement plot"
+domain = "Trials and evidence"
+use_for = "Method comparison, inter-rater or inter-device agreement"
+requires = ["reference_lines_horizontal", "individual_points", "figure_statistics"]
+advisory = ["loa_ci", "proportional_bias_check"]
+notes = "Mean difference plus upper and lower limits of agreement. Give the CI of the limits, not just the limits."
+
+# ---------------------------------------------------------------------------
+# Domain 4: omics and bioinformatics
+# ---------------------------------------------------------------------------
+[archetype.volcano_plot]
+label = "Volcano plot"
+domain = "Omics"
+use_for = "RNA-seq, proteomics, single-cell differential expression"
+requires = ["threshold_lines", "individual_points"]
+advisory = ["repelled_labels", "cutoffs_in_legend", "adjusted_p_used"]
+notes = """log2 fold change against -log10 adjusted P, with both cutoffs drawn as dashed lines.
+Label hub genes with force-directed repulsion (adjustText), not manual offsets.
+State whether the y axis is raw or adjusted P - it changes the interpretation."""
+
+[archetype.clustered_heatmap]
+label = "Clustered heatmap"
+domain = "Omics"
+use_for = "Multi-gene expression profiling, patient clustering"
+requires = ["colorbar", "figure_statistics"]
+advisory = ["dendrograms", "zscore_declared", "metadata_annotation_bars"]
+notes = """Perceptually uniform colormap (viridis, magma) or a zero-centred diverging one
+(RdBu_r) when the values are signed. Never jet or rainbow. Say what the colour scale is."""
+
+[archetype.dimension_reduction]
+label = "PCA, UMAP or t-SNE scatter"
+domain = "Omics"
+use_for = "scRNA-seq, CyTOF, bulk PCA"
+requires = ["individual_points", "equal_aspect", "legend_present"]
+advisory = ["variance_explained", "n_cells_reported", "perplexity_or_neighbors"]
+notes = """Equal aspect ratio, or the cluster geometry is misleading. For PCA give the variance
+explained per axis. For UMAP/t-SNE state the hyperparameters and that distances between
+distant clusters are not meaningful."""
+
+[archetype.enrichment_bubble]
+label = "GO / KEGG enrichment bubble plot"
+domain = "Omics"
+use_for = "Pathway enrichment (Gene Ontology, KEGG, Reactome)"
+requires = ["individual_points", "colorbar"]
+advisory = ["size_legend", "adjusted_p_used", "gene_ratio_defined"]
+notes = "Bubble size is gene count, colour is adjusted P. Both need a key. Say what the x axis is."
+
+[archetype.manhattan_plot]
+label = "GWAS Manhattan plot"
+domain = "Omics"
+use_for = "SNP-disease association"
+requires = ["individual_points", "reference_lines_horizontal"]
+advisory = ["alternating_chromosome_colors", "genomewide_threshold_labelled"]
+notes = "Genome-wide significance line at P = 5e-8, drawn and labelled. Alternate chromosome shading."
+
+# ---------------------------------------------------------------------------
+# Domain 5: blots and histopathology
+# ---------------------------------------------------------------------------
+[archetype.western_blot]
+label = "Cropped Western blot panel"
+domain = "Blots and imaging"
+use_for = "Protein expression"
+requires = ["bitmap_panel"]
+advisory = ["mw_ladder_kda", "loading_control_below", "uniform_crop", "unsaturated_background"]
+notes = """Molecular weight ladder in kDa on the left, loading control directly beneath the
+target. Contrast adjusted linearly and uniformly across the whole image. Keep the raw scan;
+journals ask for it. Splices must be visible and stated in the legend."""
+
+[archetype.histopathology]
+label = "Histopathology, IHC or immunofluorescence"
+domain = "Blots and imaging"
+use_for = "Tissue sections, staining, microscopy"
+requires = ["bitmap_panel", "scale_bar"]
+advisory = ["channel_labels", "inset_outlined", "antibody_named"]
+notes = """A physical scale bar overlaid on the image is mandatory. Writing the magnification
+('400x') in the caption instead does not satisfy this - magnification depends on the display
+size. Label each channel with its dye and target. Outline any inset in the overview image."""
+
+# ---------------------------------------------------------------------------
+# Fallback
+# ---------------------------------------------------------------------------
+[archetype.other]
+label = "Other (justify in the artifact plan)"
+domain = "Other"
+use_for = "A figure that genuinely fits none of the archetypes above"
+requires = []
+advisory = []
+notes = """Using this bypasses archetype checking, so the artifact plan must carry an
+`archetype_rationale` field explaining why no archetype fits. Prefer a real archetype:
+that is where the domain rules live."""
