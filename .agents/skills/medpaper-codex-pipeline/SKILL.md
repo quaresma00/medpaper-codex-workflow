@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.3"
+  version: "1.3.4"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -58,10 +58,13 @@ the active stage:
 - Documents/PDF: build, render and inspect S23 submission files without rewriting scientific
   facts. Use the deterministic DOCX builder so typography, links and heading behavior pass.
 - Final package review: at S24 let the user inspect and modify the actual upload files, ask
-  whether the revalidated package is explicitly `OK`, and freeze that exact revision. At S25
-  give the frozen package and official journal guide to exactly one independent read-only
-  subagent to check compliance, omissions and cross-file mismatches. Only `PASS` completes
-  the workflow; changed packages return to S24 for renewed confirmation.
+  whether the revalidated package is explicitly `OK` and whether one independent subagent
+  should perform the final review, then freeze that exact revision. At S25 give the frozen
+  package and official journal guide to exactly one independent read-only subagent. It first
+  reads the submission as an ordinary reader, then screens it as a journal editor for unclear
+  content and low-level errors, and finally checks compliance, omissions and cross-file
+  mismatches. Only `PASS` completes the workflow; changed packages return to S24 for renewed
+  confirmation.
 - Reporting, de-identification, study-design, or statistical helpers: advisory or code helpers
   whose outputs must land at the active card's declared path and satisfy its gate.
 

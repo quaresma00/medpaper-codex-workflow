@@ -28,7 +28,7 @@ package.
 4. Write `project/08_submission/package_human_review.md` with headings `Package presented`,
    `User modifications`, `Revalidation`, `User confirmation`, `Frozen package`.
 5. After the user's edits have been revalidated, ask exactly one clear confirmation question:
-   **“投稿包已按您的修改重新校验。是否确认 OK，并冻结当前版本进入独立投稿审查？”**
+   **“投稿包已按您的修改重新校验。是否确认 OK，并调用一个独立子代理，以普通读者和期刊编辑的视角终审当前冻结版本？”**
    Continue only after an explicit affirmative answer such as `OK`, `确认` or `可以`.
 6. Freeze the exact reviewed bundle and its journal/source evidence:
 ```
@@ -49,6 +49,8 @@ package.
   scientific manuscript review.
 - No independent final audit starts before explicit user confirmation and a successful
   freeze.
+- The user's confirmation is also the explicit request to invoke one independent subagent
+  for the final reader/editor/compliance review; an earlier review request does not substitute.
 - Any change after confirmation invalidates the freeze and requires this stage's checks and
   confirmation again.
 - Never infer or rewrite user-owned authorship, affiliation, funding, ethics or conflict data.

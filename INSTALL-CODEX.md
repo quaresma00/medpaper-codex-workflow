@@ -88,9 +88,10 @@ the active stage only. Follow `reference/codex-integration.md`:
 - one independent subagent reviews the frozen full manuscript, optional supplementary
   Methods and tables at S18; it reviews only and does not rewrite the source;
 - after S23 builds the journal package, S24 lets the user edit its content and formatting,
-  obtains explicit `OK`, and freezes the exact reviewed revision; S25 then uses one separate
-  read-only subagent to audit that freeze against the official journal guide for omissions,
-  noncompliance and cross-file mismatches;
+  obtains an explicit request for the final review, and freezes the exact reviewed revision;
+  S25 then uses one separate read-only subagent to read the package as a first-time scientific
+  reader, screen low-level errors as an editor, and audit the freeze against the official
+  journal guide for omissions, noncompliance and cross-file mismatches;
 - patient-level/private data stay local unless the user explicitly authorizes transfer.
 
 The workflow chooses one title automatically, assembles `full_manuscript.md`, and presents
@@ -100,8 +101,8 @@ narrative upload—including the cover letter and supplementary Methods—to DOC
 journal's explicit typography rules win; where it is silent the recorded fallback is Times
 New Roman 12 pt, double spaced, black, with no hyperlinks or collapsible heading hierarchy.
 S24 does not advance until the user explicitly confirms the revalidated package is `OK`.
-S25 requires an independent `PASS`; a changed or deficient package loops back to S24 for
-correction and renewed confirmation.
+S25 requires an independent three-lens `PASS`; a changed or deficient package loops back to
+S24 for correction and renewed confirmation.
 
 ## Verify or rebuild the package
 

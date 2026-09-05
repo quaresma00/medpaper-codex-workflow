@@ -32,9 +32,10 @@ skip a stage.
   and tables to exactly one independent read-only subagent for publication-readiness review.
   Use the document/PDF workflows at S23 to render and inspect submission files.
   At S24, present the actual upload package for the user's content/format edits and explicit
-  `OK`; freeze that revision. At S25, give only that frozen package and the official journal
-  instructions to one independent read-only subagent for final completeness, compliance and
-  cross-file consistency audit.
+  request for final review; freeze that revision. At S25, give only that frozen package and
+  the official journal instructions to one independent read-only subagent. It reads as a
+  first-time scientific reader, screens as an editor for low-level errors, then audits final
+  completeness, compliance and cross-file consistency.
   These are QA helpers; the stage card remains authoritative.
 - At S11, ImageGen may participate as an optional second visual critic. It may identify
   readability or layout defects, but it must never redraw or edit a statistical figure.
@@ -62,9 +63,10 @@ skip a stage.
    display-item abbreviation lists under `Declarations and Statements > Abbreviations`, unless a
    sourced journal rule requires local definitions. Final DOCX files contain neither the
    literal U+2193 down arrow nor manual text-wrapping break controls.
-10. A built package is not final approval. After the user edits it, require explicit `OK`,
-    freeze the exact files, and complete the independent S25 journal-guideline audit. Any
-    post-confirmation change invalidates the freeze and returns the workflow to S24.
+10. A built package is not final approval. After the user edits it, require an explicit request
+    for the final independent review, freeze the exact files, and complete the S25 reader,
+    editor and journal-compliance audit. Any post-confirmation change invalidates the freeze
+    and returns the workflow to S24.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external

@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.3",
+           legacy.data["pipeline_version"] == "1.3.4",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -579,7 +579,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.3" and 'version: "1.3.3"' in skill,
+           pipe["meta"]["version"] == "1.3.4" and 'version: "1.3.4"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -619,6 +619,17 @@ def run_codex_integration() -> None:
            (ROOT / "pipeline/pipeline.toml").read_text(encoding="utf-8") and
            "loop S24_package_human_review" in final_audit_card,
            "user confirmation -> immutable freeze -> one guideline audit -> PASS or S24 loop")
+    final_headings = next(g for g in final_audit["gate"]
+                          if g["check"] == "md_sections")["headings"]
+    record("final independent audit includes reader and editor lenses",
+           "ordinary scientific reader" in final_audit_card and
+           "Editorial screening" in final_audit_card and
+           "low-level errors" in final_audit_card and
+           "Reader comprehension" in final_headings and
+           "Editorial screening and low-level errors" in final_headings and
+           "objective low-level error" in final_audit_card and
+           "never edits the frozen package" in final_audit_card,
+           "first-time comprehension + editorial error screen + journal compliance")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
                                                   "supplementary Methods", "Figure legends",

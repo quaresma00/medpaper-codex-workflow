@@ -57,12 +57,14 @@ Only registered local full texts with substantive notes count toward S15.
   facts during layout repair.
 - S24: present the complete upload bundle and guideline extract to the user. Preserve manual
   edits, reconcile scientific-content changes to their canonical sources, rerun affected QA,
-  ask for explicit `OK`, then use `tools/package_review.py freeze` to hash the exact package
-  and evidence accepted for final review.
+  ask for an explicit request to run the final independent reader/editor review, then use
+  `tools/package_review.py freeze` to hash the exact package and evidence accepted for review.
 - S25: verify the freeze and spawn exactly one independent read-only subagent. It must inspect
-  the actual files against the cached official journal guide, identify omissions and
-  cross-file mismatches, and write the declared audit report. A changed freeze or non-`PASS`
-  verdict returns to S24; do not repeatedly audit an unchanged package.
+  the actual files first as a new scientific reader for unclear content, then as an editor for
+  low-level errors, and finally against the cached official journal guide for omissions and
+  cross-file mismatches. It writes the declared audit report without editing the freeze. A
+  changed freeze or non-`PASS` verdict returns to S24; do not repeatedly audit an unchanged
+  package.
 
 ## Analytical and review helpers
 
