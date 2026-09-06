@@ -34,6 +34,8 @@ NON_OVERRIDABLE_GATES = {
     "refs_library",
     "bib_ris_match_library",
     "citekeys_resolve",
+    "revision_rounds_closed",
+    "s19_review_release_explicit",
 }
 
 
@@ -242,22 +244,31 @@ def cmd_advance(args) -> int:
     stage = pipe.stage(st.current)
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, _ = gates.summarize(results)
-    integrity_failures = [r for r in results if r.blocking and
-                          r.check in NON_OVERRIDABLE_GATES]
-    if integrity_failures:
-        print(f"refusing to advance: {len(integrity_failures)} non-overridable "
-              f"evidence-integrity gate(s) failed in {stage.id}")
+    non_overridable_failures = [r for r in results if r.blocking and
+                                r.check in NON_OVERRIDABLE_GATES]
+    if non_overridable_failures:
+        print(f"refusing to advance: {len(non_overridable_failures)} non-overridable "
+              f"gate(s) failed in {stage.id}")
         print(DASH)
-        _gate_lines(integrity_failures)
+        _gate_lines(non_overridable_failures)
         print(DASH)
-        failed_names = {result.check for result in integrity_failures}
+        failed_names = {result.check for result in non_overridable_failures}
         if "data_acquisition_complete" in failed_names:
             print("--force cannot waive full-data acquisition. Acquire the complete "
                   "protocol-defined universe and exhaust pagination; if access is truly "
                   "source-limited, obtain and record the user's explicit authorization.")
-        if failed_names - {"data_acquisition_complete"}:
+        reference_failures = failed_names & {
+            "reference_provenance", "refs_library", "bib_ris_match_library", "citekeys_resolve"
+        }
+        if reference_failures:
             print("--force cannot waive bibliographic provenance. Re-fetch the real PubMed "
                   "record or remove/replace the citation.")
+        if "revision_rounds_closed" in failed_names:
+            print("--force cannot waive an unfinished revision round. Complete every recorded "
+                  "item, return through its gates, and close the round at the review stage.")
+        if "s19_review_release_explicit" in failed_names:
+            print("--force cannot waive S19 review. Present the current versioned ZIP and exact "
+                  "artifact paths, then wait for the user's explicit no-further-review statement.")
         return 2
     if not ok and not args.force:
         print(f"refusing to advance: {blocking} blocking issue(s) in {stage.id}")
@@ -612,3 +623,4 @@ def main(argv: list[str] | None = None) -> int:
     except KeyError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+

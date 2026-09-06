@@ -87,6 +87,12 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   efficiency comes from scoped reads and dependency-aware rebuilds, never from dropping an
   affected request, gate, validation or review. The assembled manuscript must match its
   component Markdown at S19; do not patch it as a detached final file.
+- S19 delivery: run `tools/manuscript/review_package.py build` and `verify` for every initial
+  or scientifically changed version. Present clickable paths for the manuscript, optional
+  supplementary Methods, table workbooks, rendered PNG figures, verified BibTeX/RIS exports,
+  independent verdict and exact versioned ZIP. The ZIP is safe for third-party scientific review because it excludes raw or
+  patient-level data, credentials, full-text literature and internal analysis code. Remain at
+  S19 until the user explicitly says no further review is needed.
 - S23: build each journal-required narrative upload with
   `tools/manuscript/build_docx.py`, including the cover letter and supplementary Methods.
   The builder wraps Pandoc/citeproc, applies the sourced journal style (Times New Roman

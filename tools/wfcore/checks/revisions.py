@@ -6,6 +6,7 @@ import json
 
 from . import Ctx, Result, check
 from ..packagecontent import verify_baseline
+from ..reviewpackage import verify as verify_review_package
 
 
 def _sha256(path) -> str:
@@ -86,6 +87,66 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
     if problems:
         return Result(False, "revision_rounds_closed", "; ".join(problems[:8]))
     return Result(True, "revision_rounds_closed", f"{count} revision round(s) closed with source hashes and validations")
+
+
+@check("manuscript_review_package_current")
+def manuscript_review_package_current(ctx: Ctx) -> Result:
+    ok, details, manifest = verify_review_package(ctx.project)
+    if not ok or manifest is None:
+        return Result(
+            False,
+            "manuscript_review_package_current",
+            "; ".join(details[:8]),
+            [
+                "Return to S19 and run tools/manuscript/review_package.py build.",
+                "Present the printed ZIP path and every review-material path to the user.",
+            ],
+        )
+    return Result(
+        True,
+        "manuscript_review_package_current",
+        f"S19 review ZIP v{manifest['package_revision']:03d} matches "
+        f"{len(manifest['source_files'])} current review file(s)",
+    )
+
+
+@check("s19_review_release_explicit")
+def s19_review_release_explicit(ctx: Ctx) -> Result:
+    ok, details, manifest = verify_review_package(ctx.project)
+    if not ok or manifest is None:
+        return Result(
+            False, "s19_review_release_explicit",
+            "current S19 review ZIP is not valid: " + "; ".join(details[:6]),
+            ["Build, verify and present the current S19 review ZIP before requesting approval."],
+        )
+    decision = ctx.state.decision("manuscript_human_reviewed")
+    if not decision or decision.get("value") != "NO_FURTHER_REVIEW":
+        return Result(
+            False, "s19_review_release_explicit",
+            "the user has not explicitly stated that no further review is needed for the current ZIP",
+            [
+                "Remain at S19 and invite the user or a third party to review the listed materials.",
+                "Advance only after an explicit no-further-review statement; generic 'continue' is insufficient.",
+            ],
+        )
+    package_token = str(manifest["package_id"])[:12]
+    rationale = str(decision.get("rationale", ""))
+    if package_token not in rationale:
+        return Result(
+            False, "s19_review_release_explicit",
+            f"approval is not bound to current S19 review package {package_token}",
+            ["Record the exact presented ZIP revision/package ID in the decision rationale."],
+        )
+    if str(decision.get("at", "")) < str(manifest.get("created_at", "")):
+        return Result(
+            False, "s19_review_release_explicit",
+            "approval predates the current S19 review ZIP; present the new ZIP and ask again",
+        )
+    return Result(
+        True, "s19_review_release_explicit",
+        f"user explicitly ended review for S19 ZIP v{manifest['package_revision']:03d} "
+        f"({package_token})",
+    )
 
 
 @check("package_content_matches_baseline")

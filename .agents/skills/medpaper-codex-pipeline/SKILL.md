@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.8"
+  version: "1.3.9"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -80,6 +80,14 @@ the active stage:
   defects but must not redraw or edit scientific plots. Fix plotting code and re-render.
 - Independent review: at S18 spawn exactly one read-only subagent for the frozen complete
   manuscript, optional supplementary Methods and tables; preserve its verdict for S19.
+- User scientific review: whenever an initial or revised scientific version reaches S19,
+  build and verify the versioned third-party ZIP with
+  `tools/manuscript/review_package.py`, present clickable locations for the manuscript,
+  optional supplementary Methods, tables, figures, verified BibTeX/RIS exports, independent
+  verdict and exact ZIP, and
+  stop for feedback. Advance only after the user explicitly says no further review is needed;
+  delivery, silence, thanks or a generic “continue” is not approval. Bind that decision to the
+  exact current package ID; this release gate cannot be bypassed with `--force`.
 - Documents/PDF: build, render and inspect S23 submission files without rewriting scientific
   facts. Use the deterministic DOCX builder so typography, links and heading behavior pass.
 - Final package review: at S24 let the user inspect and modify the actual upload files, ask

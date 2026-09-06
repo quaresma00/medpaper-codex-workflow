@@ -5,23 +5,49 @@ Give the user one coherent scientific package to inspect and revise before journ
 formatting or administrative author collection begins.
 
 ## This stage needs the user
-Present clickable paths to:
+Create a versioned third-party review ZIP and present its clickable path. Also present
+clickable paths to every directly reviewable artifact group:
 - `07_manuscript/full_manuscript.md`;
 - `07_manuscript/supplementary_methods.md`, if present;
-- every main and supplementary table workbook;
-- `07_manuscript/independent_publishability_review.md`.
+- `04_tables/main/` and `04_tables/supplementary/`;
+- `05_figures/out/` and `05_figures/legends.md`;
+- `06_refs/refs.bib` and `06_refs/refs.ris`;
+- `07_manuscript/independent_publishability_review.md`;
+- the exact ZIP printed by `tools/manuscript/review_package.py build`.
+
+The ZIP contains the current manuscript, optional supplementary Methods, XLSX tables,
+rendered PNG figures, legends/captions, verified bibliography exports, the independent
+verdict, a human-readable review guide and a hash manifest. It excludes patient-level data,
+credentials, full-text literature
+files and internal analysis code. Each scientifically changed version receives a new
+versioned ZIP; an unchanged source set reuses the already verified ZIP rather than creating a
+duplicate.
 
 Do not ask for authors, affiliations, ORCIDs, correspondence, funding or other title-page
-administration here. Ask only for manuscript/table corrections or confirmation that this
-scientific version can proceed to journal selection.
+administration here. Tell the user that they can review the materials now, send the ZIP to a
+third party, or provide revisions directly. Then use this explicit prompt:
+
+> 可审核材料和第三方审核 ZIP 已准备好，位置如下。您可以现在逐项审核、把 ZIP
+> 转交第三方，或直接告诉我修改意见。若确认不再需要继续审核，请明确回复：
+> “无需继续审核，可以进入下一步”。在收到这一明确确认前，工作流将停留在 S19。
+
+Do not interpret silence, thanks, file delivery, “continue”, “looks fine”, or completion of one
+revision request as no-further-review approval. A semantically explicit statement that no
+further review is needed is required.
 
 This is a repeatable review loop, not a one-time checkpoint. The user may provide several
-rounds of feedback. Remain in, or return to, S19 until the user explicitly approves the
-scientific manuscript.
+rounds of feedback. Remain in, or return to, S19 until the user explicitly states that no
+further review is needed.
 
 ## Procedure
-1. Summarise the independent verdict and list only the revisions that materially affect
-   publishability. Link the four artifact groups above for direct inspection.
+1. Build and verify the review package before asking the user to inspect anything:
+```
+.\.venv\Scripts\python.exe tools/manuscript/review_package.py build
+.\.venv\Scripts\python.exe tools/manuscript/review_package.py verify
+```
+   Summarise the independent verdict and list only revisions that materially affect
+   publishability. Show the exact ZIP path and all review-material locations listed above.
+   Never merely say that files are “in the project”.
 2. When feedback is received, preserve it verbatim and interpret it once into atomic items in
    `project/temp/revision_plan.json` using `reference/rework-routing.md`. Each item must name
    its kind, true source files and observable acceptance criteria. If an item is ambiguous or
@@ -48,23 +74,34 @@ scientific manuscript.
 .\.venv\Scripts\python.exe tools/rework.py mark --item <RNNN-NN> --changed-file <path> --validated-by "<gate or inspection>" --summary "<resolution>"
 .\.venv\Scripts\python.exe tools/rework.py close --summary "<all requested items completed and revalidated>"
 ```
-   Present the revised artifacts again. New user feedback opens the next round; there is no
-   fixed round limit.
+   Rebuild the versioned S19 ZIP after closing the round, verify it, and present the revised
+   artifacts and new ZIP path again. New user feedback opens the next round; there is no fixed
+   round limit.
 6. Write or append `project/07_manuscript/human_review.md` with headings `Materials presented`,
    `Independent verdict`, `User-requested revisions`, `Revalidation`, `Approval to proceed`.
-   Keep a concise round-by-round summary and do not paste the entire manuscript or feedback
-   history into this file.
-7. Only after every revision round is closed and the user explicitly confirms, record:
+   Record each presented ZIP revision, package ID and path. Keep a concise round-by-round
+   summary and do not paste the entire manuscript or feedback history into this file.
+7. Only after every revision round is closed, the latest review ZIP passes its current-source
+   gate, and the user explicitly says that no further review is needed, record the normalized
+   decision:
 ```
-.\.venv\Scripts\python.exe tools/wf.py decide manuscript_human_reviewed YES --why "<what the user reviewed and what was revised>"
+.\.venv\Scripts\python.exe tools/wf.py decide manuscript_human_reviewed NO_FURTHER_REVIEW --why "<quote or closely preserve the explicit confirmation; include the exact ZIP revision and at least the first 12 characters of its package_id>"
 ```
 
 ## Outputs
 - `07_manuscript/human_review.md`
+- `07_manuscript/review_packages/latest_review_package.json`
+- versioned `07_manuscript/review_packages/S19-review-vNNN-<package-id>.zip`
 
 ## Hard rules
 - This is the user's scientific review point, before author information is requested.
 - Do not treat the independent review as the user's approval.
+- Do not advance merely because the review files or ZIP were delivered. Offer review, give
+  exact locations, wait, and require explicit no-further-review confirmation.
+- Every changed S19 version must have a newly built and verified versioned ZIP. Never package
+  stale sources or include patient-level/private data.
+- The S19 release gate is non-overridable and binds the user's confirmation to the exact
+  current package ID. A confirmation for v001 cannot release v002.
 - Do not change a number without rerunning the analysis that produced it.
 - Do not edit the assembled manuscript as a detached file. Every revision is recorded inside
   the workflow and applied to the source owned by the routed stage.
@@ -75,6 +112,6 @@ scientific manuscript.
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "user reviewed full manuscript, supplement and tables; revisions=<summary>; approved to select journal"
+.\.venv\Scripts\python.exe tools/wf.py advance --note "user was shown exact review paths and ZIP revision=<vNNN/package-id>; revisions=<summary>; explicitly stated that no further review is needed"
 ```
 

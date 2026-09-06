@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.8",
+           legacy.data["pipeline_version"] == "1.3.9",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -847,6 +847,8 @@ def run_codex_integration() -> None:
         ROOT / "reference/methods-structure.md",
         ROOT / "reference/rework-routing.md",
         ROOT / "tools/rework.py",
+        ROOT / "tools/manuscript/review_package.py",
+        ROOT / "tools/wfcore/reviewpackage.py",
         ROOT / "tools/package_content.py",
         ROOT / "tools/wfcore/refproof.py",
         ROOT / "tools/wfcore/dataproof.py",
@@ -868,7 +870,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.8" and 'version: "1.3.8"' in skill,
+           pipe["meta"]["version"] == "1.3.9" and 'version: "1.3.9"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -890,6 +892,7 @@ def run_codex_integration() -> None:
     review_card = (ROOT / "pipeline/stages/S18_independent_review.md").read_text(encoding="utf-8")
     package_card = (ROOT / "pipeline/stages/S23_package.md").read_text(encoding="utf-8")
     package_human_card = (ROOT / "pipeline/stages/S24_package_human_review.md").read_text(encoding="utf-8")
+    human_card = (ROOT / "pipeline/stages/S19_human_review.md").read_text(encoding="utf-8")
     final_audit_card = (ROOT / "pipeline/stages/S25_submission_audit.md").read_text(encoding="utf-8")
     record("independent reviewer is singular, read-only, and before author intake",
            independent.get("needs_user", False) is False and human.get("needs_user") is True and
@@ -933,6 +936,15 @@ def run_codex_integration() -> None:
            "tools/rework.py status" in package_human_card and
            "Never recapture at S24" in package_human_card,
            "persisted S19/S24 rounds + component equality + visible-text enforcement")
+    record("S19 requires a current third-party ZIP and explicit no-further-review decision",
+           "manuscript_review_package_current" in human_checks and
+           "s19_review_release_explicit" in human_checks and
+           "tools/manuscript/review_package.py build" in human_card and
+           "无需继续审核，可以进入下一步" in human_card and
+           "05_figures/out/" in human_card and "exact ZIP" in human_card and
+           '"s19_review_release_explicit"' in
+           (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
+           "versioned review ZIP + exact paths + package-bound non-overridable stop")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
                                                   "supplementary Methods", "Figure legends",
@@ -1080,7 +1092,7 @@ def run_codex_integration() -> None:
     batch_state = State(batch_project, ".wf")
     batch_state.create("medpaper", route_pipe.meta["version"], "S24_package_human_review")
     batch_state.record_decision(
-        "manuscript_human_reviewed", "YES",
+        "manuscript_human_reviewed", "NO_FURTHER_REVIEW",
         "The scientific manuscript was approved before journal-specific package revision.")
     batch_state.record_decision(
         "submission_package_user_confirmed", "OK",
@@ -1385,6 +1397,9 @@ def run_manuscript_docx(proj: Path) -> None:
     bib.write_text("@article{fixture2025, title={Fixture cohort report}, "
                    "author={Author, Alice}, journal={Fixture Journal}, year={2025}}\n",
                    encoding="utf-8")
+    (refs / "refs.ris").write_text(
+        "TY  - JOUR\nID  - fixture2025\nTI  - Fixture cohort report\nPY  - 2025\nER  - \n",
+        encoding="utf-8")
     assembler = ROOT / "tools/manuscript/assemble.py"
     proc = subprocess.run([sys.executable, str(assembler)], capture_output=True, text=True,
                           env=env, encoding="utf-8", errors="replace")
@@ -1395,9 +1410,99 @@ def run_manuscript_docx(proj: Path) -> None:
     pipe = registry.load()
     state = State(proj, ".wf").load()
 
-    def gate(name: str, stage: str, **spec):
-        return get(name)(Ctx(pipeline=pipe, state=state, project=proj,
-                             stage=pipe.stage(stage), spec={"check": name, **spec}))
+    def gate(check_name: str, stage: str, **spec):
+        return get(check_name)(Ctx(pipeline=pipe, state=state, project=proj,
+                                   stage=pipe.stage(stage),
+                                   spec={"check": check_name, **spec}))
+
+    # S19 must produce a current, versioned package that can be handed to a third party.
+    review_report = manuscript / "independent_publishability_review.md"
+    review_report.write_text(
+        "# Independent publishability review\n\n## Verdict\nREADY.\n\n"
+        "## Critical barriers\nNone.\n\n## Scientific validity\nAcceptable.\n\n"
+        "## Reporting completeness\nComplete.\n\n"
+        "## Tables and supplementary material\nConsistent.\n\n"
+        "## Journal suitability\nA realistic SCIE journal is plausible.\n\n"
+        "## Required revisions\nNone before user review.\n\n"
+        "## Post-revision outlook\nProceed after explicit user review.\n",
+        encoding="utf-8",
+    )
+    prior_state = json.loads(json.dumps(state.data))
+    state.data["current"] = "S19_human_review"
+    state.stage_info("S19_human_review")["status"] = "active"
+    state.save()
+    review_tool = ROOT / "tools/manuscript/review_package.py"
+    first_review_zip = subprocess.run(
+        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    review_manifest_path = manuscript / "review_packages/latest_review_package.json"
+    review_manifest = (json.loads(review_manifest_path.read_text(encoding="utf-8"))
+                       if review_manifest_path.is_file() else {})
+    review_archive = proj / review_manifest.get("archive_path", "missing")
+    members = set()
+    if review_archive.is_file():
+        with zipfile.ZipFile(review_archive) as zf:
+            members = set(zf.namelist())
+    outcome = gate("manuscript_review_package_current", "S19_human_review")
+    record("S19 builds a verified third-party review ZIP with exact review materials",
+           first_review_zip.returncode == 0 and outcome.ok and
+           review_manifest.get("package_revision") == 1 and
+           {"07_manuscript/full_manuscript.md",
+            "07_manuscript/supplementary_methods.md",
+            "07_manuscript/independent_publishability_review.md",
+            "06_refs/refs.bib", "06_refs/refs.ris",
+            "REVIEW_README.txt", "review_manifest.json"}.issubset(members) and
+           any(name.startswith("04_tables/main/") for name in members) and
+           any(name.startswith("04_tables/supplementary/") for name in members) and
+           any(name.startswith("05_figures/out/") and name.endswith(".png") for name in members) and
+           not any(name.startswith(("02_data/", "03_analysis/", "06_refs/fulltext/"))
+                   for name in members),
+           ((first_review_zip.stdout or "") + (first_review_zip.stderr or "") +
+            outcome.detail).strip()[:180])
+    unchanged_review_zip = subprocess.run(
+        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    unchanged_manifest = json.loads(review_manifest_path.read_text(encoding="utf-8"))
+    record("unchanged S19 sources reuse the verified ZIP without duplicate versions",
+           unchanged_review_zip.returncode == 0 and "reused unchanged" in unchanged_review_zip.stdout and
+           unchanged_manifest.get("archive_path") == review_manifest.get("archive_path") and
+           unchanged_manifest.get("package_revision") == 1,
+           unchanged_review_zip.stdout.strip()[:140])
+
+    state.record_decision(
+        "manuscript_human_reviewed", "YES",
+        "The fixture intentionally records an old ambiguous approval value for rejection.")
+    wrong_approval = gate("s19_review_release_explicit", "S19_human_review")
+    state.record_decision(
+        "manuscript_human_reviewed", "NO_FURTHER_REVIEW",
+        "The user explicitly stated that no further scientific review was needed after ZIP "
+        f"v001 package {review_manifest['package_id'][:12]}.")
+    explicit_approval = gate("s19_review_release_explicit", "S19_human_review")
+    record("S19 rejects generic approval and accepts only explicit no-further-review state",
+           not wrong_approval.ok and explicit_approval.ok,
+           f"old={wrong_approval.detail}; explicit={explicit_approval.detail}")
+
+    review_report.write_text(
+        review_report.read_text(encoding="utf-8") +
+        "\nThe reviewer clarified one editorial point for the revised version.\n",
+        encoding="utf-8",
+    )
+    stale_review = gate("manuscript_review_package_current", "S19_human_review")
+    rebuilt_review_zip = subprocess.run(
+        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    revised_manifest = json.loads(review_manifest_path.read_text(encoding="utf-8"))
+    revised_review = gate("manuscript_review_package_current", "S19_human_review")
+    stale_approval = gate("s19_review_release_explicit", "S19_human_review")
+    record("changed S19 review material invalidates v001 and creates verified v002",
+           not stale_review.ok and rebuilt_review_zip.returncode == 0 and revised_review.ok and
+           not stale_approval.ok and
+           revised_manifest.get("package_revision") == 2 and
+           revised_manifest.get("archive_path") != review_manifest.get("archive_path") and
+           review_archive.is_file() and (proj / revised_manifest["archive_path"]).is_file(),
+           ((rebuilt_review_zip.stdout or "") + revised_review.detail).strip()[:180])
+    state.data = prior_state
+    state.save()
 
     outcome = gate("abbreviations_centralized", "S21_authors")
     record("short display abbreviation lists may remain local", outcome.ok, outcome.detail)

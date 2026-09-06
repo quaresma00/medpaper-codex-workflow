@@ -118,7 +118,13 @@ fabricated DOI, or a green Pandoc build cannot satisfy these gates, and `wf adva
 cannot waive them.
 
 The workflow chooses one title automatically, assembles `full_manuscript.md`, and presents
-that file together with supplementary Methods, tables and the independent verdict at S19.
+that file together with supplementary Methods, tables, rendered figures, verified BibTeX/RIS
+exports and the independent verdict at S19. Every initial or scientifically revised S19 version is also packaged as a
+versioned, hash-verified ZIP suitable for third-party review. Codex shows the exact ZIP and
+artifact paths and remains at S19 until the user explicitly states that no further review is
+needed; delivery, silence, thanks or a generic “continue” is not approval. The decision is
+bound to the current ZIP package ID and cannot be bypassed with `--force`; a newly built ZIP
+requires a fresh explicit confirmation.
 Author and affiliation details are intentionally deferred until S21. S23 converts every
 narrative upload—including the cover letter and supplementary Methods—to DOCX. The chosen
 journal's explicit typography rules win; where it is silent the recorded fallback is Times

@@ -30,6 +30,11 @@ skip a stage.
 - Use the spreadsheet workflow at S10 to render and visually inspect the pipeline-generated
   XLSX files. At S18, give the frozen complete manuscript, optional supplementary Methods
   and tables to exactly one independent read-only subagent for publication-readiness review.
+  At every initial or revised S19 presentation, run `tools/manuscript/review_package.py build`
+  and `verify`, show clickable locations for every review artifact and the exact versioned ZIP,
+  and invite the user or a third party to review it. Stay at S19 until the user explicitly says
+  no further review is needed; do not infer approval from delivery, silence, thanks, completion
+  of one revision, or a generic instruction to continue.
   Use the document/PDF workflows at S23 to render and inspect submission files.
   At S24, present the actual upload package for the user's content/format edits and explicit
   request for final review; freeze that revision. At S25, give only that frozen package and
@@ -95,6 +100,14 @@ skip a stage.
     output, gate, visual inspection or review. Never patch assembled Markdown or Word narrative
     content as detached final files; S24 permits Word-only layout changes only when the S23
     visible-text baseline passes.
+13. S19 is an explicit, repeatable user-review stop. Every scientifically changed version has
+    a newly verified third-party review ZIP containing the manuscript, optional supplementary
+    Methods, tables, rendered figures, verified BibTeX/RIS exports and independent verdict,
+    but no patient-level data,
+    credentials, full-text literature or internal analysis code. Record
+    `manuscript_human_reviewed=NO_FURTHER_REVIEW` only after the user explicitly states that no
+    further review is needed and identify the presented ZIP revision and package ID in the
+    rationale. This approval is valid for that package only and cannot be forced.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external
