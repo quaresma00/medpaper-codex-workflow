@@ -44,8 +44,9 @@ detached file. At S24, a Word-only edit is permitted only when
   `tools/data_manifest.py`, and pass the non-overridable `data_acquisition_complete` gate.
   Never add `LIMIT`, `TOP`, `head()`, `sample()`, first-N slicing, a fixed page cap or a
   narrower query to save time, tokens, download volume or compute. A non-analytic pilot must
-  be followed by the full acquisition. A genuine source-imposed restriction requires the
-  user's explicit `partial_data_authorized=YES` decision; read
+  be followed by the full acquisition. Converting a census to a scientific sampling design
+  requires the user's explicit `protocol_sampling_authorized=YES` decision; a genuine
+  source-imposed restriction requires `partial_data_authorized=YES`. Read
   [data acquisition integrity](../../../reference/data-acquisition-integrity.md).
 - A bibliographic fact is usable only after the bundled verifier performs a fresh PubMed
   EFetch. `verified: true` alone is never evidence: the gate reparses hashed raw PubMed XML,

@@ -27,6 +27,13 @@ pre-specified rather than fitted to whatever happened to be significant.
      before post-acquisition eligibility exclusions. It may be a scientifically pre-specified
      sample design, but it must not be narrowed later for speed, token use, download size,
      memory or convenience.
+     If the research design itself would sample from a larger accessible eligible population,
+     show the sampling frame, method, target size, precision/power rationale and bias tradeoff
+     to the user. Do not choose sampling autonomously. Continue only after their explicit
+     approval is recorded:
+```powershell
+.\.venv\Scripts\python.exe tools\wf.py decide protocol_sampling_authorized YES --why "<the user-approved design and why a census is not the chosen scientific design>"
+```
    `Exact retrieval steps` must be reproducible commands or a numbered manual procedure
    with URLs, query/filter text and version/release identifiers, not "download the dataset".
    State every server-side eligibility filter. Do not silently add a date restriction,

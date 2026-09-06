@@ -473,6 +473,26 @@ def run_data_proof(proj: Path) -> None:
     outcome = gate()
     record("non-analytic pilot is allowed only after the full acquisition completes",
            outcome.ok, outcome.detail[:140])
+
+    code_path.write_text(
+        "sample = frame.sample(n=5)  # MEDPAPER_PROTOCOL_SAMPLING\n",
+        encoding="utf-8")
+    manifest["protocol_sampling"] = {
+        "pre_specified": True,
+        "protocol_path": "01_protocol/protocol_v1.md#population-and-eligibility",
+        "explanation": "Probability sampling was fixed before retrieval for the scientific design.",
+    }
+    synchronize()
+    outcome = gate()
+    record("agent cannot silently replace a census with protocol sampling",
+           not outcome.ok and "protocol_sampling_authorized" in outcome.detail,
+           outcome.detail[:140])
+    state.record_decision(
+        "protocol_sampling_authorized", "YES",
+        "The user explicitly approved this pre-specified probability-sampling design and its tradeoffs.")
+    outcome = gate()
+    record("user-authorized pre-specified scientific sampling can pass",
+           outcome.ok, outcome.detail[:140])
     shutil.rmtree(scoped, ignore_errors=True)
 
 

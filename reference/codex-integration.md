@@ -57,7 +57,8 @@ and `verify`. The gate recomputes raw and acquisition-code hashes, independently
 declared raw evidence, reconciles expected/requested/received counts, checks the last cursor,
 and detects common acquisition caps such as `LIMIT`, `head()`, `sample()` and first-N slices.
 Chunk or page size is allowed only when all chunks/pages are retrieved. A schema pilot is
-non-analytic and must be followed by the full fetch. If the source—not the agent's time,
+non-analytic and must be followed by the full fetch. A protocol sampling design needs the
+user's explicit recorded authorization. If the source—not the agent's time,
 tokens, context or compute—blocks full access, stop for the user's explicit authorization and
 document the resulting population/bias. See `reference/data-acquisition-integrity.md`.
 

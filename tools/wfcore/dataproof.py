@@ -199,7 +199,8 @@ def _same_inventory(declared: object, actual: list[dict], label: str, problems: 
         problems.append(f"{label} does not match current files ({'; '.join(detail)})")
 
 
-def _scan_caps(project: Path, files: list[dict], manifest: dict, problems: list[str]) -> None:
+def _scan_caps(project: Path, files: list[dict], manifest: dict, state: object | None,
+               problems: list[str]) -> None:
     pilot = manifest.get("pilot")
     pilot_ok = (
         isinstance(pilot, dict) and pilot.get("used") is True and
@@ -208,10 +209,14 @@ def _scan_caps(project: Path, files: list[dict], manifest: dict, problems: list[
         manifest.get("status") == COMPLETE
     )
     sampling = manifest.get("protocol_sampling")
+    sampling_decision = state.decision("protocol_sampling_authorized") if state is not None else None
     sampling_ok = (
         isinstance(sampling, dict) and sampling.get("pre_specified") is True and
         isinstance(sampling.get("protocol_path"), str) and
-        len(str(sampling.get("explanation", "")).strip()) >= 40
+        len(str(sampling.get("explanation", "")).strip()) >= 40 and
+        isinstance(sampling_decision, dict) and
+        sampling_decision.get("value") == "YES" and
+        len(str(sampling_decision.get("rationale", "")).strip()) >= 40
     )
     for item in files:
         path = project / str(item["path"])
@@ -384,6 +389,18 @@ def validate(project: Path, state: object | None = None) -> Validation:
     else:
         problems.append(f"status must be {COMPLETE} or {LIMITED}")
 
+    protocol_sampling = manifest.get("protocol_sampling")
+    if protocol_sampling is not None:
+        sampling_decision = state.decision("protocol_sampling_authorized") if state is not None else None
+        if not isinstance(protocol_sampling, dict) or protocol_sampling.get("pre_specified") is not True:
+            problems.append("protocol_sampling must be null or a pre-specified sampling-design object")
+        if (not sampling_decision or sampling_decision.get("value") != "YES" or
+                len(str(sampling_decision.get("rationale", "")).strip()) < 40):
+            problems.append(
+                "a sampled acquisition universe requires the user's explicit "
+                "protocol_sampling_authorized=YES decision"
+            )
+
     try:
         summary = json.loads((project / SUMMARY_REL).read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -420,7 +437,7 @@ def validate(project: Path, state: object | None = None) -> Validation:
         else:
             problems.append("analysis_dataset.relationship must be one_record_per_analysis_row or complex_join")
 
-    _scan_caps(project, code_actual, manifest, problems)
+    _scan_caps(project, code_actual, manifest, state, problems)
     return Validation(
         not problems, problems, sources=len(sources), records_received=received_total,
         raw_files=len(raw_actual), bundle_sha256=computed_bundle,

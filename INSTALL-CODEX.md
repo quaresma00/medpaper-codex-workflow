@@ -84,7 +84,8 @@ At S04, a raw file is not enough to prove complete acquisition. The stage create
 Every source must reconcile a machine-readable source total with the received raw payloads
 and show terminal pagination. The workflow rejects convenience sampling, first-N retrieval,
 fixed page caps and silently narrowed queries. This evidence gate cannot be waived with
-`--force`; a genuine external access limit requires explicit user authorization.
+`--force`; changing a census to a scientific sample and accepting a genuine external access
+limit each require a separate explicit user authorization.
 
 ## Capability conflicts
 

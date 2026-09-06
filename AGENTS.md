@@ -49,8 +49,10 @@ skip a stage.
    received records to the analysis rows. Never add `LIMIT`, `TOP`, `head()`, `sample()`,
    first-N slicing, a fixed page cap or a narrower query for speed, tokens, download volume or
    compute. A pilot is non-analytic and must be followed by full acquisition. Source-imposed
-   partial access requires the user's explicit recorded authorization. The gate is not
-   waivable with `--force`; follow `reference/data-acquisition-integrity.md`.
+   partial access requires the user's explicit recorded authorization. A scientific sampling
+   design also requires explicit user authorization; the agent may not silently replace a
+   census with a sample. The gate is not waivable with `--force`; follow
+   `reference/data-acquisition-integrity.md`.
 2. Never invent or recall bibliographic facts. `verified: true` alone is not evidence. A
    citable record must be produced by a fresh `tools/pubmed/verify.py` EFetch, bound to hashed
    raw PubMed XML and the exact library hash, match PMID/DOI/metadata on recomputation, and

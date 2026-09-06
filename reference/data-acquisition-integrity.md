@@ -73,8 +73,10 @@ subsequently completed.
 
 Sampling that is part of the study design must be pre-specified in the protocol. A limiting
 line may carry `MEDPAPER_PROTOCOL_SAMPLING` only when the manifest links it to that protocol
-and explains the scientific sampling design. Neither annotation makes a partial convenience
-fetch acceptable.
+and explains the scientific sampling design. Because the agent must not silently convert a
+census into a sample, the user must explicitly approve and record
+`protocol_sampling_authorized=YES` before the sampling design can pass. Neither annotation
+makes a partial convenience fetch acceptable.
 
 ## Genuine source restrictions
 

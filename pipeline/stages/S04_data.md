@@ -16,7 +16,9 @@ Get the real data in place with an auditable trail, and describe it before analy
    - A pilot is allowed only to test connectivity/schema. Mark the relevant code line
      `MEDPAPER_PILOT_ONLY`, exclude pilot output from analysis, and complete the full fetch.
      Protocol-defined scientific sampling must already exist in S03 and is marked
-     `MEDPAPER_PROTOCOL_SAMPLING`; neither marker can excuse incomplete acquisition.
+     `MEDPAPER_PROTOCOL_SAMPLING`; it also requires the user's recorded
+     `protocol_sampling_authorized=YES` decision. Neither marker can excuse incomplete
+     acquisition of the approved universe.
 2. Any cleaning, recoding, post-acquisition eligibility exclusion or merging happens in a
    script under `03_analysis/code/`
    that writes to `02_data/derived/`. No manual spreadsheet edits.
