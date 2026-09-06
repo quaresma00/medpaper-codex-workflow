@@ -94,12 +94,24 @@ the active stage only. Follow `reference/codex-integration.md`:
   journal guide for omissions, noncompliance and cross-file mismatches;
 - patient-level/private data stay local unless the user explicitly authorizes transfer.
 
+Formal references are fail-closed. Candidate-search tools may suggest papers, but only
+`tools/pubmed/verify.py` may create the verification receipt. It performs a fresh PubMed
+EFetch and records the raw-XML hash, parsed-record fingerprint, and exact `library.json`
+hash. S13 separately re-fetches the PMIDs live. A handwritten `verified: true`, a locally
+fabricated DOI, or a green Pandoc build cannot satisfy these gates, and `wf advance --force`
+cannot waive them.
+
 The workflow chooses one title automatically, assembles `full_manuscript.md`, and presents
 that file together with supplementary Methods, tables and the independent verdict at S19.
 Author and affiliation details are intentionally deferred until S21. S23 converts every
 narrative upload—including the cover letter and supplementary Methods—to DOCX. The chosen
 journal's explicit typography rules win; where it is silent the recorded fallback is Times
 New Roman 12 pt, double spaced, black, with no hyperlinks or collapsible heading hierarchy.
+All Word XML parts are stripped of `keepNext`, `keepLines`, `pageBreakBefore`, `outlineLvl`,
+and paragraph borders; headings use the Normal-based `SectionHeading` style. Figure legends
+have one section title and one title per figure. Supplementary Methods is prose-only: its
+tables are delivered in the separate three-line supplementary workbook and Markdown thematic
+rules are rejected before conversion.
 S24 does not advance until the user explicitly confirms the revalidated package is `OK`.
 S25 requires an independent three-lens `PASS`; a changed or deficient package loops back to
 S24 for correction and renewed confirmation.
@@ -120,3 +132,4 @@ hashes still match.
 
 Packaging refuses non-placeholder credentials and personal email addresses, runs the doctor
 and offline tests, and excludes `.venv`, run state, caches, and user project data.
+

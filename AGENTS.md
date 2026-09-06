@@ -43,8 +43,11 @@ skip a stage.
 
 ## Non-negotiable validity rules
 
-1. Never invent or recall bibliographic facts. A citable record must be present in
-   `project/06_refs/verified.json` with `verified: true`.
+1. Never invent or recall bibliographic facts. `verified: true` alone is not evidence. A
+   citable record must be produced by a fresh `tools/pubmed/verify.py` EFetch, bound to hashed
+   raw PubMed XML and the exact library hash, match PMID/DOI/metadata on recomputation, and
+   pass the independent live S13 PubMed gate. Never write the four reference-library files
+   with an ad-hoc script; their integrity gates cannot be bypassed with `--force`.
 2. Every manuscript number must already exist in `project/03_analysis/results/*.json`,
    produced by executed analysis code. Never calculate a result in prose.
 3. Create only active-stage outputs. Scratch belongs in `project/temp/` and is removed before
@@ -56,13 +59,18 @@ skip a stage.
 6. Do not draft or insert an AI-use disclosure. If a journal requires one, record it as a
    user-controlled compliance item; the user decides whether and how it is written.
 7. A red gate means fix the cause. Use `--force` only for a deliberate, user-authorized
-   exception recorded in the handoff log.
+   non-integrity exception recorded in the handoff log. Reference provenance, library,
+   BibTeX/RIS consistency and citekey resolution are non-overridable.
 8. Assemble and present the full scientific paper before asking for author information.
    Author/affiliation administration is deferred to S21.
 9. Figure legends decode figures without repeating Results. At S17 consolidate crowded
    display-item abbreviation lists under `Declarations and Statements > Abbreviations`, unless a
    sourced journal rule requires local definitions. Final DOCX files contain neither the
-   literal U+2193 down arrow nor manual text-wrapping break controls.
+   literal U+2193 down arrow nor manual text-wrapping break controls. Every Word XML part is
+   cleared of `outlineLvl`, `keepNext`, `keepLines`, `pageBreakBefore` and paragraph borders;
+   headings use the Normal-based `SectionHeading` style. Supplementary Methods is prose only:
+   its tables belong in the separate three-line supplementary workbook, and it contains no
+   Markdown thematic rules. Figure legend section/figure titles cannot be duplicated.
 10. A built package is not final approval. After the user edits it, require an explicit request
     for the final independent review, freeze the exact files, and complete the S25 reader,
     editor and journal-compliance audit. Any post-confirmation change invalidates the freeze
@@ -75,3 +83,4 @@ skip a stage.
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external
 action, stop and ask one concise question.
+

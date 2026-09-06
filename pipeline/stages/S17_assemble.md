@@ -35,7 +35,9 @@ source for review, user editing, polishing and packaging.
    Abstract, Keywords, Introduction, Methods, Results, Discussion, References, Figure
    legends, with the optional Declarations and Statements section between Discussion and
    References. Supplementary Methods remains a separate file. The References heading must be
-   present even though Pandoc later expands the bibliography beneath it.
+   present even though Pandoc later expands the bibliography beneath it. The assembler and
+   gate require exactly one `Figure legends` section title and one identifier per figure;
+   never repeat `Figure N.` at the start of the corresponding legend body.
 5. Read the assembled file from beginning to end. Fix the source section, abstract,
    keywords or legend file and re-run the assembler; do not hand-splice the first build.
    The S17 gate runs `assemble.py --check`, so omissions or manual divergence fail even
@@ -54,11 +56,13 @@ source for review, user editing, polishing and packaging.
 - Keywords appear immediately after the Abstract and nowhere before it.
 - `References` and `Figure legends` are explicit level-1 sections; figure legends are the
   final manuscript section.
-- `full_manuscript.md` is the canonical manuscript after this stage. Later scientific or
-  human edits are made there and checked for provenance.
+- `full_manuscript.md` is the canonical assembled view after this stage. Later scientific or
+  human edits return through `tools/rework.py` to the owning component source, then rebuild
+  this file; never patch it as a detached manuscript.
 
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "full manuscript assembled; selected title: <title>; keywords=<n>; figure legends=<n>"
 ```
+

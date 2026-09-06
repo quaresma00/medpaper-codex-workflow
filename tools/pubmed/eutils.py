@@ -104,16 +104,21 @@ def _digest(*parts: str) -> str:
     return hashlib.sha256("||".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
-def cached(name: str, fetch, binary: bool = False):
-    """Return cached payload, fetching (and storing) it on first use."""
+def cached(name: str, fetch, binary: bool = False, refresh: bool = False):
+    """Return a payload and cache it; ``refresh`` always contacts the source first."""
     p = cache_dir() / name
-    if p.exists() and p.stat().st_size > 0:
+    if not refresh and p.exists() and p.stat().st_size > 0:
         return p.read_bytes() if binary else p.read_text(encoding="utf-8")
     blob = fetch()
+    tmp = p.with_suffix(p.suffix + ".tmp")
     if isinstance(blob, str):
-        p.write_text(blob, encoding="utf-8")
+        # Write exact UTF-8 bytes. Text-mode writes on Windows can translate LF
+        # to CRLF, making a receipt hash computed from the response disagree with
+        # the raw payload that was actually preserved on disk.
+        tmp.write_bytes(blob.encode("utf-8"))
     else:
-        p.write_bytes(blob)
+        tmp.write_bytes(blob)
+    tmp.replace(p)
     return blob if binary or isinstance(blob, str) else blob.decode("utf-8", "replace")
 
 
@@ -165,19 +170,41 @@ def esearch(query: str, retmax: int = 100, years: int | None = None, db: str = "
     return out
 
 
-def efetch(pmids: list[str], db: str = "pubmed") -> list[dict]:
-    """Fetch full MEDLINE records in batches of 200."""
+def efetch(pmids: list[str], db: str = "pubmed", *, fresh: bool = False,
+           purpose: str = "discovery") -> list[dict]:
+    """Fetch full MEDLINE records in batches of 200.
+
+    Ordinary discovery calls may reuse the cache.  Verification calls must pass
+    ``fresh=True``; those responses receive unique ``verify_`` cache names and
+    carry a payload hash that the workflow gate reparses independently.
+    """
     out: list[dict] = []
     pmids = [str(p).strip() for p in pmids if str(p).strip()]
     for i in range(0, len(pmids), 200):
         batch = pmids[i:i + 200]
-        name = f"efetch_{db}_{_digest(','.join(batch))}.xml"
+        clean_purpose = re.sub(r"[^a-z0-9_-]", "", purpose.casefold()) or "discovery"
+        if fresh:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            name = f"{clean_purpose}_efetch_{db}_{_digest(','.join(batch))}_{stamp}.xml"
+        else:
+            name = f"efetch_{db}_{_digest(','.join(batch))}.xml"
         params = {
             "db": db, "id": ",".join(batch), "retmode": "xml",
             "tool": TOOL, "email": api_email(), "api_key": api_key(),
         }
-        raw = cached(name, lambda: http_get(f"{EUTILS}/efetch.fcgi", params).decode("utf-8", "replace"))
-        out.extend(parse_pubmed_xml(raw, cache_file=f"06_refs/cache/{name}"))
+        raw = cached(
+            name,
+            lambda: http_get(f"{EUTILS}/efetch.fcgi", params).decode("utf-8", "replace"),
+            refresh=fresh,
+        )
+        # Receipts bind to the actual preserved source bytes, never to a
+        # newline-normalized in-memory string.
+        digest = hashlib.sha256((cache_dir() / name).read_bytes()).hexdigest()
+        records = parse_pubmed_xml(raw, cache_file=f"06_refs/cache/{name}")
+        for record in records:
+            record["cache_sha256"] = digest
+            record["fresh_fetch"] = fresh
+        out.extend(records)
     return out
 
 
@@ -339,3 +366,4 @@ def make_citekey(rec: dict, taken: set[str] | None = None) -> str:
 def die(msg: str) -> None:
     print(f"error: {msg}", file=sys.stderr)
     raise SystemExit(1)
+

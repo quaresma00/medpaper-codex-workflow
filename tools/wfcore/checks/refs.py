@@ -1,8 +1,9 @@
 """Reference-integrity checks.
 
-Enforces: every citation in the manuscript resolves to a bib entry that was
-retrieved from a real API and independently verified. A citekey that is not in
-verified.json with verified=true is treated as fabricated.
+Every formal citation must resolve to metadata independently reconstructed from
+fresh PubMed EFetch evidence.  The authored ``verified`` boolean is only a status
+field; the gates reparse the raw XML, recompute its hashes and metadata, bind the
+receipt to the current library, and perform a separate live source check at S13.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
 from . import Ctx, Result, check
+from .. import refproof
 
 BIB = "06_refs/refs.bib"
 RIS = "06_refs/refs.ris"
@@ -227,6 +229,14 @@ def citekeys_resolve(ctx: Ctx) -> Result:
         problems.append(f"{len(unknown)} citekey(s) absent from refs.bib: " + ", ".join(unknown[:8]))
     if unverified and not allow_unverified:
         problems.append(f"{len(unverified)} citekey(s) not verified: " + ", ".join(unverified[:8]))
+    if not allow_unverified:
+        proof_ok, proof_problems, _ = refproof.validate_local_proof(
+            ctx.project,
+            required_keys=set(used),
+            max_age_days=int(ctx.target("reference_verification_age_days_max", 90)),
+        )
+        if not proof_ok:
+            problems.append("reference proof invalid: " + "; ".join(proof_problems[:4]))
     if problems:
         return Result(
             False,
@@ -237,7 +247,11 @@ def citekeys_resolve(ctx: Ctx) -> Result:
                 "Then verify with: .venv/Scripts/python.exe tools/pubmed/verify.py",
             ],
         )
-    return Result(True, "citekeys_resolve", f"{len(used)} distinct citekey(s), all present in refs.bib and verified")
+    return Result(
+        True,
+        "citekeys_resolve",
+        f"{len(used)} distinct citekey(s), all bound to hashed fresh-PubMed evidence",
+    )
 
 
 @check("citation_count")
@@ -283,13 +297,12 @@ def refs_library(ctx: Ctx) -> Result:
         problems.append(f"{len(missing_id)} entry/entries with neither PMID nor DOI: " + ", ".join(missing_id[:6]))
 
     if ctx.spec.get("require_verified", True):
-        ver = _verified_map(ctx)
-        unver = [
-            e.get("citekey", "?") for e in entries
-            if not (ver.get(e.get("citekey", ""), {}) or {}).get("verified") is True
-        ]
-        if unver:
-            problems.append(f"{len(unver)} entry/entries unverified: " + ", ".join(unver[:6]))
+        proof_ok, proof_problems, _ = refproof.validate_local_proof(
+            ctx.project,
+            max_age_days=int(ctx.target("reference_verification_age_days_max", 90)),
+        )
+        if not proof_ok:
+            problems.append("reference proof invalid: " + "; ".join(proof_problems[:5]))
 
     dupes = _dupes([e.get("citekey") for e in entries])
     if dupes:
@@ -305,7 +318,64 @@ def refs_library(ctx: Ctx) -> Result:
                 "Entries without abstracts must be dropped, not padded with a summary you wrote.",
             ],
         )
-    return Result(True, "refs_library", f"{len(entries)} verified entries, all with abstracts and an ID")
+    return Result(
+        True,
+        "refs_library",
+        f"{len(entries)} PubMed-proven entries, all with abstracts and an ID",
+    )
+
+
+@check("reference_provenance")
+def reference_provenance(ctx: Ctx) -> Result:
+    """Independently re-fetch the library at S13; fail closed if NCBI is unavailable."""
+    max_age = int(ctx.target("reference_verification_age_days_max", 90))
+    ok, problems, count = refproof.validate_local_proof(
+        ctx.project, max_age_days=max_age)
+    if not ok:
+        return Result(
+            False,
+            "reference_provenance",
+            "; ".join(problems[:8]),
+            ["Delete the forged/stale verification output and run tools/pubmed/verify.py; never patch verified.json."],
+        )
+    if not ctx.spec.get("live", False):
+        return Result(True, "reference_provenance",
+                      f"{count} record(s) bound to reparsed hashed PubMed XML")
+    try:
+        library = ctx.read_json(LIB)
+        entries = library.get("entries", [])
+        pmids = [str(item.get("pmid", "")) for item in entries]
+        if not pmids or any(not re.fullmatch(r"\d+", pmid) for pmid in pmids):
+            raise ValueError("every entry must have a numeric PMID")
+        from pubmed import eutils as eu
+
+        live_records = eu.efetch(pmids, fresh=True, purpose="gate")
+        live = {str(item.get("pmid", "")): item for item in live_records}
+    except Exception as exc:  # noqa: BLE001 - network failure must close the gate
+        return Result(
+            False,
+            "reference_provenance",
+            f"independent live PubMed re-fetch failed closed: {exc}",
+            ["Restore NCBI access and rerun the gate; do not replace it with a local boolean."],
+        )
+    live_problems = []
+    for entry in entries:
+        key, pmid = str(entry.get("citekey", "?")), str(entry.get("pmid", ""))
+        source = live.get(pmid)
+        if source is None:
+            live_problems.append(f"{key}: PMID {pmid} was not returned by PubMed")
+            continue
+        live_problems.extend(
+            f"{key}: {problem}" for problem in
+            refproof.compare_entry_to_source(entry, source)
+        )
+    if set(live) != set(pmids):
+        live_problems.append("the independent PubMed response PMID set differs from the library")
+    if live_problems:
+        return Result(False, "reference_provenance", "; ".join(live_problems[:8]),
+                      ["Rebuild the affected entry from the returned PubMed record; never edit the proof to match."])
+    return Result(True, "reference_provenance",
+                  f"{len(entries)} record(s) independently re-fetched and matched against live PubMed")
 
 
 @check("bib_ris_match_library")
@@ -546,3 +616,4 @@ def _dupes(items) -> list[str]:
             out.append(x)
         seen.add(x)
     return out
+

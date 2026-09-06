@@ -11,11 +11,20 @@ it remains available for explicit use and as the workspace-local operating contr
 
 ## Literature and full text
 
-PubMed/Crossref records produced by `tools/pubmed/` are the authoritative metadata trail.
+PubMed records produced by `tools/pubmed/` are the authoritative metadata trail.
 Scholarly-search skills, deep-research tools, SciSpace, Consensus, or similar services may
 surface candidates, but their titles, identifiers, abstracts, and claims are discovery input
 only. Re-fetch every selected record with the pipeline client, cache the raw response, add it
 to `library.json`, and run `tools/pubmed/verify.py` before citing it.
+
+Verification is evidence-based and fail-closed. The verifier performs a fresh PubMed EFetch,
+stores the raw XML, records its SHA-256 and the parsed record fingerprint, binds the receipt to
+the exact current `library.json`, and compares PMID, DOI, title, journal, year, first author,
+abstract availability and PubMed status. The S13 `reference_provenance` gate then makes a
+second live EFetch and repeats those comparisons independently. `verified: true` is not
+trusted by itself; ad-hoc scripts must never write the library, receipt, BibTeX or RIS files.
+The four reference-integrity gates are not waivable with `wf advance --force`. If NCBI is
+unavailable, S13 stays blocked instead of accepting a local substitute.
 
 For full text, prefer legal open-access routes. A scholarly-PDF skill may use open-access or
 user-authorized institutional access. Never use Sci-Hub or another illicit source. Browser
@@ -37,6 +46,8 @@ Only registered local full texts with substantive notes count toward S15.
 - S10: generate XLSX files with `tools/tables/threeline.py`. Then use the standalone
   spreadsheet workflow to render and inspect every sheet. Fix the source data or writer,
   regenerate, and record `tables_visually_confirmed=YES`; do not hand-format around a defect.
+  Supplementary tables also belong in this separate three-line workbook, never embedded in
+  supplementary Methods.
 - S11: generate figures with `tools/figures/`, pass deterministic QC, and open every PNG for
   visual inspection. ImageGen may act as a second critic for legibility, clutter, hierarchy,
   contrast, clipping, text density, and journal-native appearance. Its output is advisory:
@@ -53,8 +64,12 @@ Only registered local full texts with substantive notes count toward S15.
 - S23: build each journal-required narrative upload with
   `tools/manuscript/build_docx.py`, including the cover letter and supplementary Methods.
   The builder wraps Pandoc/citeproc, applies the sourced journal style (Times New Roman
-  fallback), forces black text, removes hyperlinks, and replaces Word outline headings with
-  non-collapsible manuscript styles. Use the document workflow and Microsoft Word to render
+  fallback), forces black text, removes hyperlinks, and maps every Markdown heading to the
+  Normal-based `SectionHeading` style. Its XML pass removes `keepNext`, `keepLines`,
+  `pageBreakBefore`, `outlineLvl`, and paragraph borders from every Word part, eliminating
+  the black-square pagination controls and foldable outline. It rejects duplicate Figure
+  legends titles, table-bearing supplementary Methods, and Markdown thematic-rule residue.
+  Use the document workflow and Microsoft Word to render
   and inspect every DOCX. If the journal requires a PDF, use the PDF workflow for rendering
   and QA. Record defects and resolutions in `08_submission/submission_qc.md`; do not change
   facts during layout repair.
@@ -85,3 +100,4 @@ Plugin output follows the same rule as local-skill output. A plugin may help dis
 or inspect an artifact, but external content is not evidence until it passes the pipeline's
 provenance checks. Never send patient-level or private data to a plugin without explicit user
 authorization and a documented de-identification decision.
+

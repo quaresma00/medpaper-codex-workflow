@@ -35,6 +35,15 @@ PKG_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
 NS = {"w": W, "r": R, "rel": PKG_REL}
 TEXT_ROLES = {"manuscript", "title_page", "cover_letter", "supplementary",
               "statements", "figure_legends"}
+FORBIDDEN_PARAGRAPH_CONTROLS = (
+    "outlineLvl", "keepNext", "keepLines", "pageBreakBefore",
+)
+THEMATIC_BREAK_RE = re.compile(
+    r"(?m)^\s{0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})\s*$"
+)
+PIPE_TABLE_DIVIDER_RE = re.compile(
+    r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$"
+)
 
 
 def project_root() -> Path:
@@ -100,7 +109,7 @@ def _ensure_style(doc, name: str, base: str, font: str, size: float,
     for attr in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme"):
         rfonts.attrib.pop(qn(f"w:{attr}"), None)
     ppr = style.element.get_or_add_pPr()
-    for tag in ("w:outlineLvl", "w:numPr"):
+    for tag in (*[f"w:{name}" for name in FORBIDDEN_PARAGRAPH_CONTROLS], "w:numPr"):
         node = ppr.find(qn(tag))
         if node is not None:
             ppr.remove(node)
@@ -173,12 +182,36 @@ def _replace_manual_line_breaks(doc) -> None:
             element.getparent().remove(element)
 
 
-def _remove_heading_metadata(paragraph) -> None:
+def _remove_heading_metadata(paragraph, *, strip_numbering: bool = True) -> None:
     ppr = paragraph._p.get_or_add_pPr()
-    for tag in ("w:outlineLvl", "w:numPr"):
+    tags = [f"w:{name}" for name in FORBIDDEN_PARAGRAPH_CONTROLS]
+    if strip_numbering:
+        tags.append("w:numPr")
+    for tag in tags:
         node = ppr.find(qn(tag))
         if node is not None:
             ppr.remove(node)
+
+
+def _source_problems(kind: str, inputs: list[Path]) -> list[str]:
+    text = "\n\n".join(path.read_text(encoding="utf-8", errors="replace") for path in inputs)
+    problems: list[str] = []
+    if kind in {"manuscript", "figure_legends"}:
+        count = len(re.findall(r"(?mi)^#\s+Figure legends\s*$", text))
+        if count != 1:
+            problems.append(f"source must contain exactly one '# Figure legends' heading, found {count}")
+    if kind == "supplementary":
+        lines = text.splitlines()
+        if (any(PIPE_TABLE_DIVIDER_RE.match(line) for line in lines) or
+                re.search(r"<table\b", text, re.I | re.S) or
+                re.search(r"^\s*\+[=-]{3,}(?:\+[=-]{3,})+\+\s*$", text, re.M)):
+            problems.append(
+                "supplementary Methods contains a table; move it to the planned supplementary "
+                "tables workbook and build it with tools/tables/threeline.py"
+            )
+        if THEMATIC_BREAK_RE.search(text):
+            problems.append("supplementary Methods contains a Markdown thematic break/horizontal rule")
+    return problems
 
 
 def _set_run(run, font: str, size: float) -> None:
@@ -216,8 +249,10 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
 
     body_style = _ensure_style(doc, "Manuscript Body", "Normal", font, body_pt)
     title_style = _ensure_style(doc, "Manuscript Title", "Normal", font, title_pt, bold=True)
-    h1_style = _ensure_style(doc, "Manuscript Section", "Normal", font, h1_pt, bold=True)
-    h2_style = _ensure_style(doc, "Manuscript Subsection", "Normal", font, h2_pt, bold=True)
+    # Both Markdown section levels are flattened onto one Normal-based paragraph
+    # style.  Typography may still reflect the journal's H1/H2 sizes, but Word has
+    # no outline hierarchy to display or collapse.
+    section_style = _ensure_style(doc, "SectionHeading", "Normal", font, h1_pt, bold=True)
     for builtin in ("Normal", "Body Text", "Title", "Subtitle", "Heading 1", "Heading 2",
                     "Heading 3", "Bibliography", "Hyperlink"):
         try:
@@ -228,6 +263,11 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
         s.font.color.rgb = RGBColor(0, 0, 0)
         if builtin == "Hyperlink":
             s.font.underline = False
+        ppr = s.element.get_or_add_pPr()
+        for tag in ("w:outlineLvl", "w:keepNext", "w:keepLines", "w:pageBreakBefore"):
+            node = ppr.find(qn(tag))
+            if node is not None:
+                ppr.remove(node)
 
     _flatten_hyperlinks(doc)
     _replace_manual_line_breaks(doc)
@@ -238,16 +278,17 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
         text = p.text.strip()
         if text:
             nonempty_seen += 1
+        _remove_heading_metadata(p, strip_numbering=False)
         if original == "Title" or (kind == "manuscript" and nonempty_seen == 1):
             p.style = title_style
             size = title_pt
             _remove_heading_metadata(p)
         elif re.match(r"^Heading 1$", original, re.I):
-            p.style = h1_style
+            p.style = section_style
             size = h1_pt
             _remove_heading_metadata(p)
         elif re.match(r"^Heading [2-9]$", original, re.I):
-            p.style = h2_style
+            p.style = section_style
             size = h2_pt
             _remove_heading_metadata(p)
         else:
@@ -274,7 +315,7 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
 
 
 def _sanitize_package_xml(path: Path, font: str) -> None:
-    """Remove dormant Aptos declarations without reserializing Word's XML namespaces."""
+    """Remove theme residue and every Word paragraph control the user prohibited."""
     with zipfile.ZipFile(path, "r") as src:
         entries = [(item, src.read(item.filename)) for item in src.infolist()]
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -286,6 +327,11 @@ def _sanitize_package_xml(path: Path, font: str) -> None:
                 # report a corrupt file. Byte replacement preserves the package exactly.
                 blob = re.sub(br"Aptos(?: Display)?", font.encode("utf-8"), blob,
                               flags=re.I)
+                for tag in (*FORBIDDEN_PARAGRAPH_CONTROLS, "pBdr"):
+                    name = tag.encode("ascii")
+                    blob = re.sub(rb"<w:" + name + rb"\b[^>]*/>", b"", blob)
+                    blob = re.sub(rb"<w:" + name + rb"\b[^>]*>.*?</w:" + name + rb">",
+                                  b"", blob, flags=re.S)
             out.writestr(item, blob)
     tmp.replace(path)
 
@@ -318,7 +364,7 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
     for i in range(start, len(paragraphs)):
         value, style_id = paragraphs[i]
         match = re.match(r"^(Figure\s+S?\d+)\.?\s*(.*)$", value, re.I)
-        if match and style_id == "ManuscriptSubsection":
+        if match and style_id == "SectionHeading":
             headings.append((i, match.group(1), match.group(2)))
     blocks: dict[str, tuple[int, int]] = {}
     for j, (idx, figure_id, suffix) in enumerate(headings):
@@ -328,6 +374,15 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
             len(content), len(re.findall(r"\b[A-Za-z][A-Za-z0-9'-]*\b", content)))
     wanted = {_canon_figure_id(value): value for value in expected}
     problems: list[str] = []
+    seen = [_canon_figure_id(item[1]) for item in headings]
+    duplicates = sorted({item for item in seen if seen.count(item) > 1})
+    if duplicates:
+        problems.append("duplicate figure legend heading(s): " + ", ".join(duplicates))
+    for idx, figure_id, _ in headings:
+        if idx + 1 < len(paragraphs):
+            first_body = paragraphs[idx + 1][0]
+            if re.match(rf"^{re.escape(figure_id)}\b", first_body, re.I):
+                problems.append(f"{figure_id} is repeated at the start of its legend body")
     for key, display in wanted.items():
         if key not in blocks:
             problems.append(f"Figure legends lacks {display}")
@@ -387,6 +442,11 @@ def audit_docx(path: Path, style: dict, kind: str = "",
             problems.append(f"{path.name}: manual line-break control remains in {name}")
         if any("\u2193" in (node.text or "") for node in part.findall(".//w:t", NS)):
             problems.append(f"{path.name}: forbidden down-arrow character remains in {name}")
+        for tag in FORBIDDEN_PARAGRAPH_CONTROLS:
+            if part.findall(f".//w:{tag}", NS):
+                problems.append(f"{path.name}: forbidden {tag} paragraph control remains in {name}")
+        if part.findall(".//w:pBdr", NS):
+            problems.append(f"{path.name}: paragraph border/horizontal-rule residue remains in {name}")
     expected_font = str(style["font_family"])
     if expected_font.casefold() == "times new roman" and any(b"Aptos" in b for b in xmls.values()):
         problems.append(f"{path.name}: Aptos remains in Word XML")
@@ -394,10 +454,10 @@ def audit_docx(path: Path, style: dict, kind: str = "",
         ppr = p.find("w:pPr", NS)
         pstyle = None if ppr is None else ppr.find("w:pStyle", NS)
         style_id = "" if pstyle is None else pstyle.get(f"{{{W}}}val", "")
-        expected_pt = (float(style["title_font_pt"]) if style_id == "ManuscriptTitle" else
-                       float(style["section_heading_font_pt"]) if style_id == "ManuscriptSection" else
-                       float(style["subsection_heading_font_pt"]) if style_id == "ManuscriptSubsection" else
-                       float(style["body_font_pt"]))
+        allowed_pts = ({float(style["title_font_pt"])} if style_id == "ManuscriptTitle" else
+                       {float(style["section_heading_font_pt"]),
+                        float(style["subsection_heading_font_pt"])} if style_id == "SectionHeading" else
+                       {float(style["body_font_pt"])})
         paragraph_text = "".join(t.text or "" for t in p.findall(".//w:t", NS)).strip()
         spacing_node = None if ppr is None else ppr.find("w:spacing", NS)
         if paragraph_text and (spacing_node is None or
@@ -419,13 +479,13 @@ def audit_docx(path: Path, style: dict, kind: str = "",
             if color is None or color.get(f"{{{W}}}val", "").upper() not in {"000000", "AUTO"}:
                 problems.append(f"{path.name}: a text run is not explicitly black")
                 break
-            if size is None or size.get(f"{{{W}}}val", "") != str(int(round(expected_pt * 2))):
+            if size is None or size.get(f"{{{W}}}val", "") not in {
+                    str(int(round(value * 2))) for value in allowed_pts}:
                 problems.append(f"{path.name}: inconsistent size in {style_id or 'body'} paragraph")
                 break
-        if ppr is not None and style_id in {"ManuscriptTitle", "ManuscriptSection", "ManuscriptSubsection"}:
-            if ppr.find("w:outlineLvl", NS) is not None or ppr.find("w:numPr", NS) is not None:
-                problems.append(f"{path.name}: manuscript heading retains outline/list metadata")
-                break
+        if style_id.casefold().startswith("heading"):
+            problems.append(f"{path.name}: built-in outline heading style remains on visible text")
+            break
     text = docx_text(path)
     if "\u2193" in text:
         problems.append(f"{path.name}: forbidden down-arrow character remains")
@@ -450,6 +510,16 @@ def audit_docx(path: Path, style: dict, kind: str = "",
         else:
             problems.extend(f"{path.name}: {problem}" for problem in
                             _legend_problems(root, planned_figures, legend_cap))
+    elif kind == "figure_legends":
+        count = sum(1 for line in docx_text(path).splitlines()
+                    if line.strip().casefold() == "figure legends")
+        if count != 1:
+            problems.append(f"{path.name}: expected one Figure legends heading, found {count}")
+    if kind == "supplementary" and root.findall(".//w:tbl", NS):
+        problems.append(
+            f"{path.name}: supplementary Methods contains a table; package it as a separate "
+            "three-line supplementary table"
+        )
     return sorted(set(problems))
 
 
@@ -479,6 +549,9 @@ def build(args) -> int:
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
     try:
+        source_problems = _source_problems(args.kind, args.input)
+        if source_problems:
+            raise ValueError("; ".join(source_problems))
         run_pandoc(args.input, args.output, args.bibliography, args.csl)
         normalize_docx(args.output, style, args.kind)
         problems = audit_docx(args.output, style, args.kind,
@@ -555,3 +628,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

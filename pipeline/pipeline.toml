@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.3.5"
+version = "1.3.6"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -40,7 +40,7 @@ temp_dir = "temp"
 # ------------------------------------------------------------------------------
 [policy]
 invariants = [
-  "Discovery helpers may find literature, but formal metadata must be fetched, cached and verified through tools/pubmed/. Never type a citation, PMID, DOI, title, journal, year or abstract from memory. A reference that is not in 06_refs/verified.json with verified=true does not exist; external full text must also be registered in the retrieval manifest.",
+  "Discovery helpers may find literature, but formal metadata must be freshly re-fetched through tools/pubmed/verify.py. A verified=true boolean is never evidence by itself: every citable key must pass the hashed raw-PubMed XML receipt, exact library hash, PMID/DOI match and independent live S13 EFetch gate. Never hand-write or patch library.json, verified.json, refs.bib or refs.ris to satisfy a gate.",
   "Every number in the manuscript must already exist in 03_analysis/results/*.json, written there by executed code. Never compute a statistic in your head or in prose.",
   "Draft scientific sections only at their active stages; the optional supplementary Methods file belongs only to S08. S17 then assembles the canonical full_manuscript.md from the completed, gated sections.",
   "Language polishing may change wording only. Never a number, never a citation, never a figure/table reference. A snapshot is taken before the pass and the gate diffs against it.",
@@ -91,6 +91,7 @@ figure_legend_words_max = 180
 abbreviation_centralize_threshold = 8
 abbreviation_local_words_max = 50
 journal_source_age_days_max = 90
+reference_verification_age_days_max = 90
 
 # ==============================================================================
 # STAGES
@@ -266,6 +267,8 @@ check = "single_section_written"
 check = "citekeys_resolve"
 paths = ["07_manuscript/methods.md", "07_manuscript/supplementary_methods.md"]
 [[stage.gate]]
+check = "supplementary_methods_clean"
+[[stage.gate]]
 check = "numbers_have_provenance"
 path = "07_manuscript/methods.md"
 [[stage.gate]]
@@ -367,6 +370,9 @@ outputs = ["06_refs/library.json", "06_refs/verified.json", "06_refs/refs.bib", 
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "refs_library"
 require_abstract = true
 require_verified = true
@@ -452,6 +458,8 @@ optional = ["07_manuscript/statements.md"]
 [[stage.gate]]
 check = "manuscript_structure"
 [[stage.gate]]
+check = "supplementary_methods_clean"
+[[stage.gate]]
 check = "assembly_matches_sources"
 [[stage.gate]]
 check = "abbreviations_centralized"
@@ -484,6 +492,8 @@ outputs = ["07_manuscript/independent_publishability_review.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "supplementary_methods_clean"
+[[stage.gate]]
 check = "md_sections"
 path = "07_manuscript/independent_publishability_review.md"
 headings = ["Verdict", "Critical barriers", "Scientific validity", "Reporting completeness", "Tables and supplementary material", "Journal suitability", "Required revisions", "Post-revision outlook"]
@@ -506,6 +516,8 @@ path = "07_manuscript/human_review.md"
 headings = ["Materials presented", "Independent verdict", "User-requested revisions", "Revalidation", "Approval to proceed"]
 [[stage.gate]]
 check = "manuscript_structure"
+[[stage.gate]]
+check = "supplementary_methods_clean"
 [[stage.gate]]
 check = "assembly_matches_sources"
 [[stage.gate]]
@@ -563,6 +575,8 @@ keys = ["authors", "affiliations", "corresponding", "funding", "conflicts", "eth
 [[stage.gate]]
 check = "manuscript_structure"
 [[stage.gate]]
+check = "supplementary_methods_clean"
+[[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
 check = "abbreviations_centralized"
@@ -587,6 +601,8 @@ check = "style_consistent"
 check = "journal_limits_met"
 [[stage.gate]]
 check = "manuscript_structure"
+[[stage.gate]]
+check = "supplementary_methods_clean"
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
@@ -624,6 +640,8 @@ check = "outputs_exist"
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+[[stage.gate]]
+check = "supplementary_methods_clean"
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
@@ -738,3 +756,4 @@ globs = [
   "08_submission/*.csl",
   "08_submission/bundle/**",
 ]
+

@@ -174,6 +174,28 @@ def legends_cover_plan(ctx: Ctx) -> Result:
     ):
         text = ctx.read(rel)
         blocks = _split_blocks(text)
+        if rel == LEGENDS:
+            section_count = len(re.findall(r"(?mi)^#\s+Figure legends\s*$", text))
+            if section_count != 1:
+                problems.append(
+                    f"{rel}: expected exactly one '# Figure legends' heading, found {section_count}"
+                )
+            matches = list(re.finditer(
+                r"(?mi)^#{2,6}\s+(Figure\s+S?\d+)\.?\s*(.*)$", text))
+            canon = [re.sub(r"\s+", " ", match.group(1)).casefold() for match in matches]
+            duplicates = sorted({item for item in canon if canon.count(item) > 1})
+            if duplicates:
+                problems.append(f"{rel}: duplicate figure legend heading(s): " +
+                                ", ".join(duplicates))
+            for index, match in enumerate(matches):
+                end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+                body_lines = [line.strip() for line in text[match.end():end].splitlines()
+                              if line.strip()]
+                if body_lines and re.match(
+                        rf"^{re.escape(match.group(1))}\b", body_lines[0], re.I):
+                    problems.append(
+                        f"{rel}: {match.group(1)} is repeated at the start of its legend body"
+                    )
         for e in _entries(plan, groups):
             eid = str(e.get("id", "")).strip()
             key = next((k for k in blocks if _same_id(k, eid)), None)
@@ -647,3 +669,4 @@ def _split_blocks(text: str) -> dict[str, str]:
 def _same_id(a: str, b: str) -> bool:
     norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower()).replace("figure", "fig")  # noqa: E731
     return norm(a) == norm(b)
+

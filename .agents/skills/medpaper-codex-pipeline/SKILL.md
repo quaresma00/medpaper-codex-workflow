@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.5"
+  version: "1.3.6"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -38,10 +38,12 @@ detached file. At S24, a Word-only edit is permitted only when
 
 ## Evidence and fact integrity
 
-- A bibliographic fact is usable only after pipeline metadata retrieval and verification.
-  Discovery may use the available scholarly-search skill, browser, or research plugin, but
-  every selected record must be re-fetched through `tools/pubmed/` and appear in
-  `project/06_refs/verified.json` with `verified: true`.
+- A bibliographic fact is usable only after the bundled verifier performs a fresh PubMed
+  EFetch. `verified: true` alone is never evidence: the gate reparses hashed raw PubMed XML,
+  binds it to the exact `library.json`, compares PMID and DOI as well as bibliographic fields,
+  and at S13 independently re-fetches the records live. Never hand-write or patch
+  `library.json`, `verified.json`, `refs.bib` or `refs.ris`; reference-integrity gates cannot
+  be waived with `--force`.
 - A full text acquired through an open-access or explicitly authorized institutional route
   must be registered with `tools/pubmed/fulltext.py register`; paywalled abstracts do not
   count as deep reads. Never use illicit sources or transfer login cookies without explicit
@@ -83,7 +85,12 @@ Figure legends identify the display, map panels and decode symbols; they do not 
 direction or numerical findings from Results. When display-item abbreviations become crowded,
 define them once under `Declarations and Statements > Abbreviations` and remove repeated local
 blocks unless the official journal guide explicitly requires them. Final Word files contain no
-literal U+2193 down arrow and no text-wrapping/manual line-break controls.
+literal U+2193 down arrow and no text-wrapping/manual line-break controls. Each Word XML part
+must also be free of `outlineLvl`, `keepNext`, `keepLines`, `pageBreakBefore` and paragraph
+border residue; Markdown headings are flattened to the Normal-based `SectionHeading` style.
+Use exactly one Figure legends section title and do not repeat `Figure N` in the legend body.
+Supplementary Methods contains prose only: move every table to the separate three-line
+supplementary workbook and remove Markdown thematic breaks.
 
 ## Safety and completion
 
@@ -91,3 +98,4 @@ Keep patient-level/private data local unless the user explicitly authorizes an e
 transfer. Inspect every rendered visual artifact before recording its visual-review decision.
 At a stage requiring a material user choice, such as the target journal or private-data
 access, ask once and wait; otherwise keep working until the gate passes and the stage advances.
+

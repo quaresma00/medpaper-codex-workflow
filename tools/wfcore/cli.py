@@ -28,6 +28,12 @@ STAGE_ALIASES = {
     "S19_polish": "S17_assemble",
     "S20_package": "S17_assemble",
 }
+NON_OVERRIDABLE_GATES = {
+    "reference_provenance",
+    "refs_library",
+    "bib_ris_match_library",
+    "citekeys_resolve",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +241,17 @@ def cmd_advance(args) -> int:
     stage = pipe.stage(st.current)
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, _ = gates.summarize(results)
+    integrity_failures = [r for r in results if r.blocking and
+                          r.check in NON_OVERRIDABLE_GATES]
+    if integrity_failures:
+        print(f"refusing to advance: {len(integrity_failures)} non-overridable "
+              f"reference-integrity gate(s) failed in {stage.id}")
+        print(DASH)
+        _gate_lines(integrity_failures)
+        print(DASH)
+        print("--force cannot waive bibliographic provenance. Re-fetch the real PubMed "
+              "record or remove/replace the citation.")
+        return 2
     if not ok and not args.force:
         print(f"refusing to advance: {blocking} blocking issue(s) in {stage.id}")
         print(DASH)
@@ -588,3 +605,4 @@ def main(argv: list[str] | None = None) -> int:
     except KeyError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+

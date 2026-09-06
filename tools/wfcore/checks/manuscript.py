@@ -18,6 +18,15 @@ PKG_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
 NS = {"w": W, "rel": PKG_REL}
 TEXT_ROLES = {"manuscript", "title_page", "cover_letter", "supplementary",
               "statements", "figure_legends"}
+FORBIDDEN_PARAGRAPH_CONTROLS = (
+    "outlineLvl", "keepNext", "keepLines", "pageBreakBefore",
+)
+THEMATIC_BREAK_RE = re.compile(
+    r"(?m)^\s{0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})\s*$"
+)
+PIPE_TABLE_DIVIDER_RE = re.compile(
+    r"(?m)^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$"
+)
 
 
 def _h1s(text: str) -> list[tuple[str, int]]:
@@ -56,6 +65,16 @@ def _markdown_legend_problems(text: str, expected: list[str], cap: int) -> list[
             len(content), len(re.findall(r"\b[A-Za-z][A-Za-z0-9'-]*\b", content)))
     wanted = {_canon_figure_id(x): x for x in expected}
     problems: list[str] = []
+    seen = [_canon_figure_id(match.group(1)) for match in matches]
+    duplicates = sorted({item for item in seen if seen.count(item) > 1})
+    if duplicates:
+        problems.append("duplicate figure legend heading(s): " + ", ".join(duplicates))
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        body_lines = [line.strip() for line in body[match.end():end].splitlines()
+                      if line.strip()]
+        if body_lines and re.match(rf"^{re.escape(match.group(1))}\b", body_lines[0], re.I):
+            problems.append(f"{match.group(1)} is repeated at the start of its legend body")
     for key, display in wanted.items():
         if key not in blocks:
             problems.append(f"Figure legends lacks {display}")
@@ -69,6 +88,35 @@ def _markdown_legend_problems(text: str, expected: list[str], cap: int) -> list[
     if extras:
         problems.append("unplanned figure legend(s): " + ", ".join(extras))
     return problems
+
+
+@check("supplementary_methods_clean")
+def supplementary_methods_clean(ctx: Ctx) -> Result:
+    """Supplementary Methods is prose; display tables live in the table workbook."""
+    rel = ctx.spec.get("path", "07_manuscript/supplementary_methods.md")
+    if not ctx.p(rel).is_file():
+        return Result(True, "supplementary_methods_clean", "no supplementary Methods file")
+    text = ctx.read(rel)
+    problems = []
+    if (PIPE_TABLE_DIVIDER_RE.search(text) or
+            re.search(r"<table\b", text, re.I | re.S) or
+            re.search(r"^\s*\+[=-]{3,}(?:\+[=-]{3,})+\+\s*$", text, re.M)):
+        problems.append("contains an embedded Markdown/HTML/grid table")
+    if THEMATIC_BREAK_RE.search(text):
+        problems.append("contains a Markdown thematic break/horizontal rule")
+    if problems:
+        return Result(
+            False,
+            "supplementary_methods_clean",
+            f"{rel}: " + "; ".join(problems),
+            [
+                "Move tabular material into artifact_plan.json as Table S*, build it under "
+                "04_tables/supplementary/ with tools/tables/threeline.py, and cite that table from prose.",
+                "Use blank paragraphs, not '---', '***' or '___', to separate supplementary Methods text.",
+            ],
+        )
+    return Result(True, "supplementary_methods_clean",
+                  "supplementary Methods contains prose only; no table or horizontal-rule residue")
 
 
 @check("manuscript_structure")
@@ -253,7 +301,7 @@ def _docx_legend_problems(root, expected: list[str], cap: int) -> list[str]:
     for i in range(start, len(paragraphs)):
         text, style_id = paragraphs[i]
         match = re.match(r"^(Figure\s+S?\d+)\.?\s*(.*)$", text, re.I)
-        if match and style_id == "ManuscriptSubsection":
+        if match and style_id == "SectionHeading":
             headings.append((i, match.group(1), match.group(2)))
     blocks: dict[str, tuple[int, int]] = {}
     for j, (idx, figure_id, suffix) in enumerate(headings):
@@ -263,6 +311,14 @@ def _docx_legend_problems(root, expected: list[str], cap: int) -> list[str]:
             len(content), len(re.findall(r"\b[A-Za-z][A-Za-z0-9'-]*\b", content)))
     wanted = {_canon_figure_id(x): x for x in expected}
     problems: list[str] = []
+    seen = [_canon_figure_id(item[1]) for item in headings]
+    duplicates = sorted({item for item in seen if seen.count(item) > 1})
+    if duplicates:
+        problems.append("duplicate figure legend heading(s): " + ", ".join(duplicates))
+    for idx, figure_id, _ in headings:
+        if idx + 1 < len(paragraphs) and re.match(
+                rf"^{re.escape(figure_id)}\b", paragraphs[idx + 1][0], re.I):
+            problems.append(f"{figure_id} is repeated at the start of its legend body")
     for key, display in wanted.items():
         if key not in blocks:
             problems.append(f"DOCX Figure legends lacks {display}")
@@ -311,6 +367,11 @@ def _audit_docx(path: Path, style: dict, role: str,
             problems.append(f"{path.name}: manual line-break control remains in {name}")
         if any("\u2193" in (node.text or "") for node in part.findall(".//w:t", NS)):
             problems.append(f"{path.name}: forbidden down-arrow character remains in {name}")
+        for tag in FORBIDDEN_PARAGRAPH_CONTROLS:
+            if part.findall(f".//w:{tag}", NS):
+                problems.append(f"{path.name}: forbidden {tag} paragraph control remains in {name}")
+        if part.findall(".//w:pBdr", NS):
+            problems.append(f"{path.name}: paragraph border/horizontal-rule residue remains in {name}")
     for name, blob in xmls.items():
         if not name.endswith(".rels"):
             continue
@@ -328,10 +389,10 @@ def _audit_docx(path: Path, style: dict, role: str,
         ppr = p.find("w:pPr", NS)
         pstyle = None if ppr is None else ppr.find("w:pStyle", NS)
         style_id = "" if pstyle is None else pstyle.get(f"{{{W}}}val", "")
-        expected_pt = (float(style["title_font_pt"]) if style_id == "ManuscriptTitle" else
-                       float(style["section_heading_font_pt"]) if style_id == "ManuscriptSection" else
-                       float(style["subsection_heading_font_pt"]) if style_id == "ManuscriptSubsection" else
-                       float(style["body_font_pt"]))
+        allowed_pts = ({float(style["title_font_pt"])} if style_id == "ManuscriptTitle" else
+                       {float(style["section_heading_font_pt"]),
+                        float(style["subsection_heading_font_pt"])} if style_id == "SectionHeading" else
+                       {float(style["body_font_pt"])})
         paragraph_text = "".join(t.text or "" for t in p.findall(".//w:t", NS)).strip()
         spacing_node = None if ppr is None else ppr.find("w:spacing", NS)
         if paragraph_text and (spacing_node is None or
@@ -353,12 +414,12 @@ def _audit_docx(path: Path, style: dict, role: str,
             if color is None or color.get(f"{{{W}}}val", "").upper() not in {"000000", "AUTO"}:
                 problems.append(f"{path.name}: a text run is not black")
                 break
-            if size is None or size.get(f"{{{W}}}val", "") != str(int(round(expected_pt * 2))):
+            if size is None or size.get(f"{{{W}}}val", "") not in {
+                    str(int(round(value * 2))) for value in allowed_pts}:
                 problems.append(f"{path.name}: inconsistent size in {style_id or 'body'} paragraph")
                 break
-        if ppr is not None and style_id in {"ManuscriptTitle", "ManuscriptSection", "ManuscriptSubsection"} and (
-                ppr.find("w:outlineLvl", NS) is not None or ppr.find("w:numPr", NS) is not None):
-            problems.append(f"{path.name}: a manuscript heading retains outline/list metadata")
+        if style_id.casefold().startswith("heading"):
+            problems.append(f"{path.name}: built-in outline heading style remains on visible text")
             break
     if role == "manuscript":
         lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
@@ -379,6 +440,16 @@ def _audit_docx(path: Path, style: dict, role: str,
         if planned_figures is not None:
             problems.extend(f"{path.name}: {problem}" for problem in
                             _docx_legend_problems(root, planned_figures, legend_cap))
+    elif role == "figure_legends":
+        count = sum(1 for line in raw_text.splitlines()
+                    if line.strip().casefold() == "figure legends")
+        if count != 1:
+            problems.append(f"{path.name}: expected one Figure legends heading, found {count}")
+    if role == "supplementary" and root.findall(".//w:tbl", NS):
+        problems.append(
+            f"{path.name}: supplementary Methods contains a table instead of a separate "
+            "three-line supplementary table"
+        )
     return problems
 
 
@@ -393,6 +464,9 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
         return Result(False, "docx_bundle_ready", f"cannot read manifest/style config: {exc}")
     roles: dict[str, list[Path]] = {}
     problems: list[str] = []
+    source_check = supplementary_methods_clean(ctx)
+    if not source_check.ok:
+        problems.append(source_check.detail)
     planned = _figure_ids(ctx)
     if planned is None:
         problems.append("01_protocol/artifact_plan.json is missing or invalid")
@@ -418,3 +492,4 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
     count = sum(path.suffix.casefold() == ".docx" for paths in roles.values() for path in paths)
     return Result(True, "docx_bundle_ready",
                   f"{count} DOCX file(s): black journal font, consistent sizes, no links or outline headings")
+

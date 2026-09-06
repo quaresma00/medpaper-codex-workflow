@@ -33,6 +33,10 @@ only when reproducibility requires detail that would obscure the main narrative.
    Suitable content includes complete search strings, code lists, assay protocols, model
    tuning grids, full imputation or sensitivity specifications, interview guides and a full
    statistical analysis plan. Do not move a core design decision or primary analysis there.
+   Supplementary Methods is prose only: do not embed Markdown, HTML or grid tables. Any
+   genuinely tabular material must already be planned as `Table S*`, built later under
+   `04_tables/supplementary/` with the three-line table writer, and referenced from the prose.
+   Do not use `---`, `***` or `___` as visual separators; use ordinary paragraph spacing.
 6. Cite methodological choices with pandoc markers `[@key]`—the cutoff you adopted, the
    scoring system, the model, the guideline itself. Keys must come from records already
    retrieved this session.
@@ -50,6 +54,9 @@ only when reproducibility requires detail that would obscure the main narrative.
 - Write only Methods-stage files. Do not also write Results.
 - No default boilerplate subsections after the analysis subsection.
 - The optional supplement may extend reproducibility, never hide core validity information.
+- Supplementary Methods contains no embedded table or Markdown horizontal-rule residue.
+  Tabular content belongs in the supplementary-tables workbook and must pass the S10
+  three-line-table gate.
 - Every number traceable to results JSON (gate: `numbers_have_provenance`).
 - No placeholders. `TODO`, `TBD`, `xx.x` and friends fail the gate.
 - Past tense, declarative. No "we aimed to comprehensively investigate".
@@ -59,3 +66,4 @@ only when reproducibility requires detail that would obscure the main narrative.
 .\.venv\Scripts\python.exe tools\wf.py check
 .\.venv\Scripts\python.exe tools\wf.py advance --note "methods drafted; heading map: <...>; supplementary Methods: <not needed/path and why>; citations used: <n>"
 ```
+

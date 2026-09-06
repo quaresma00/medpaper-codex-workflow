@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Independently verify every library entry against the source of record.
 
-Re-fetches each PMID (and cross-checks the DOI against Crossref), then compares
-title / journal / year / first author. Writes 06_refs/verified.json, which the gates
-treat as the definition of "this reference exists". Failures are quarantined, never
-patched to match.
+Freshly re-fetches each PMID (and optionally cross-checks the DOI against Crossref),
+then compares PMID / DOI / title / journal / year / first author.  The output binds
+the exact library to hashed raw PubMed XML.  Gates reparse that XML and never trust
+the authored ``verified`` boolean by itself.  Failures are quarantined, never patched.
 
     .venv/Scripts/python.exe tools/pubmed/verify.py
     .venv/Scripts/python.exe tools/pubmed/verify.py --strict     # also require a DOI/Crossref match
@@ -23,6 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pubmed import eutils as eu  # noqa: E402
+from wfcore import refproof  # noqa: E402
 
 TITLE_THRESHOLD = 0.92
 JOURNAL_THRESHOLD = 0.85
@@ -50,6 +51,13 @@ def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
             "checks": [],
         }
 
+    pmid_ok = str(entry.get("pmid", "")) == str(live.get("pmid", ""))
+    checks.append({"field": "pmid", "ok": pmid_ok, "expected": live.get("pmid", "")})
+    entry_doi = str(entry.get("doi", "")).strip().casefold()
+    live_doi = str(live.get("doi", "")).strip().casefold()
+    doi_ok = entry_doi == live_doi
+    checks.append({"field": "doi", "ok": doi_ok, "expected": live_doi})
+
     t = ratio(entry.get("title", ""), live.get("title", ""))
     checks.append({"field": "title", "score": round(t, 3), "ok": t >= TITLE_THRESHOLD,
                    "expected": live.get("title", "")})
@@ -66,6 +74,9 @@ def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
 
     abs_ok = bool((live.get("abstract") or "").strip())
     checks.append({"field": "abstract_present", "ok": abs_ok})
+    flags_ok = not live.get("flags")
+    checks.append({"field": "citable_status", "ok": flags_ok,
+                   "expected": "no retraction, expression-of-concern or preprint flag"})
 
     result = {
         "verified": all(c["ok"] for c in checks),
@@ -76,6 +87,7 @@ def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
         "cache_file": live.get("cache_file", ""),
         "checks": checks,
         "flags": live.get("flags", []),
+        "evidence": refproof.evidence_for_live_record(live),
     }
 
     if strict and entry.get("doi"):
@@ -101,6 +113,8 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true", help="also require a Crossref DOI match")
     ap.add_argument("--quarantine", action="store_true",
                     help="move failures from library.json into quarantine.json")
+    ap.add_argument("--check", action="store_true",
+                    help="validate the existing proof without trusting verified=true")
     args = ap.parse_args()
 
     lib_path = eu.refs_dir() / "library.json"
@@ -111,9 +125,19 @@ def main() -> int:
     if not entries:
         eu.die("library.json has no entries")
 
+    if args.check:
+        ok, problems, count = refproof.validate_local_proof(eu.project_root())
+        if not ok:
+            print("reference proof failed:\n  " + "\n  ".join(problems[:20]), file=sys.stderr)
+            return 2
+        print(f"reference proof valid for {count} PubMed record(s)")
+        return 0
+
     pmids = [e["pmid"] for e in entries if e.get("pmid")]
-    print(f"re-fetching {len(pmids)} record(s) from PubMed...")
-    live_recs = eu.efetch(pmids)
+    if len(pmids) != len(entries):
+        eu.die("every library entry must have a PMID before verification")
+    print(f"freshly re-fetching {len(pmids)} record(s) from PubMed...")
+    live_recs = eu.efetch(pmids, fresh=True, purpose="verify")
     live_by_pmid = {r["pmid"]: r for r in live_recs}
 
     records: dict[str, dict] = {}
@@ -126,13 +150,21 @@ def main() -> int:
             failures.append((e["citekey"], res.get("reason", "unknown")))
 
     out = {
+        "schema": refproof.SCHEMA,
+        "generator": {
+            "tool": refproof.GENERATOR,
+            "mode": "fresh_ncbi_pubmed_efetch",
+            "source": "NCBI PubMed EFetch",
+        },
         "verified_at": eu.now(),
         "strict": args.strict,
+        "library_sha256": refproof.file_sha256(lib_path),
         "n_entries": len(entries),
         "n_verified": sum(1 for r in records.values() if r["verified"]),
         "records": records,
     }
-    (eu.refs_dir() / "verified.json").write_text(
+    verified_path = eu.refs_dir() / "verified.json"
+    verified_path.write_text(
         json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nverified {out['n_verified']}/{len(entries)}")
@@ -156,9 +188,16 @@ def main() -> int:
                 encoding="utf-8")
             lib["entries"] = keep
             lib_path.write_text(json.dumps(lib, indent=2, ensure_ascii=False), encoding="utf-8")
+            # Quarantine changes the library and therefore invalidates every derived
+            # proof/export.  Remove them instead of leaving stale files that can look
+            # authoritative to a human or an agent.  The next verifier run recreates
+            # the proof from a new source request.
+            for stale in (verified_path, eu.refs_dir() / "refs.bib", eu.refs_dir() / "refs.ris"):
+                stale.unlink(missing_ok=True)
             print(f"\nquarantined {len(removed)} entr{'y' if len(removed) == 1 else 'ies'};"
                   f" library now holds {len(keep)}")
-            print("re-export: .venv/Scripts/python.exe tools/pubmed/build_library.py --export")
+            print("removed stale verified.json/refs.bib/refs.ris")
+            print("re-export and freshly verify the remaining library before continuing")
     else:
         print("\nall entries match the source of record.")
     return 0 if not failures else 2
@@ -166,3 +205,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

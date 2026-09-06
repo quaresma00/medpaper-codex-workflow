@@ -29,17 +29,25 @@ journal-guideline audit.
    form may remain in the exact PDF/XLSX/DOCX format the journal requires.
 4. The builder applies journal-specified size and spacing, with the recorded fallback only
    where the guide is silent. It forces all text black, removes hyperlinks, uses one
-   font family throughout, and maps Markdown headings to non-outline paragraph styles so
-   Word shows no collapsible hierarchy marker or bullet before a heading.
+   font family throughout, and maps Markdown section headings to the Normal-based
+   `SectionHeading` paragraph style. Across every Word XML part it removes `outlineLvl`,
+   `keepNext`, `keepLines` and `pageBreakBefore`; visible headings therefore have neither a
+   collapsible hierarchy marker nor the left-side black-square control indicator.
    It also converts Shift+Enter/text-wrapping controls to ordinary paragraphs and rejects the
    literal down-arrow character. Use blank lines for paragraph boundaries in Markdown and
    natural wrapping within paragraphs; never pad layout with manual line breaks.
 5. Confirm manuscript order: Abstract then Keywords; explicit References heading before
-   the bibliography; concise Figure legends as the final section. Build separate figure
+   the bibliography; concise Figure legends as the final section. There must be exactly one
+   `Figure legends` section title, exactly one heading per figure, and the legend body must
+   not repeat `Figure N` immediately after its heading. Build separate figure
    legend Word files only when the journal explicitly asks, but the legends always remain
    in the manuscript.
 6. Add figures and tables in the exact editable/separate forms required by the journal.
-   Never omit the supplementary file. Write `SUBMISSION_CHECKLIST.md` and `manifest.json`;
+   Never omit the supplementary file. Supplementary Methods must contain prose only and no
+   Markdown horizontal rules. Put every supplementary table in the separate three-line
+   workbook under `04_tables/supplementary/` and list that workbook as a table upload; the
+   supplementary-Methods DOCX audit rejects embedded Word tables. Write
+   `SUBMISSION_CHECKLIST.md` and `manifest.json`;
    every bundle file is listed with its role and the guideline rule that requires it.
 7. Run the structural Word audit:
 ```
@@ -73,7 +81,8 @@ journal-guideline audit.
 - Pipeline-authored bundle-facing narrative files are DOCX, never Markdown; journal-supplied
   fixed forms retain their mandated non-Markdown format.
 - All text is black; no external hyperlinks; no Aptos/theme-font leakage when the selected
-  font is Times New Roman; no outline numbering or collapsible heading level in Word.
+  font is Times New Roman; no outline numbering, `outlineLvl`, `keepNext`, `keepLines`,
+  `pageBreakBefore`, paragraph-border residue or collapsible heading level in any Word XML.
 - `References` and `Figure legends` must be visible in the manuscript.
 - Any title-page reference count must equal the distinct citations actually used in the
   canonical manuscript; both the Markdown source and generated Word title page are checked.
@@ -91,3 +100,4 @@ journal-guideline audit.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "submission package built and visually verified; Word typography/link/heading audit passed; ready for user package review"
 ```
+

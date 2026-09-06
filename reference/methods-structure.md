@@ -65,6 +65,13 @@ a full statistical analysis plan. Refer to the supplement once at the relevant p
 main Methods. Do not duplicate paragraphs across both files, and never use the supplement to
 hide a primary design or analysis choice.
 
+Supplementary Methods is a prose document, not a container for display tables. If code lists,
+parameter grids, variable definitions or sensitivity specifications are best compared in rows
+and columns, plan them as `Table S*` in `artifact_plan.json`, build them in the single
+three-line supplementary workbook, and cite that table from the prose. Do not embed Markdown,
+HTML, grid or Word tables in supplementary Methods. Do not use Markdown thematic breaks
+(`---`, `***`, `___`); ordinary paragraph and section spacing must carry the structure.
+
 ## Structural evidence from published designs
 
 The architecture above was derived by comparing full-text Methods organization across
@@ -91,3 +98,4 @@ different medical study designs (checked 2026-09-04):
 The recurring pattern is a reader-facing sequence ending in the analysis approach, while the
 number and names of earlier subsections change with design. That pattern—not a rigid list—is
 the workflow default.
+

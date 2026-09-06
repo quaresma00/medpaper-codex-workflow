@@ -68,7 +68,9 @@ first keep panels from filling up with explanatory text later.
    configured 180-word ceiling. Describe what is drawn and how to decode it; do not state
    which group was higher or lower, repeat effect estimates, or retell the Results.
    Do not repeat cohort acquisition, complete model specification, software versions,
-   interpretation, numerical Results or generic caveats already stated elsewhere.
+   interpretation, numerical Results or generic caveats already stated elsewhere. The file
+   contains exactly one `# Figure legends` section heading and exactly one heading for each
+   planned figure. After a `Figure N.` heading, do not begin the body with `Figure N.` again.
 5. **Table captions.** Write `project/04_tables/table_captions.md`, one block per table,
    headed `Table N.` Each needs a title line plus the footnote content: abbreviation
    expansions, units, the test used, what a dagger/asterisk marks. Short abbreviation lists
@@ -89,9 +91,12 @@ first keep panels from filling up with explanatory text later.
   supplementary Methods, not in panels and not automatically in every legend.
 - Do not use the literal down-arrow character. Express direction in words outside legends;
   legends themselves describe the display without claiming the direction of a result.
+- Do not duplicate the Figure legends section title, a figure identifier, or the descriptive
+  legend title between the heading and the first body sentence.
 
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "inventory: <F main / T main / F supp / T supp> vs benchmark <range>; legends written"
 ```
+

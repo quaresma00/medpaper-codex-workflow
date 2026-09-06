@@ -23,8 +23,17 @@ Everything the Introduction and Discussion say about the literature comes from h
 ```
 .\.venv\Scripts\python.exe tools/pubmed/verify.py
 ```
-   It re-fetches each PMID/DOI, compares title/journal/year/authors, and writes
-   `06_refs/verified.json`. Entries that fail are quarantined, not patched.
+   This command always performs a fresh PubMed EFetch, compares PMID, DOI, title, journal,
+   year, first author and abstract status, and writes `06_refs/verified.json` together with
+   the exact `library.json` hash and hashes/fingerprints of the cached raw PubMed XML.
+   Confirm the stored proof by running:
+```
+.\.venv\Scripts\python.exe tools/pubmed/verify.py --check
+```
+   `verified: true` by itself has no authority. The S13 gate independently contacts PubMed
+   a second time and recomputes the comparisons. If NCBI cannot be reached, the gate fails
+   closed; it must never be replaced with a handwritten boolean, fabricated DOI, copied
+   metadata, or an alternate script. Entries that fail are quarantined, not patched.
 4. Export both formats from `library.json` - never hand-edit them:
 ```
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --export
@@ -44,6 +53,9 @@ Everything the Introduction and Discussion say about the literature comes from h
 - **No abstract, no entry.** A record without a retrievable abstract is removed from the
   library. Do not write a summary and call it the abstract.
 - Never invent, guess or "reconstruct" a citekey, PMID, DOI, title, journal or year.
+- Never write or modify `library.json`, `verified.json`, `refs.bib` or `refs.ris` with an
+  ad-hoc script. Only `tools/pubmed/build_library.py` and `tools/pubmed/verify.py` may produce
+  them. A green Pandoc build is not evidence that a citation exists.
 - A plugin result becomes citable only after the bundled tools independently fetch and
   verify it into `library.json` and `verified.json`.
 - Do not pad to hit the count. If genuine coverage is 42 papers, lower the target:
@@ -54,5 +66,6 @@ Everything the Introduction and Discussion say about the literature comes from h
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> verified entries with abstracts; coverage gaps: <...>"
+.\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> fresh-PubMed-proven entries with abstracts; independent live gate passed; coverage gaps: <...>"
 ```
+

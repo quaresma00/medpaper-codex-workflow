@@ -19,7 +19,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.5",
+           legacy.data["pipeline_version"] == "1.3.6",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -339,6 +339,133 @@ def run_checks(proj: Path) -> None:
            revisited.decision("submission_package_user_confirmed") is None and
            revisited.decision("submission_package_independent_audit") is None)
     shutil.rmtree(decision_root, ignore_errors=True)
+
+
+def run_reference_proof(proj: Path) -> None:
+    """A boolean or forged DOI must not satisfy any citation gate."""
+    from unittest.mock import patch
+
+    from wfcore import refproof, registry
+    from wfcore.checks import Ctx, get, load_all
+    from wfcore.state import State
+
+    section("reference provenance and anti-forgery")
+    scoped = proj / "temp/reference_proof"
+    refs = scoped / "06_refs"
+    cache = refs / "cache"
+    manuscript = scoped / "07_manuscript"
+    cache.mkdir(parents=True)
+    manuscript.mkdir(parents=True)
+    key, pmid, real_doi = "smith2025integrity", "40123456", "10.1000/real-doi"
+    raw_real = f"""<?xml version="1.0" encoding="UTF-8"?>
+<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>{pmid}</PMID><Article>
+<ArticleTitle>Integrity safeguards for clinical reference verification</ArticleTitle>
+<Abstract><AbstractText>Reference provenance was evaluated using independent source records.</AbstractText></Abstract>
+<AuthorList><Author><LastName>Smith</LastName><ForeName>Alice</ForeName></Author></AuthorList>
+<Journal><JournalIssue><PubDate><Year>2025</Year></PubDate></JournalIssue><Title>Journal of Evidence Integrity</Title></Journal>
+<ELocationID EIdType="doi">{real_doi}</ELocationID><PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
+</Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="doi">{real_doi}</ArticleId></ArticleIdList></PubmedData>
+</PubmedArticle></PubmedArticleSet>"""
+    library = {
+        "entries": [{
+            "citekey": key, "pmid": pmid, "doi": real_doi,
+            "title": "Integrity safeguards for clinical reference verification",
+            "abstract": "Reference provenance was evaluated using independent source records.",
+            "authors": [{"last": "Smith", "first": "Alice"}],
+            "journal": "Journal of Evidence Integrity", "year": "2025",
+            "source": "pubmed",
+        }]
+    }
+    library_path = refs / "library.json"
+    library_path.write_text(json.dumps(library, indent=2), encoding="utf-8")
+    (refs / "refs.bib").write_text(
+        f"@article{{{key}, title={{Integrity safeguards for clinical reference verification}}, "
+        f"author={{Smith, Alice}}, journal={{Journal of Evidence Integrity}}, year={{2025}}, "
+        f"doi={{{real_doi}}}, pmid={{{pmid}}}}}\n", encoding="utf-8")
+    cited = manuscript / "proof.md"
+    cited.write_text(f"# Introduction\n\nA verified source is cited [@{key}].\n", encoding="utf-8")
+    (refs / "verified.json").write_text(
+        json.dumps({"records": {key: {"verified": True, "doi": "10.9999/fabricated"}}}, indent=2),
+        encoding="utf-8")
+
+    load_all()
+    pipe = registry.load()
+    state = State(scoped, ".wf")
+    state.create("medpaper", pipe.meta["version"], "S13_reflib")
+
+    def gate(name: str, **spec):
+        return get(name)(Ctx(pipeline=pipe, state=state, project=scoped,
+                             stage=pipe.stage("S13_reflib"), spec={"check": name, **spec}))
+
+    outcome = gate("citekeys_resolve", paths=["07_manuscript/proof.md"])
+    record("verified=true without raw PubMed proof is rejected", not outcome.ok,
+           outcome.detail[:120])
+    force_env = {**os.environ, "MEDPAPER_PROJECT": str(scoped),
+                 "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
+    forced = subprocess.run(
+        [sys.executable, str(ROOT / "tools/wf.py"), "advance", "--force", "--note",
+         "Attempted forced advance must remain blocked by bibliographic provenance."],
+        capture_output=True, text=True, env=force_env, encoding="utf-8", errors="replace")
+    record("--force cannot bypass reference-integrity gates",
+           forced.returncode != 0 and State(scoped, ".wf").load().current == "S13_reflib",
+           ((forced.stdout or "") + (forced.stderr or "")).strip()[:120])
+
+    cache_rel = "06_refs/cache/verify_efetch_pubmed_fixture.xml"
+    cache_path = scoped / cache_rel
+    cache_path.write_text(raw_real, encoding="utf-8")
+    source = refproof.parse_pubmed_payload(raw_real)[pmid]
+    verified = {
+        "schema": refproof.SCHEMA,
+        "generator": {"tool": refproof.GENERATOR, "mode": "fresh_ncbi_pubmed_efetch",
+                      "source": "NCBI PubMed EFetch"},
+        "verified_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "strict": False,
+        "library_sha256": refproof.file_sha256(library_path),
+        "n_entries": 1, "n_verified": 1,
+        "records": {key: {
+            "verified": True, "via": "pubmed", "pmid": pmid, "doi": real_doi,
+            "evidence": {"source": refproof.SOURCE, "cache_file": cache_rel,
+                         "payload_sha256": refproof.file_sha256(cache_path),
+                         "record_sha256": refproof.record_sha256(source),
+                         "fresh_fetch": True},
+        }},
+    }
+    verified_path = refs / "verified.json"
+    verified_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
+    outcome = gate("citekeys_resolve", paths=["07_manuscript/proof.md"])
+    record("hashed reparsed PubMed proof satisfies citekey gate", outcome.ok, outcome.detail[:120])
+
+    library["entries"][0]["doi"] = "10.9999/fabricated"
+    library_path.write_text(json.dumps(library, indent=2), encoding="utf-8")
+    verified["library_sha256"] = refproof.file_sha256(library_path)
+    verified["records"][key]["doi"] = "10.9999/fabricated"
+    verified_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
+    outcome = gate("citekeys_resolve", paths=["07_manuscript/proof.md"])
+    record("forged DOI fails even after booleans and library hash are patched", not outcome.ok,
+           outcome.detail[:120])
+
+    # Even a fully forged local XML/hash bundle cannot pass S13: that gate performs
+    # its own fresh PubMed fetch and compares the authoritative response.
+    raw_fake = raw_real.replace(real_doi, "10.9999/fabricated")
+    cache_path.write_text(raw_fake, encoding="utf-8")
+    forged_source = refproof.parse_pubmed_payload(raw_fake)[pmid]
+    evidence = verified["records"][key]["evidence"]
+    evidence["payload_sha256"] = refproof.file_sha256(cache_path)
+    evidence["record_sha256"] = refproof.record_sha256(forged_source)
+    verified_path.write_text(json.dumps(verified, indent=2), encoding="utf-8")
+    live_record = {
+        "pmid": pmid, "doi": real_doi,
+        "title": "Integrity safeguards for clinical reference verification",
+        "abstract": "Reference provenance was evaluated using independent source records.",
+        "authors": [{"last": "Smith", "first": "Alice"}],
+        "journal": "Journal of Evidence Integrity", "year": "2025", "flags": [],
+    }
+    with patch("pubmed.eutils.efetch", return_value=[live_record]):
+        outcome = gate("reference_provenance", live=True)
+    record("independent live S13 gate rejects a locally forged XML receipt", not outcome.ok,
+           outcome.detail[:120])
+
+    shutil.rmtree(scoped, ignore_errors=True)
 
 
 def run_qc(proj: Path) -> None:
@@ -566,6 +693,7 @@ def run_codex_integration() -> None:
         ROOT / "reference/rework-routing.md",
         ROOT / "tools/rework.py",
         ROOT / "tools/package_content.py",
+        ROOT / "tools/wfcore/refproof.py",
     ]
     record("repository Codex files exist", all(p.is_file() for p in required),
            ", ".join(str(p.relative_to(ROOT)) for p in required if not p.is_file()))
@@ -582,7 +710,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.5" and 'version: "1.3.5"' in skill,
+           pipe["meta"]["version"] == "1.3.6" and 'version: "1.3.6"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -648,6 +776,15 @@ def run_codex_integration() -> None:
                                                   "supplementary Methods", "Figure legends",
                                                   "collapsible heading")),
            "typography, links, supplementary Word file, legends and heading behavior")
+    reflib = next(s for s in pipe["stage"] if s["id"] == "S13_reflib")
+    record("reference verification is live, evidence-bound and non-overridable",
+           any(g.get("check") == "reference_provenance" and g.get("live") is True
+               for g in reflib["gate"]) and
+           "verified: true` by itself has no authority" in
+           (ROOT / "pipeline/stages/S13_reflib.md").read_text(encoding="utf-8") and
+           "NON_OVERRIDABLE_GATES" in
+           (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
+           "fresh EFetch + raw XML/library hashes + independent S13 live check")
 
     legacy = [
         ROOT / ".agents/AGENTS.md",
@@ -689,6 +826,12 @@ def run_codex_integration() -> None:
            "Statistical analysis" in methods_guide and
            "not a mandatory template" in methods_guide,
            "flexible core structure plus supplement boundary")
+    record("supplementary Methods cannot absorb display tables or Markdown rules",
+           any(g.get("check") == "supplementary_methods_clean"
+               for g in methods_stage["gate"]) and
+           "three-line supplementary workbook" in methods_guide and
+           "do not embed Markdown" in methods_card,
+           "supplement prose only; Table S* stays in the S10 workbook")
     record("ImageGen is review-only for scientific figures",
            "second visual critic" in policy_text and
            "must not redraw" in policy_text,
@@ -709,7 +852,12 @@ def run_codex_integration() -> None:
            "analysis/discussion/copyedit/Word-format routes")
 
     from wfcore.state import State
-    route_root = Path(tempfile.mkdtemp(prefix="medpaper_rework_route_"))
+    owned_root = os.environ.get("MEDPAPER_SELFTEST_ROOT")
+    if owned_root:
+        route_root = Path(owned_root) / "rework_route"
+        route_root.mkdir(parents=True, exist_ok=False)
+    else:
+        route_root = Path(tempfile.mkdtemp(prefix="medpaper_rework_route_"))
     route_project = route_root / "project"
     route_state = State(route_project, ".wf")
     route_state.create("medpaper", route_pipe.meta["version"], "S24_package_human_review")
@@ -1099,13 +1247,76 @@ def run_manuscript_docx(proj: Path) -> None:
         build("cover_letter", cover, "cover_letter.docx"),
         build("supplementary", manuscript / "supplementary_methods.md", "supplementary_methods.docx"),
     ])
+    word_xmls = []
+    for name in ("manuscript.docx", "title_page.docx", "cover_letter.docx",
+                 "supplementary_methods.docx"):
+        with zipfile.ZipFile(bundle / name) as zf:
+            word_xmls.extend(zf.read(item) for item in zf.namelist()
+                             if item.startswith("word/") and item.endswith(".xml"))
+    forbidden_controls = (b"<w:outlineLvl", b"<w:keepNext", b"<w:keepLines",
+                          b"<w:pageBreakBefore", b"<w:pBdr")
+    record("all Word XML parts remove black-square and folding controls",
+           builds_ok and not any(tag in blob for tag in forbidden_controls for blob in word_xmls))
+    with zipfile.ZipFile(bundle / "manuscript.docx") as zf:
+        manuscript_xml = zf.read("word/document.xml")
+    record("visible section headings are flattened to SectionHeading",
+           b'w:val="SectionHeading"' in manuscript_xml and
+           b'w:val="Heading1"' not in manuscript_xml and b'w:val="Heading2"' not in manuscript_xml)
+    manuscript_text = "\n".join(
+        paragraph.text for paragraph in __import__("docx").Document(bundle / "manuscript.docx").paragraphs)
+    record("Figure legends section title appears exactly once in Word",
+           sum(line.strip().casefold() == "figure legends"
+               for line in manuscript_text.splitlines()) == 1)
+
+    supplement_source = manuscript / "supplementary_methods.md"
+    supplement_good = supplement_source.read_text(encoding="utf-8")
+    supplement_source.write_text(
+        "# Supplementary Methods\n\n| Variable | Definition |\n|---|---|\n| A | B |\n\n---\n",
+        encoding="utf-8")
+    outcome = gate("supplementary_methods_clean", "S08_methods")
+    record("supplementary Methods rejects embedded tables and Markdown rules",
+           not outcome.ok, outcome.detail[:120])
+    invalid_supplement = bundle / "invalid_supplement.docx"
+    invalid_proc = subprocess.run(
+        [sys.executable, str(builder), "build", "--kind", "supplementary",
+         "--input", str(supplement_source), "--output", str(invalid_supplement),
+         "--style-config", str(style_path)], capture_output=True, text=True, env=env,
+        encoding="utf-8", errors="replace")
+    record("Word builder refuses a supplementary-Methods table bypass",
+           invalid_proc.returncode != 0 and not invalid_supplement.exists(),
+           ((invalid_proc.stdout or "") + (invalid_proc.stderr or "")).strip()[:120])
+    supplement_source.write_text(supplement_good, encoding="utf-8")
+
+    duplicate_source = submission / "duplicate_legend_source.md"
+    duplicate_source.write_text(full.read_text(encoding="utf-8") +
+                                "\n# Figure legends\n", encoding="utf-8")
+    duplicate_output = bundle / "duplicate_legend.docx"
+    duplicate_proc = subprocess.run(
+        [sys.executable, str(builder), "build", "--kind", "manuscript",
+         "--input", str(duplicate_source), "--output", str(duplicate_output),
+         "--style-config", str(style_path), "--bibliography", str(bib)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("Word builder refuses duplicate Figure legends titles",
+           duplicate_proc.returncode != 0 and not duplicate_output.exists(),
+           ((duplicate_proc.stdout or "") + (duplicate_proc.stderr or "")).strip()[:120])
+    duplicate_source.unlink(missing_ok=True)
+
     with zipfile.ZipFile(bundle / "supplementary_methods.docx") as zf:
         supplement_xml = zf.read("word/document.xml")
     record("manual Word line-break controls are removed",
            b"<w:br" not in supplement_xml and b"<w:cr" not in supplement_xml)
     from docx import Document
     from docx.enum.text import WD_BREAK
-    from manuscript.build_docx import normalize_docx
+    from manuscript.build_docx import audit_docx, normalize_docx
+    tampered_supplement = bundle / "tampered_supplement.docx"
+    shutil.copy2(bundle / "supplementary_methods.docx", tampered_supplement)
+    tampered_doc = Document(tampered_supplement)
+    tampered_doc.add_table(rows=2, cols=2)
+    tampered_doc.save(tampered_supplement)
+    record("Word audit rejects an embedded supplementary-Methods table",
+           any("supplementary Methods contains a table" in issue for issue in
+               audit_docx(tampered_supplement, style, "supplementary")))
+    tampered_supplement.unlink()
     raw_breaks = bundle / "line_break_fixture.docx"
     raw_doc = Document()
     paragraph = raw_doc.add_paragraph("First address line")
@@ -1309,6 +1520,11 @@ def run_manuscript_docx(proj: Path) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     blue.unlink(missing_ok=True)
 
+    if os.environ.get("MEDPAPER_SELFTEST_KEEP_ARTIFACTS") == "1":
+        qa_docs = proj.parent / "word_qa"
+        qa_docs.mkdir(parents=True, exist_ok=True)
+        for name in ("manuscript.docx", "supplementary_methods.docx"):
+            shutil.copy2(bundle / name, qa_docs / name)
     shutil.rmtree(submission, ignore_errors=True)
     for name in ("title.md", "abstract.md", "keywords.md", "introduction.md", "methods.md",
                  "discussion.md", "supplementary_methods.md", "full_manuscript.md", "title_page.md"):
@@ -1444,6 +1660,22 @@ def run_online(proj: Path) -> None:
                        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
     record("verification confirms every entry against the source",
            "verified 2/2" in (p.stdout or ""), (p.stdout or "").strip()[-90:])
+    from wfcore import registry
+    from wfcore.checks import Ctx, get, load_all
+    from wfcore.state import State
+
+    load_all()
+    pipe = registry.load()
+    state = State(proj, ".wf").load()
+    outcome = get("reference_provenance")(Ctx(
+        pipeline=pipe,
+        state=state,
+        project=proj,
+        stage=pipe.stage("S13_reflib"),
+        spec={"check": "reference_provenance", "live": True},
+    ))
+    record("independent S13 gate re-fetches verified records live", outcome.ok,
+           outcome.detail[:120])
 
 
 # ---------------------------------------------------------------------------
@@ -1451,6 +1683,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="self test for the medpaper toolchain")
     ap.add_argument("--keep", action="store_true", help="do not delete the temp project")
     ap.add_argument("--online", action="store_true", help="also exercise the live APIs")
+    ap.add_argument("--workdir", type=Path,
+                    help="use an existing empty directory instead of the system temp root")
     args = ap.parse_args()
 
     for mod, why in (("matplotlib", "figures"), ("numpy", "QC"), ("openpyxl", "tables"),
@@ -1462,10 +1696,20 @@ def main() -> int:
                   f"  uv pip install --python .venv/Scripts/python.exe {mod}")
             return 1
 
-    tmp = Path(tempfile.mkdtemp(prefix="medpaper_selftest_"))
+    if args.workdir:
+        tmp = args.workdir.resolve()
+        tmp.mkdir(parents=True, exist_ok=True)
+        if any(tmp.iterdir()):
+            print(f"cannot run: --workdir must be empty: {tmp}")
+            return 1
+    else:
+        tmp = Path(tempfile.mkdtemp(prefix="medpaper_selftest_"))
     proj = tmp / "project"
     os.environ["MEDPAPER_PROJECT"] = str(proj)
     os.environ["MEDPAPER_ROOT"] = str(ROOT)
+    os.environ["MEDPAPER_SELFTEST_ROOT"] = str(tmp)
+    if args.keep:
+        os.environ["MEDPAPER_SELFTEST_KEEP_ARTIFACTS"] = "1"
     print(f"temp project: {proj}\n")
 
     try:
@@ -1473,6 +1717,7 @@ def main() -> int:
         build_fixture(proj)
         record("fixture built", True)
         run_checks(proj)
+        run_reference_proof(proj)
         run_qc(proj)
         run_archetypes(proj)
         run_codex_integration()
@@ -1483,7 +1728,7 @@ def main() -> int:
         if args.online:
             run_online(proj)
     finally:
-        if args.keep:
+        if args.keep or args.workdir:
             print(f"\nkept: {tmp}")
         else:
             shutil.rmtree(tmp, ignore_errors=True)
@@ -1501,3 +1746,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
