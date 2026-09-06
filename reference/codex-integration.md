@@ -79,9 +79,14 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   optional supplementary Methods and every table. It is a read-only publication-readiness
   reviewer, not a second orchestrator or writer. Preserve its verdict for the user's S19
   review.
-- S19 and later revisions: read `reference/rework-routing.md`, run `tools/rework.py`, update
-  the earliest source-owning stage and rebuild its actual dependants. The assembled manuscript
-  must match its component Markdown at S19; do not patch it as a detached final file.
+- S19 and later revisions: use S19 as the repeatable scientific-content review loop and S24
+  as the repeatable journal-package review loop. Read `reference/rework-routing.md`, persist
+  the verbatim feedback and one interpretation with `tools/rework.py batch`, and resume from
+  `tools/rework.py status` after context compaction. Update the earliest source-owning stage,
+  rebuild only its actual dependants, and preserve unaffected hash-matched evidence. Token
+  efficiency comes from scoped reads and dependency-aware rebuilds, never from dropping an
+  affected request, gate, validation or review. The assembled manuscript must match its
+  component Markdown at S19; do not patch it as a detached final file.
 - S23: build each journal-required narrative upload with
   `tools/manuscript/build_docx.py`, including the cover letter and supplementary Methods.
   The builder wraps Pandoc/citeproc, applies the sourced journal style (Times New Roman
@@ -121,3 +126,4 @@ Plugin output follows the same rule as local-skill output. A plugin may help dis
 or inspect an artifact, but external content is not evidence until it passes the pipeline's
 provenance checks. Never send patient-level or private data to a plugin without explicit user
 authorization and a documented de-identification decision.
+

@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.7",
+           legacy.data["pipeline_version"] == "1.3.8",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -868,7 +868,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.7" and 'version: "1.3.7"' in skill,
+           pipe["meta"]["version"] == "1.3.8" and 'version: "1.3.8"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -925,10 +925,14 @@ def run_codex_integration() -> None:
     record("user revisions are source-routed and mechanically gated",
            "assembly_matches_sources" in human_checks and
            "package_content_matches_baseline" in package_checks and
+           "revision_rounds_closed" in human_checks and
+           "revision_rounds_closed" in package_checks and
+           any(gate["check"] == "revision_rounds_closed" for gate in final_audit["gate"]) and
            "08_submission/package_content_baseline.json" in package_stage["outputs"] and
-           "tools/rework.py start" in package_human_card and
+           "tools/rework.py batch" in package_human_card and
+           "tools/rework.py status" in package_human_card and
            "Never recapture at S24" in package_human_card,
-           "S19 component equality + S23 visible-text baseline + S24 route enforcement")
+           "persisted S19/S24 rounds + component equality + visible-text enforcement")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
                                                   "supplementary Methods", "Figure legends",
@@ -1026,6 +1030,7 @@ def run_codex_integration() -> None:
     route_pipe = registry.load()
     record("revision router chooses the earliest owning stage",
            resolve_route("analysis", "S24_package_human_review", route_pipe) == "S05_analysis" and
+           resolve_route("references", "S19_human_review", route_pipe) == "S13_reflib" and
            resolve_route("discussion", "S19_human_review", route_pipe) == "S16_discussion" and
            resolve_route("manuscript-copyedit", "S19_human_review", route_pipe) ==
            "S19_human_review" and
@@ -1033,7 +1038,7 @@ def run_codex_integration() -> None:
            "S22_polish" and
            resolve_route("word-format-only", "S25_submission_audit", route_pipe) ==
            "S24_package_human_review",
-           "analysis/discussion/copyedit/Word-format routes")
+           "analysis/reference/discussion/copyedit/Word-format routes")
 
     from wfcore.state import State
     owned_root = os.environ.get("MEDPAPER_SELFTEST_ROOT")
@@ -1061,6 +1066,130 @@ def run_codex_integration() -> None:
            routed_state.decision("submission_package_user_confirmed") is None,
            ((routed.stdout or "") + (routed.stderr or "")).strip()[:140])
     shutil.rmtree(route_root, ignore_errors=True)
+
+    if owned_root:
+        batch_root = Path(owned_root) / "revision_batch"
+        batch_root.mkdir(parents=True, exist_ok=False)
+    else:
+        batch_root = Path(tempfile.mkdtemp(prefix="medpaper_revision_batch_"))
+    batch_project = batch_root / "project"
+    manuscript = batch_project / "07_manuscript"
+    manuscript.mkdir(parents=True)
+    (manuscript / "methods.md").write_text("# Methods\n\nOriginal methods source.\n", encoding="utf-8")
+    (manuscript / "discussion.md").write_text("# Discussion\n\nOriginal discussion source.\n", encoding="utf-8")
+    batch_state = State(batch_project, ".wf")
+    batch_state.create("medpaper", route_pipe.meta["version"], "S24_package_human_review")
+    batch_state.record_decision(
+        "manuscript_human_reviewed", "YES",
+        "The scientific manuscript was approved before journal-specific package revision.")
+    batch_state.record_decision(
+        "submission_package_user_confirmed", "OK",
+        "The package was approved before the user submitted a new multi-item feedback batch.")
+    plan_path = batch_root / "revision_plan.json"
+    plan_path.write_text(json.dumps({
+        "feedback_verbatim": "Please shorten Methods and clarify the causal interpretation in Discussion.",
+        "interpretation": "Revise both canonical manuscript sources without changing unsupported facts or bypassing downstream validation.",
+        "ambiguous_or_requires_user_decision": [],
+        "items": [
+            {
+                "kind": "methods",
+                "request": "Shorten the Methods while preserving every necessary reproducibility detail.",
+                "affected_sources": ["07_manuscript/methods.md"],
+                "acceptance_criteria": ["Main Methods is concise and complete", "No supported detail is lost"],
+            },
+            {
+                "kind": "discussion",
+                "request": "Clarify the causal interpretation and keep claims within the study design.",
+                "affected_sources": ["07_manuscript/discussion.md"],
+                "acceptance_criteria": ["Claims match the design limitations", "Interpretation is clear to a reader"],
+            },
+        ],
+    }, indent=2), encoding="utf-8")
+    batch_env = {**os.environ, "MEDPAPER_PROJECT": str(batch_project),
+                 "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
+    opened = subprocess.run(
+        [sys.executable, str(ROOT / "tools/rework.py"), "batch", "--plan", str(plan_path),
+         "--project", str(batch_project)], capture_output=True, text=True, env=batch_env,
+        encoding="utf-8", errors="replace")
+    batch_state = State(batch_project, ".wf").load()
+    round_path = batch_project / ".wf/revisions/R001.json"
+    round_payload = json.loads(round_path.read_text(encoding="utf-8")) if round_path.exists() else {}
+    record("multi-item revision persists interpretation and rewinds once to earliest owner",
+           opened.returncode == 0 and batch_state.current == "S08_methods" and
+           batch_state.data.get("active_revision_round") == "R001" and
+           round_payload.get("earliest_stage") == "S08_methods" and
+           len(round_payload.get("items", [])) == 2 and
+           batch_state.decision("manuscript_human_reviewed") is not None and
+           batch_state.decision("submission_package_user_confirmed") is None,
+           ((opened.stdout or "") + (opened.stderr or "")).strip()[:180])
+    status = subprocess.run(
+        [sys.executable, str(ROOT / "tools/rework.py"), "status", "--project", str(batch_project)],
+        capture_output=True, text=True, env=batch_env, encoding="utf-8", errors="replace")
+    record("revision status restores atomic work after context compaction",
+           status.returncode == 0 and "R001-01" in status.stdout and "R001-02" in status.stdout and
+           "acceptance:" in status.stdout and "sources:" in status.stdout,
+           status.stdout.strip()[:160])
+
+    from wfcore.checks import Ctx, get, load_all
+    load_all()
+    revision_gate = get("revision_rounds_closed")
+    review_stage = route_pipe.stage("S24_package_human_review")
+    blocked = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
+    record("review gate blocks an unfinished revision round", not blocked.ok, blocked.detail)
+
+    (manuscript / "methods.md").write_text("# Methods\n\nConcise revised methods source.\n", encoding="utf-8")
+    (manuscript / "discussion.md").write_text("# Discussion\n\nRevised interpretation within the design.\n", encoding="utf-8")
+    batch_state = State(batch_project, ".wf").load()
+    batch_state.data["current"] = "S24_package_human_review"
+    batch_state.stage_info("S24_package_human_review")["status"] = "active"
+    batch_state.save()
+    mark_outputs = []
+    for item_id, rel, summary in [
+        ("R001-01", "07_manuscript/methods.md",
+         "Condensed the canonical Methods source while retaining reproducibility details."),
+        ("R001-02", "07_manuscript/discussion.md",
+         "Clarified the canonical Discussion interpretation within the study design."),
+    ]:
+        mark_outputs.append(subprocess.run(
+            [sys.executable, str(ROOT / "tools/rework.py"), "mark", "--item", item_id,
+             "--changed-file", rel, "--validated-by", "fixture source validation passed",
+             "--summary", summary, "--project", str(batch_project)], capture_output=True,
+            text=True, env=batch_env, encoding="utf-8", errors="replace"))
+    closed = subprocess.run(
+        [sys.executable, str(ROOT / "tools/rework.py"), "close", "--summary",
+         "All requested source revisions were completed and validated through the workflow.",
+         "--project", str(batch_project)], capture_output=True, text=True, env=batch_env,
+        encoding="utf-8", errors="replace")
+    batch_state = State(batch_project, ".wf").load()
+    closed_gate = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
+    record("completed revision round closes only at its review node with evidence",
+           all(proc.returncode == 0 for proc in mark_outputs) and closed.returncode == 0 and
+           batch_state.data.get("active_revision_round") is None and closed_gate.ok,
+           ((closed.stdout or "") + (closed.stderr or "") + " " + closed_gate.detail).strip()[:180])
+    (manuscript / "methods.md").write_text("# Methods\n\nUntracked post-close drift.\n", encoding="utf-8")
+    drift_gate = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
+    record("closed-round hash detects untracked source drift", not drift_gate.ok, drift_gate.detail[:150])
+
+    # A later completed round may legitimately supersede an older receipt for the same path.
+    import hashlib
+    newer = dict(round_payload)
+    newer["round_id"] = "R002"
+    newer["status"] = "complete"
+    newer["completed_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    newer["items"] = [{
+        "id": "R002-01", "kind": "methods", "status": "done",
+        "validated_by": ["fixture second-round validation passed"],
+        "changed_files": [{
+            "path": "07_manuscript/methods.md",
+            "sha256": hashlib.sha256((manuscript / "methods.md").read_bytes()).hexdigest(),
+        }],
+    }]
+    (batch_project / ".wf/revisions/R002.json").write_text(
+        json.dumps(newer, indent=2), encoding="utf-8")
+    superseded_gate = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
+    record("latest completed round supersedes an older hash for the same source",
+           superseded_gate.ok, superseded_gate.detail)
+    shutil.rmtree(batch_root, ignore_errors=True)
 
 
 def run_fulltext_registration(proj: Path) -> None:
@@ -1931,3 +2060,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

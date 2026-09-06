@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.7"
+  version: "1.3.8"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -29,12 +29,17 @@ the active card's declared outputs:
 
 Never infer the stage, create future-stage artifacts, or bypass a red gate.
 
-When the user requests a revision after an artifact has been presented, read
-[revision routing](../../../reference/rework-routing.md) and run `tools/rework.py` before
-editing. Route content to its earliest owning stage, update the source of truth and rebuild
-only actual dependants. Never patch `full_manuscript.md` or narrative text inside a DOCX as a
-detached file. At S24, a Word-only edit is permitted only when
-`tools/package_content.py verify` proves that visible text is unchanged.
+When the user requests a revision after an artifact has been presented, keep it inside the
+repeatable S19 scientific-review loop or S24 journal-package loop. Read
+[revision routing](../../../reference/rework-routing.md), save the verbatim feedback and its
+single interpretation as one persisted batch with `tools/rework.py batch`, and run
+`tools/rework.py status` after context compaction. Route the batch to its earliest owning
+stage, update the source of truth, rebuild only actual dependants, and close the round only
+after every atomic item has a final-file hash and validation record. Preserve unaffected
+approved evidence, but never omit an affected gate, request, analysis, file or review to save
+tokens or context. There is no fixed revision-round limit. Never patch `full_manuscript.md` or
+narrative text inside a DOCX as a detached file. At S24, a Word-only edit is permitted only
+when `tools/package_content.py verify` proves that visible text is unchanged.
 
 ## Evidence and fact integrity
 
@@ -109,3 +114,4 @@ Keep patient-level/private data local unless the user explicitly authorizes an e
 transfer. Inspect every rendered visual artifact before recording its visual-review decision.
 At a stage requiring a material user choice, such as the target journal or private-data
 access, ask once and wait; otherwise keep working until the gate passes and the stage advances.
+

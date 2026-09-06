@@ -3,6 +3,80 @@
 All revisions remain inside the medpaper state machine. Reading or editing files directly is
 an implementation step, not permission to bypass the owning stage, source of truth or gates.
 
+## Where repeated feedback belongs
+
+- **S19 is the repeated scientific-review loop.** Use it for the assembled manuscript,
+  supplementary Methods, results, references, tables, figures, legends and scientific
+  interpretation. The user may request as many rounds as needed. Do not advance to journal
+  selection until the user approves the scientific version.
+- **S24 is the repeated journal-package loop.** Use it after journal selection for DOCX/PDF
+  appearance, title page, declarations, cover letter, filenames, upload composition and any
+  late content correction. Content still routes back to its scientific source; format-only
+  changes may remain at S24. Do not freeze or start S25 until the user approves the actual
+  package.
+
+Feedback can also arrive at any other stage. Record it immediately and route it to the
+earliest owner; the review loop to return to is the active S19 or S24 round.
+
+## Multi-item revision rounds
+
+For actual user feedback, prefer one batch round over repeatedly invoking the single-kind
+command. Interpret the feedback once and write `project/temp/revision_plan.json`:
+
+```json
+{
+  "feedback_verbatim": "The user's complete feedback, preserved without paraphrased loss.",
+  "interpretation": "A concise explanation of the intended outcome, constraints, and what must remain unchanged.",
+  "ambiguous_or_requires_user_decision": [],
+  "items": [
+    {
+      "kind": "methods",
+      "request": "Shorten the main Methods while retaining the reproducible detail in supplementary Methods.",
+      "affected_sources": ["07_manuscript/methods.md", "07_manuscript/supplementary_methods.md"],
+      "acceptance_criteria": ["Main Methods retains every design-critical fact", "Supplement contains no tables"]
+    },
+    {
+      "kind": "figures",
+      "request": "Increase label legibility in Figure 2 without changing data geometry.",
+      "affected_sources": ["05_figures/code/fig2.py", "05_figures/out/Figure2.png"],
+      "acceptance_criteria": ["Deterministic figure QC passes", "Fresh render is visually inspected"]
+    }
+  ]
+}
+```
+
+If `ambiguous_or_requires_user_decision` is non-empty, ask one concise question and do not
+guess. Otherwise start or extend the current round:
+
+```powershell
+.\.venv\Scripts\python.exe tools\rework.py batch --plan project\temp\revision_plan.json
+.\.venv\Scripts\python.exe tools\rework.py status
+```
+
+The batch command stores the verbatim feedback, its SHA-256, the interpretation, atomic
+items, acceptance criteria and earliest owning stage under `.wf/revisions/RNNN.json`. It
+invalidates only decisions whose evidence can change and preserves unrelated approvals. If
+new feedback arrives before the round finishes, create another small plan containing only the
+new items and run `batch` again; it is appended to the same active round and rewinds farther
+only when necessary.
+
+After all affected sources and true dependants have been rebuilt and the workflow has
+returned to S19 or S24, record the final files and completed checks for each item:
+
+```powershell
+.\.venv\Scripts\python.exe tools\rework.py mark --item R001-01 `
+  --changed-file 07_manuscript/methods.md `
+  --changed-file 07_manuscript/supplementary_methods.md `
+  --validated-by "S08 gates" --validated-by "assembly and citation checks" `
+  --summary "Implemented the requested Methods restructuring and preserved all design-critical facts."
+
+.\.venv\Scripts\python.exe tools\rework.py close `
+  --summary "All requested items were rebuilt from their owning sources and passed the applicable gates."
+```
+
+`revision_rounds_closed` blocks S19/S24 approval and S25 audit when an item is pending, a
+changed source is missing, or its final hash drifted after the round was closed.
+
 Before changing an artifact after it has been presented for review, run:
 
 ```powershell
@@ -23,6 +97,7 @@ Use the earliest stage that owns the changed fact or artifact:
 | Results wording with unchanged analysis | `results-wording` -> S09 |
 | table content | `tables` -> S10 |
 | figure content or rendering | `figures` -> S11 |
+| reference selection, citation or verified metadata | `references` -> S13 |
 | Introduction | `introduction` -> S14 |
 | Discussion | `discussion` -> S16 |
 | title, abstract, keywords or initial assembly | `title-abstract-keywords` -> S17 |
@@ -43,7 +118,31 @@ If Word text changes, reconcile the requested wording to its Markdown/data/table
 run the owning route, rebuild the true dependants and capture a new baseline at S23. Never
 recapture a baseline at S24 merely to bless an edited DOCX.
 
-Every rewind invalidates downstream decisions. After corrections, progress through the gates,
-present the revised artifact again, obtain the required user confirmation, freeze the new
-package and run one new independent audit. Unchanged artifacts may be reused; rebuild only
-the changed artifact and its actual dependants.
+The legacy single-kind `start` command conservatively invalidates every downstream decision;
+the preferred batch-round command invalidates only decisions whose evidence may have changed.
+After corrections, progress through the gates, present the revised artifact again, obtain the
+required user confirmation, freeze the new package and run one new independent audit.
+Unchanged artifacts may be reused; rebuild only the changed artifact and its actual dependants.
+
+## Context and token discipline without quality loss
+
+Token use is reduced by avoiding repeated interpretation and irrelevant rereading, not by
+reducing the requested work:
+
+1. Preserve the user's exact feedback once, then resume from `tools/rework.py status` after
+   context compaction instead of reconstructing it from conversation memory.
+2. Read the active item, its declared source files, shared result/reference evidence and the
+   specific downstream consumers only. Do not reload every manuscript file for a local edit.
+3. Change the earliest source of truth. Reuse immutable raw data, verified literature,
+   analysis results, journal snapshots and unchanged artifacts when their hashes/dependencies
+   did not change.
+4. Rebuild only the dependency closure. A Methods wording change rebuilds manuscript/package
+   outputs but does not rerun data acquisition; a changed estimate reruns its analysis and all
+   dependent prose/tables/figures.
+5. Run cheap structural checks first, targeted scientific/functional checks second, and the
+   required final visual or independent review once on the resulting revision.
+6. Never cite token limits, context compaction, runtime or convenience as a reason to omit an
+   item, shrink the analysis, skip a gate, reduce literature verification or accept a partial
+   artifact. If the context compacts, continue from the persisted round until every item is
+   complete.
+

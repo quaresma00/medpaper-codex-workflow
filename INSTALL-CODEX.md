@@ -133,10 +133,15 @@ S25 requires an independent three-lens `PASS`; a changed or deficient package lo
 S24 for correction and renewed confirmation.
 
 User-requested revisions do not bypass the pipeline. `tools/rework.py` routes each change to
-the earliest source-owning stage described in `reference/rework-routing.md`. S19 requires the
-assembled manuscript to match its component Markdown. S23 captures DOCX visible-text hashes
-with `tools/package_content.py`; S24 accepts a Word-only change as formatting only when those
-hashes still match.
+the earliest source-owning stage described in `reference/rework-routing.md`. Repeated feedback
+is persisted as a batch at S19 for scientific content or S24 for the journal package. Run
+`tools/rework.py status` after context compaction; it restores the exact feedback,
+interpretation, atomic items, affected files and acceptance criteria without rereading the
+entire conversation. Rebuild only the true dependency closure and reuse unchanged verified
+evidence, but do not drop an affected gate or requested item for token efficiency. S19
+requires the assembled manuscript to match its component Markdown. S23 captures DOCX
+visible-text hashes with `tools/package_content.py`; S24 accepts a Word-only change as
+formatting only when those hashes still match.
 
 ## Verify or rebuild the package
 
@@ -148,3 +153,4 @@ hashes still match.
 
 Packaging refuses non-placeholder credentials and personal email addresses, runs the doctor
 and offline tests, and excludes `.venv`, run state, caches, and user project data.
+

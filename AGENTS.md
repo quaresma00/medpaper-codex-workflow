@@ -86,10 +86,17 @@ skip a stage.
     editor and journal-compliance audit. Any post-confirmation change invalidates the freeze
     and returns the workflow to S24.
 12. A user-requested revision remains inside the workflow. Read `reference/rework-routing.md`
-    and run `tools/rework.py` before editing. Update the earliest owning source and rebuild its
-    true dependants. Never patch assembled Markdown or Word narrative content as detached final
-    files; S24 permits Word-only layout changes only when the S23 visible-text baseline passes.
+    and create or extend a persisted batch with `tools/rework.py batch` before editing. S19 is
+    the repeatable scientific-content loop and S24 is the repeatable journal-package loop;
+    recover compacted context with `tools/rework.py status`. Update the earliest owning source,
+    rebuild only its true dependants, and reuse unaffected hash-matched evidence. Every atomic
+    request must retain its acceptance criteria, changed-file hashes and validation before the
+    round closes. Token, context or time pressure never permits omitting an affected item,
+    output, gate, visual inspection or review. Never patch assembled Markdown or Word narrative
+    content as detached final files; S24 permits Word-only layout changes only when the S23
+    visible-text baseline passes.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external
 action, stop and ask one concise question.
+
