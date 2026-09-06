@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.3.6"
+version = "1.3.7"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -26,7 +26,7 @@ temp_dir = "temp"
 [layout.dirs]
 "00_input" = "User-supplied inputs only: research idea md, author/affiliation info, raw uploads."
 "01_protocol" = "Normalized idea, feasibility assessment, protocol v1/final, go-no-go records."
-"02_data" = "raw/ (immutable), derived/ (code-built only), codebook.md, provenance.md."
+"02_data" = "raw/ (immutable), acquisition/ (retrieval code), derived/ (code-built only), acquisition_manifest.json, codebook.md, provenance.md."
 "03_analysis" = "code/ (scripts), results/ (machine-readable JSON), analysis_log.md, notes.md."
 "04_tables" = "main/ (one xlsx per main table), supplementary/ (single xlsx, one sheet per table)."
 "05_figures" = "code/ (plot scripts), out/ (rendered png+tiff), qc/ (QC reports), legends.md."
@@ -41,6 +41,7 @@ temp_dir = "temp"
 [policy]
 invariants = [
   "Discovery helpers may find literature, but formal metadata must be freshly re-fetched through tools/pubmed/verify.py. A verified=true boolean is never evidence by itself: every citable key must pass the hashed raw-PubMed XML receipt, exact library hash, PMID/DOI match and independent live S13 EFetch gate. Never hand-write or patch library.json, verified.json, refs.bib or refs.ris to satisfy a gate.",
+  "Acquire the complete protocol-defined data universe whenever the source makes it available. Never silently use LIMIT/TOP, head(), sample(), first-N slices, fixed page counts, date narrowing, or preview caps to save time, tokens, download volume or compute. A schema pilot is non-analytic and must be followed by full acquisition; every source needs machine-countable total and received receipts plus terminal-pagination proof. Source-imposed partial access requires the user's explicit recorded authorization. This gate cannot be waived with --force.",
   "Every number in the manuscript must already exist in 03_analysis/results/*.json, written there by executed code. Never compute a statistic in your head or in prose.",
   "Draft scientific sections only at their active stages; the optional supplementary Methods file belongs only to S08. S17 then assembles the canonical full_manuscript.md from the completed, gated sections.",
   "Language polishing may change wording only. Never a number, never a citation, never a figure/table reference. A snapshot is taken before the pass and the gate diffs against it.",
@@ -151,13 +152,13 @@ headings = ["Objective", "Design", "Population and eligibility", "Variables", "S
 [[stage.gate]]
 check = "md_sections"
 path = "02_data/acquisition_plan.md"
-headings = ["Source", "Access route", "Licence and ethics", "Exact retrieval steps", "Expected shape", "Known limitations"]
+headings = ["Source", "Access route", "Licence and ethics", "Protocol-defined data universe", "Exact retrieval steps", "Pagination and completeness proof", "Expected shape", "Known limitations"]
 
 [[stage]]
 id = "S04_data"
 title = "Acquire data + codebook + provenance"
 card = "stages/S04_data.md"
-outputs = ["02_data/codebook.md", "02_data/provenance.md", "03_analysis/results/dataset_summary.json"]
+outputs = ["02_data/acquisition_manifest.json", "02_data/codebook.md", "02_data/provenance.md", "03_analysis/results/dataset_summary.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -167,7 +168,9 @@ min = 1
 [[stage.gate]]
 check = "json_keys"
 path = "03_analysis/results/dataset_summary.json"
-keys = ["n_rows", "n_cols", "variables", "missingness", "source_hash", "built_by"]
+keys = ["n_rows", "n_cols", "variables", "missingness", "source_hash", "built_by", "acquisition_scope", "acquisition_status"]
+[[stage.gate]]
+check = "data_acquisition_complete"
 [[stage.gate]]
 check = "temp_clean"
 
@@ -179,6 +182,8 @@ loopable = true
 outputs = ["03_analysis/method_scan.md", "03_analysis/analysis_log.md"]
 [[stage.gate]]
 check = "outputs_exist"
+[[stage.gate]]
+check = "data_acquisition_complete"
 [[stage.gate]]
 check = "pubmed_cache_fresh"
 manifest = "06_refs/cache/scan_manifest.json"
@@ -209,6 +214,8 @@ card = "stages/S06_protocol_final.md"
 outputs = ["01_protocol/protocol_final.md", "01_protocol/protocol_diff.md"]
 [[stage.gate]]
 check = "outputs_exist"
+[[stage.gate]]
+check = "data_acquisition_complete"
 [[stage.gate]]
 check = "md_sections"
 path = "01_protocol/protocol_final.md"
@@ -462,6 +469,8 @@ outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript
 check = "outputs_exist"
 optional = ["07_manuscript/statements.md"]
 [[stage.gate]]
+check = "data_acquisition_complete"
+[[stage.gate]]
 check = "manuscript_structure"
 [[stage.gate]]
 check = "supplementary_methods_clean"
@@ -658,6 +667,8 @@ outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHE
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "data_acquisition_complete"
+[[stage.gate]]
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
@@ -734,6 +745,8 @@ outputs = ["08_submission/independent_submission_audit.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "data_acquisition_complete"
+[[stage.gate]]
 check = "md_sections"
 path = "08_submission/independent_submission_audit.md"
 headings = ["Verdict", "Reader comprehension", "Editorial screening and low-level errors", "Guideline compliance", "Required files and omissions", "Cross-file consistency", "Formatting and technical checks", "Issues requiring correction", "Final recommendation"]
@@ -769,6 +782,7 @@ allowed = ["PASS"]
 globs = [
   "00_input/*",
   "02_data/raw/**",
+  "02_data/acquisition/**",
   "02_data/derived/*",
   "03_analysis/code/*",
   "03_analysis/results/*.json",
@@ -786,4 +800,3 @@ globs = [
   "08_submission/*.csl",
   "08_submission/bundle/**",
 ]
-

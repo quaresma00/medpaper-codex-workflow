@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.6",
+           legacy.data["pipeline_version"] == "1.3.7",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -339,6 +339,141 @@ def run_checks(proj: Path) -> None:
            revisited.decision("submission_package_user_confirmed") is None and
            revisited.decision("submission_package_independent_audit") is None)
     shutil.rmtree(decision_root, ignore_errors=True)
+
+
+def run_data_proof(proj: Path) -> None:
+    """Full acquisition must be proved; a synchronized partial payload still fails."""
+    from wfcore import dataproof, registry
+    from wfcore.checks import Ctx, get, load_all
+    from wfcore.state import State
+
+    section("data acquisition completeness and anti-truncation")
+    scoped = proj / "temp/data_proof"
+    raw = scoped / "02_data/raw"
+    acquisition = scoped / "02_data/acquisition"
+    results_dir = scoped / "03_analysis/results"
+    raw.mkdir(parents=True)
+    acquisition.mkdir(parents=True)
+    results_dir.mkdir(parents=True)
+    data_path = raw / "cohort.csv"
+    count_path = raw / "source_total.txt"
+    code_path = acquisition / "fetch.py"
+    data_path.write_text("id,value\n1,10\n2,20\n3,30\n4,40\n5,50\n", encoding="utf-8")
+    count_path.write_text("5\n", encoding="utf-8")
+    code_path.write_text("# API cursor loop runs until next_cursor is empty\n", encoding="utf-8")
+
+    manifest = {
+        "schema_version": dataproof.SCHEMA_VERSION,
+        "requested_scope": dataproof.FULL_SCOPE,
+        "status": dataproof.COMPLETE,
+        "protocol_population": "Every record returned by the pre-specified eligible cohort query.",
+        "acquisition_method": "scripted",
+        "pilot": {"used": False},
+        "protocol_sampling": None,
+        "sources": [{
+            "id": "eligible_cohort",
+            "type": "database",
+            "locator": "fixture://eligible-cohort?release=2026-09-01",
+            "retrieved_at": "2026-09-07T10:00:00+08:00",
+            "source_total_expected": 5,
+            "records_requested": 5,
+            "records_received": 5,
+            "source_total_evidence": {
+                "path": "02_data/raw/source_total.txt", "kind": "text_integer"
+            },
+            "received_count_evidence": [{
+                "path": "02_data/raw/cohort.csv", "kind": "delimited_rows", "header": True
+            }],
+            "complete": True,
+            "truncation_applied": False,
+            "pagination": {
+                "applicable": True, "pages_expected": 2, "pages_received": 2,
+                "terminal_reached": True, "next_cursor_at_end": None,
+            },
+        }],
+        "analysis_dataset": {
+            "primary_source_id": "eligible_cohort", "n_rows": 4,
+            "excluded_after_acquisition": 1,
+            "relationship": "one_record_per_analysis_row",
+        },
+    }
+
+    def synchronize() -> None:
+        current_raw = dataproof.inventory(scoped, "02_data/raw")
+        manifest["raw_files"] = current_raw
+        manifest["acquisition_files"] = dataproof.inventory(scoped, "02_data/acquisition")
+        manifest["raw_bundle_sha256"] = dataproof.bundle_sha256(current_raw)
+        (scoped / dataproof.MANIFEST_REL).write_text(
+            json.dumps(manifest, indent=2), encoding="utf-8")
+        summary = {
+            "n_rows": manifest["analysis_dataset"]["n_rows"], "n_cols": 2,
+            "variables": [], "missingness": {},
+            "source_hash": manifest["raw_bundle_sha256"],
+            "acquisition_scope": dataproof.FULL_SCOPE,
+            "acquisition_status": manifest["status"],
+            "built_by": "03_analysis/code/build.py",
+        }
+        (scoped / dataproof.SUMMARY_REL).write_text(
+            json.dumps(summary, indent=2), encoding="utf-8")
+
+    synchronize()
+    load_all()
+    pipe = registry.load()
+    state = State(scoped, ".wf")
+    state.create("medpaper", pipe.meta["version"], "S04_data")
+
+    def gate():
+        return get("data_acquisition_complete")(Ctx(
+            pipeline=pipe, state=state, project=scoped, stage=pipe.stage("S04_data"),
+            spec={"check": "data_acquisition_complete"},
+        ))
+
+    outcome = gate()
+    record("full payload, source total, received count and terminal cursor pass",
+           outcome.ok, outcome.detail[:140])
+
+    # Updating hashes and the claimed received count still cannot turn a first-four
+    # payload into the independently preserved source total of five.
+    data_path.write_text("id,value\n1,10\n2,20\n3,30\n4,40\n", encoding="utf-8")
+    manifest["sources"][0]["records_received"] = 4
+    manifest["analysis_dataset"]["n_rows"] = 3
+    synchronize()
+    outcome = gate()
+    record("synchronized partial payload is rejected against source-total evidence",
+           not outcome.ok and "claims complete" in outcome.detail, outcome.detail[:140])
+
+    data_path.write_text("id,value\n1,10\n2,20\n3,30\n4,40\n5,50\n", encoding="utf-8")
+    manifest["sources"][0]["records_received"] = 5
+    manifest["analysis_dataset"]["n_rows"] = 4
+    code_path.write_text("records = pandas.read_csv(path).head(2)\n", encoding="utf-8")
+    synchronize()
+    outcome = gate()
+    record("unapproved head/sample/LIMIT-style acquisition cap is rejected",
+           not outcome.ok and "unapproved acquisition cap" in outcome.detail,
+           outcome.detail[:140])
+
+    env = {**os.environ, "MEDPAPER_PROJECT": str(scoped), "MEDPAPER_ROOT": str(ROOT),
+           "PYTHONIOENCODING": "utf-8"}
+    forced = subprocess.run(
+        [sys.executable, str(ROOT / "tools/wf.py"), "advance", "--force", "--note",
+         "Attempted force advance must remain blocked by incomplete or capped acquisition."],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("--force cannot bypass full-data acquisition proof",
+           forced.returncode != 0 and State(scoped, ".wf").load().current == "S04_data",
+           ((forced.stdout or "") + (forced.stderr or "")).strip()[:140])
+
+    code_path.write_text(
+        "preview = pandas.read_csv(path).head(2)  # MEDPAPER_PILOT_ONLY\n",
+        encoding="utf-8")
+    manifest["pilot"] = {
+        "used": True, "excluded_from_analysis": True,
+        "full_acquisition_completed_after_pilot": True,
+    }
+    synchronize()
+    outcome = gate()
+    record("non-analytic pilot is allowed only after the full acquisition completes",
+           outcome.ok, outcome.detail[:140])
+    shutil.rmtree(scoped, ignore_errors=True)
 
 
 def run_reference_proof(proj: Path) -> None:
@@ -694,6 +829,9 @@ def run_codex_integration() -> None:
         ROOT / "tools/rework.py",
         ROOT / "tools/package_content.py",
         ROOT / "tools/wfcore/refproof.py",
+        ROOT / "tools/wfcore/dataproof.py",
+        ROOT / "tools/data_manifest.py",
+        ROOT / "reference/data-acquisition-integrity.md",
     ]
     record("repository Codex files exist", all(p.is_file() for p in required),
            ", ".join(str(p.relative_to(ROOT)) for p in required if not p.is_file()))
@@ -710,7 +848,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.6" and 'version: "1.3.6"' in skill,
+           pipe["meta"]["version"] == "1.3.7" and 'version: "1.3.7"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -796,6 +934,21 @@ def run_codex_integration() -> None:
            "NON_OVERRIDABLE_GATES" in
            (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
            "fresh EFetch + raw XML/library hashes + repeated live checks through final audit")
+    acquisition_stages = {
+        stage["id"] for stage in pipe["stage"]
+        if any(gate.get("check") == "data_acquisition_complete"
+               for gate in stage.get("gate", []))
+    }
+    record("full data acquisition is evidence-bound and non-overridable",
+           {"S04_data", "S05_analysis", "S06_protocol_final", "S17_assemble",
+            "S23_package", "S25_submission_audit"}.issubset(acquisition_stages) and
+           "02_data/acquisition_manifest.json" in
+           next(s for s in pipe["stage"] if s["id"] == "S04_data")["outputs"] and
+           '"data_acquisition_complete"' in
+           (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8") and
+           "full_protocol_defined_universe" in
+           (ROOT / "pipeline/stages/S04_data.md").read_text(encoding="utf-8"),
+           "source total + received counts + pagination + raw/code hashes + anti-cap scan")
 
     legacy = [
         ROOT / ".agents/AGENTS.md",
@@ -1728,6 +1881,7 @@ def main() -> int:
         build_fixture(proj)
         record("fixture built", True)
         run_checks(proj)
+        run_data_proof(proj)
         run_reference_proof(proj)
         run_qc(proj)
         run_archetypes(proj)
@@ -1757,4 +1911,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

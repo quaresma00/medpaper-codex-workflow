@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.6"
+  version: "1.3.7"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -38,6 +38,15 @@ detached file. At S24, a Word-only edit is permitted only when
 
 ## Evidence and fact integrity
 
+- Data acquisition means every record in the S03 protocol-defined universe, not a convenient
+  subset. Before analysis, follow every page/cursor, preserve machine-countable source-total
+  and received-payload receipts, register every raw/acquisition file with
+  `tools/data_manifest.py`, and pass the non-overridable `data_acquisition_complete` gate.
+  Never add `LIMIT`, `TOP`, `head()`, `sample()`, first-N slicing, a fixed page cap or a
+  narrower query to save time, tokens, download volume or compute. A non-analytic pilot must
+  be followed by the full acquisition. A genuine source-imposed restriction requires the
+  user's explicit `partial_data_authorized=YES` decision; read
+  [data acquisition integrity](../../../reference/data-acquisition-integrity.md).
 - A bibliographic fact is usable only after the bundled verifier performs a fresh PubMed
   EFetch. `verified: true` alone is never evidence: the gate reparses hashed raw PubMed XML,
   binds it to the exact `library.json`, compares PMID and DOI as well as bibliographic fields,
@@ -99,4 +108,3 @@ Keep patient-level/private data local unless the user explicitly authorizes an e
 transfer. Inspect every rendered visual artifact before recording its visual-review decision.
 At a stage requiring a material user choice, such as the target journal or private-data
 access, ask once and wait; otherwise keep working until the gate passes and the stage advances.
-

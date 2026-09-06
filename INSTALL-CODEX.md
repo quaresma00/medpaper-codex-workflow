@@ -72,6 +72,20 @@ The command loop is:
 Use `loop --to <stage> --why "..."` for a deliberate return to an earlier stage. Use
 `clean` to report undeclared files; inspect the report before using `clean --apply`.
 
+At S04, a raw file is not enough to prove complete acquisition. The stage creates and checks
+`02_data/acquisition_manifest.json`:
+
+```powershell
+.\.venv\Scripts\python.exe tools\data_manifest.py init
+.\.venv\Scripts\python.exe tools\data_manifest.py sync
+.\.venv\Scripts\python.exe tools\data_manifest.py verify
+```
+
+Every source must reconcile a machine-readable source total with the received raw payloads
+and show terminal pagination. The workflow rejects convenience sampling, first-N retrieval,
+fixed page caps and silently narrowed queries. This evidence gate cannot be waived with
+`--force`; a genuine external access limit requires explicit user authorization.
+
 ## Capability conflicts
 
 The pipeline owns sequencing, paths, and gates. Other Skills or plugins may assist inside
@@ -133,4 +147,3 @@ hashes still match.
 
 Packaging refuses non-placeholder credentials and personal email addresses, runs the doctor
 and offline tests, and excludes `.venv`, run state, caches, and user project data.
-

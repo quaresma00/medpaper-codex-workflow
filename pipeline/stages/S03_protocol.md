@@ -20,10 +20,21 @@ pre-specified rather than fitted to whatever happened to be significant.
    - `Sample size / power`: if the dataset is fixed, state the precision it affords
      rather than pretending to a prospective calculation.
 3. Write `project/02_data/acquisition_plan.md` with exactly these headings:
-   `Source`, `Access route`, `Licence and ethics`, `Exact retrieval steps`,
-   `Expected shape`, `Known limitations`.
+   `Source`, `Access route`, `Licence and ethics`, `Protocol-defined data universe`,
+   `Exact retrieval steps`, `Pagination and completeness proof`, `Expected shape`,
+   `Known limitations`.
+   - `Protocol-defined data universe` defines the complete set that should be acquired
+     before post-acquisition eligibility exclusions. It may be a scientifically pre-specified
+     sample design, but it must not be narrowed later for speed, token use, download size,
+     memory or convenience.
    `Exact retrieval steps` must be reproducible commands or a numbered manual procedure
-   with URLs and version/release identifiers, not "download the dataset".
+   with URLs, query/filter text and version/release identifiers, not "download the dataset".
+   State every server-side eligibility filter. Do not silently add a date restriction,
+   field subset, first-N cap, `LIMIT`, `TOP`, `head()`, `sample()`, or maximum page count.
+   - `Pagination and completeness proof` names the source's total-count field or count query,
+     the raw receipt that will preserve it, the page/cursor termination rule, and how received
+     records will be counted from raw payloads. A page-size parameter is allowed only when the
+     plan follows every page/cursor until the terminal response.
 4. If the data requires credentials, an application, or an IRB approval the user has not
    mentioned, raise it now.
 
@@ -34,6 +45,12 @@ pre-specified rather than fitted to whatever happened to be significant.
 ## Hard rules
 - Do not look at the data before the analysis plan is written down. If data was already
   inspected, say so in the protocol under `Deviations` at S06 rather than hiding it.
+- The acquisition target is the entire protocol-defined universe. A small schema/connectivity
+  pilot may be planned, but it is never an analysis dataset and must be followed by full
+  acquisition before S04 can close.
+- If an external source truly prevents full access, do not choose a subset yourself. Record
+  the exact restriction and its receipt, ask the user whether a source-limited analysis is
+  acceptable, and continue only after the explicit decision required at S04.
 - No figures, no tables, no manuscript prose.
 
 ## Close

@@ -29,6 +29,7 @@ STAGE_ALIASES = {
     "S20_package": "S17_assemble",
 }
 NON_OVERRIDABLE_GATES = {
+    "data_acquisition_complete",
     "reference_provenance",
     "refs_library",
     "bib_ris_match_library",
@@ -109,7 +110,7 @@ def cmd_init(args) -> int:
         (proj / name).mkdir(parents=True, exist_ok=True)
         (proj / name / ".gitkeep").touch()
     for sub in (
-        "02_data/raw", "02_data/derived", "03_analysis/code", "03_analysis/results",
+        "02_data/raw", "02_data/acquisition", "02_data/derived", "03_analysis/code", "03_analysis/results",
         "04_tables/main", "04_tables/supplementary", "05_figures/code", "05_figures/out",
         "05_figures/qc", "06_refs/cache", "06_refs/fulltext", "06_refs/deepread",
         "08_submission/cache", "08_submission/bundle",
@@ -245,12 +246,18 @@ def cmd_advance(args) -> int:
                           r.check in NON_OVERRIDABLE_GATES]
     if integrity_failures:
         print(f"refusing to advance: {len(integrity_failures)} non-overridable "
-              f"reference-integrity gate(s) failed in {stage.id}")
+              f"evidence-integrity gate(s) failed in {stage.id}")
         print(DASH)
         _gate_lines(integrity_failures)
         print(DASH)
-        print("--force cannot waive bibliographic provenance. Re-fetch the real PubMed "
-              "record or remove/replace the citation.")
+        failed_names = {result.check for result in integrity_failures}
+        if "data_acquisition_complete" in failed_names:
+            print("--force cannot waive full-data acquisition. Acquire the complete "
+                  "protocol-defined universe and exhaust pagination; if access is truly "
+                  "source-limited, obtain and record the user's explicit authorization.")
+        if failed_names - {"data_acquisition_complete"}:
+            print("--force cannot waive bibliographic provenance. Re-fetch the real PubMed "
+                  "record or remove/replace the citation.")
         return 2
     if not ok and not args.force:
         print(f"refusing to advance: {blocking} blocking issue(s) in {stage.id}")
@@ -605,4 +612,3 @@ def main(argv: list[str] | None = None) -> int:
     except KeyError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-

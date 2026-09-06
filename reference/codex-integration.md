@@ -43,6 +43,24 @@ Use `--access authorized --authorization-note "..."` for an institutionally obta
 Registration copies the file into `06_refs/fulltext/` and writes a hash and retrieval record.
 Only registered local full texts with substantive notes count toward S15.
 
+## Data acquisition helpers
+
+Data APIs, database clients, repository downloaders and browser tools may transport data at
+S04, but they may not choose a smaller analytical dataset for convenience. The S03 plan fixes
+the complete protocol-defined universe and the query/filter scope first. S04 then preserves
+the source-total response, every payload/page needed to recount received records, and the
+terminal pagination response under `02_data/raw/`; retrieval code belongs in
+`02_data/acquisition/`.
+
+Run `tools/data_manifest.py init`, fill the source and count-evidence entries, then run `sync`
+and `verify`. The gate recomputes raw and acquisition-code hashes, independently counts the
+declared raw evidence, reconciles expected/requested/received counts, checks the last cursor,
+and detects common acquisition caps such as `LIMIT`, `head()`, `sample()` and first-N slices.
+Chunk or page size is allowed only when all chunks/pages are retrieved. A schema pilot is
+non-analytic and must be followed by the full fetch. If the source—not the agent's time,
+tokens, context or compute—blocks full access, stop for the user's explicit authorization and
+document the resulting population/bias. See `reference/data-acquisition-integrity.md`.
+
 ## Tables, figures, documents, and PDFs
 
 - S10: generate XLSX files with `tools/tables/threeline.py`. Then use the standalone
@@ -102,4 +120,3 @@ Plugin output follows the same rule as local-skill output. A plugin may help dis
 or inspect an artifact, but external content is not evidence until it passes the pipeline's
 provenance checks. Never send patient-level or private data to a plugin without explicit user
 authorization and a documented de-identification decision.
-
