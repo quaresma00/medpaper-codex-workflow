@@ -219,7 +219,7 @@
 
 Word 样式优先采用官方投稿指南；若指南没有规定，默认使用 Times New Roman、12 pt、双倍行距、黑色文字。净化器会从所有 WordprocessingML 部件移除 `keepNext`、`keepLines`、`pageBreakBefore`、`outlineLvl` 和段落边框，标题统一映射为基于正文样式的 `SectionHeading`，因而没有标题前小黑点、折叠三角形或可折叠大纲。文件同时移除超链接，统一同级标题字号，并拒绝字符 `↓` 和 Word 手动换行符。
 
-正文必须有 References 标题和且仅有一个 Figure legends 区标题；每幅图也只能出现一个对应图注标题，图注正文不得再次以 `Figure N` 开头。补充方法 DOCX 不允许包含表格或 Markdown 长横线残留，补充表只存在于单独的三线表工作簿中。如期刊要求，也可另交单独图注文件，但同一文件内仍不得重复标题。
+正文必须有 References 标题，并且只能有一个 Figure legends 区标题；每幅图也只能出现一个对应图注标题，图注正文不得再次以 `Figure N` 开头。补充方法 DOCX 不允许包含表格或 Markdown 长横线残留，补充表只存在于单独的三线表工作簿中。如期刊要求，也可另交单独图注文件，但同一文件内仍不得重复标题。
 
 所有 Word 文件都要经过结构检查和渲染后的视觉检查。若 title page 包含参考文献数量，Markdown 源文件和生成后的 DOCX 都必须与正文实际引用数量一致。图片、表格、补充材料、清单和 manifest 按目标期刊要求加入投稿包。
 
