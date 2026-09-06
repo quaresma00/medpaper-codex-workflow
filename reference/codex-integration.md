@@ -21,7 +21,9 @@ Verification is evidence-based and fail-closed. The verifier performs a fresh Pu
 stores the raw XML, records its SHA-256 and the parsed record fingerprint, binds the receipt to
 the exact current `library.json`, and compares PMID, DOI, title, journal, year, first author,
 abstract availability and PubMed status. The S13 `reference_provenance` gate then makes a
-second live EFetch and repeats those comparisons independently. `verified: true` is not
+second live EFetch and repeats those comparisons independently; the same live gate recurs at
+later manuscript, human-review, package and final-audit checkpoints so post-S13 tampering is
+also caught. `verified: true` is not
 trusted by itself; ad-hoc scripts must never write the library, receipt, BibTeX or RIS files.
 The four reference-integrity gates are not waivable with `wf advance --force`. If NCBI is
 unavailable, S13 stays blocked instead of accepting a local substitute.

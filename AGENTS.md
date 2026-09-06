@@ -46,7 +46,7 @@ skip a stage.
 1. Never invent or recall bibliographic facts. `verified: true` alone is not evidence. A
    citable record must be produced by a fresh `tools/pubmed/verify.py` EFetch, bound to hashed
    raw PubMed XML and the exact library hash, match PMID/DOI/metadata on recomputation, and
-   pass the independent live S13 PubMed gate. Never write the four reference-library files
+   pass independent live PubMed gates from S13 through the final audit. Never write the four reference-library files
    with an ad-hoc script; their integrity gates cannot be bypassed with `--force`.
 2. Every manuscript number must already exist in `project/03_analysis/results/*.json`,
    produced by executed analysis code. Never calculate a result in prose.

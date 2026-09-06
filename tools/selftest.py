@@ -777,14 +777,25 @@ def run_codex_integration() -> None:
                                                   "collapsible heading")),
            "typography, links, supplementary Word file, legends and heading behavior")
     reflib = next(s for s in pipe["stage"] if s["id"] == "S13_reflib")
+    live_reference_stages = {
+        stage["id"] for stage in pipe["stage"]
+        if any(gate.get("check") == "reference_provenance" and gate.get("live") is True
+               for gate in stage.get("gate", []))
+    }
+    required_live_stages = {
+        "S13_reflib", "S14_introduction", "S16_discussion", "S17_assemble",
+        "S18_independent_review", "S19_human_review", "S21_authors", "S22_polish",
+        "S23_package", "S24_package_human_review", "S25_submission_audit",
+    }
     record("reference verification is live, evidence-bound and non-overridable",
            any(g.get("check") == "reference_provenance" and g.get("live") is True
                for g in reflib["gate"]) and
+           required_live_stages.issubset(live_reference_stages) and
            "verified: true` by itself has no authority" in
            (ROOT / "pipeline/stages/S13_reflib.md").read_text(encoding="utf-8") and
            "NON_OVERRIDABLE_GATES" in
            (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
-           "fresh EFetch + raw XML/library hashes + independent S13 live check")
+           "fresh EFetch + raw XML/library hashes + repeated live checks through final audit")
 
     legacy = [
         ROOT / ".agents/AGENTS.md",

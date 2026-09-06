@@ -41,7 +41,8 @@ detached file. At S24, a Word-only edit is permitted only when
 - A bibliographic fact is usable only after the bundled verifier performs a fresh PubMed
   EFetch. `verified: true` alone is never evidence: the gate reparses hashed raw PubMed XML,
   binds it to the exact `library.json`, compares PMID and DOI as well as bibliographic fields,
-  and at S13 independently re-fetches the records live. Never hand-write or patch
+  and independently re-fetches the records live at S13 and every later manuscript/submission
+  checkpoint through the final audit. Never hand-write or patch
   `library.json`, `verified.json`, `refs.bib` or `refs.ris`; reference-integrity gates cannot
   be waived with `--force`.
 - A full text acquired through an open-access or explicitly authorized institutional route

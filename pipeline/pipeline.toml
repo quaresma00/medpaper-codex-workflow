@@ -389,6 +389,9 @@ check = "outputs_exist"
 [[stage.gate]]
 check = "single_section_written"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "md_wordcount"
 path = "07_manuscript/introduction.md"
 min_key = "intro_words_min"
@@ -424,6 +427,9 @@ outputs = ["07_manuscript/discussion.md"]
 check = "outputs_exist"
 [[stage.gate]]
 check = "single_section_written"
+[[stage.gate]]
+check = "reference_provenance"
+live = true
 [[stage.gate]]
 check = "md_wordcount"
 path = "07_manuscript/discussion.md"
@@ -462,6 +468,9 @@ check = "supplementary_methods_clean"
 [[stage.gate]]
 check = "assembly_matches_sources"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "abbreviations_centralized"
 [[stage.gate]]
 check = "legend_no_results_restatement"
@@ -494,6 +503,9 @@ check = "outputs_exist"
 [[stage.gate]]
 check = "supplementary_methods_clean"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "md_sections"
 path = "07_manuscript/independent_publishability_review.md"
 headings = ["Verdict", "Critical barriers", "Scientific validity", "Reporting completeness", "Tables and supplementary material", "Journal suitability", "Required revisions", "Post-revision outlook"]
@@ -520,6 +532,9 @@ check = "manuscript_structure"
 check = "supplementary_methods_clean"
 [[stage.gate]]
 check = "assembly_matches_sources"
+[[stage.gate]]
+check = "reference_provenance"
+live = true
 [[stage.gate]]
 check = "citekeys_resolve"
 paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
@@ -577,6 +592,9 @@ check = "manuscript_structure"
 [[stage.gate]]
 check = "supplementary_methods_clean"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
 check = "abbreviations_centralized"
@@ -603,6 +621,9 @@ check = "journal_limits_met"
 check = "manuscript_structure"
 [[stage.gate]]
 check = "supplementary_methods_clean"
+[[stage.gate]]
+check = "reference_provenance"
+live = true
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
@@ -642,6 +663,9 @@ check = "bundle_complete"
 check = "docx_bundle_ready"
 [[stage.gate]]
 check = "supplementary_methods_clean"
+[[stage.gate]]
+check = "reference_provenance"
+live = true
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
@@ -687,6 +711,9 @@ check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
 [[stage.gate]]
+check = "reference_provenance"
+live = true
+[[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]
 check = "package_content_matches_baseline"
@@ -714,6 +741,9 @@ headings = ["Verdict", "Reader comprehension", "Editorial screening and low-leve
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+[[stage.gate]]
+check = "reference_provenance"
+live = true
 [[stage.gate]]
 check = "title_page_reference_count"
 [[stage.gate]]

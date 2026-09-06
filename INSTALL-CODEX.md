@@ -97,7 +97,8 @@ the active stage only. Follow `reference/codex-integration.md`:
 Formal references are fail-closed. Candidate-search tools may suggest papers, but only
 `tools/pubmed/verify.py` may create the verification receipt. It performs a fresh PubMed
 EFetch and records the raw-XML hash, parsed-record fingerprint, and exact `library.json`
-hash. S13 separately re-fetches the PMIDs live. A handwritten `verified: true`, a locally
+hash. S13 and every later manuscript/submission checkpoint separately re-fetch the PMIDs
+live. A handwritten `verified: true`, a locally
 fabricated DOI, or a green Pandoc build cannot satisfy these gates, and `wf advance --force`
 cannot waive them.
 
