@@ -108,6 +108,12 @@ skip a stage.
     `manuscript_human_reviewed=NO_FURTHER_REVIEW` only after the user explicitly states that no
     further review is needed and identify the presented ZIP revision and package ID in the
     rationale. This approval is valid for that package only and cannot be forced.
+14. After explicit S19 approval, create and verify
+    `07_manuscript/scientific_master_freeze.json`. S20-S25 must not alter a frozen scientific
+    source. Initialize the selected journal under `08_submission/integration/` and keep every
+    journal-specific wording, structure, title-page, declaration and packaging change there.
+    A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
+    and requires a new review ZIP, explicit approval and freeze before submission work resumes.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external

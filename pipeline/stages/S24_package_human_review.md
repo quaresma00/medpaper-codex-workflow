@@ -30,6 +30,10 @@ approves the exact visible files.
    title-page or package source; rebuild its true dependants and return through S23. Never edit
    narrative content only in DOCX. Format-only work stays at S24. Preserve every unrelated
    user edit and modify only the affected Word file or deterministic style/build source.
+   A journal-specific wording, abstract-organization, title-page or declaration edit that
+   preserves the accepted science belongs in `08_submission/integration/`; it must never be
+   copied back into `07_manuscript`. A genuine change to methods, analysis, results or
+   scientific interpretation returns to its scientific owner and invalidates the S19 approval.
    If context compacts, resume from `tools/rework.py status` rather than re-reading the entire
    feedback history. Token pressure is not permission to reduce or skip requested work.
 3. When the user has already edited files, identify which bundle files changed and run:
@@ -39,13 +43,16 @@ approves the exact visible files.
    A passing visible-text baseline proves a DOCX change was formatting-only. If it fails,
    reconcile the changed wording back to its owning source, route the workflow there, rebuild
    the DOCX at S23 and capture a new baseline there. Never recapture at S24 to bless drift.
+   When a genuine scientific change was requested, repeat the S19 review ZIP, explicit user
+   confirmation and scientific freeze before regenerating this journal integration package.
 4. Re-run `bundle_complete`, `docx_bundle_ready`, `package_content_matches_baseline`, the
    standalone Word manifest audit and
    visual QA for every changed file. Recheck filenames, upload roles, word/keyword/reference
    limits, figure/table/legend numbering, supplements, declarations and cross-file facts
    against the chosen journal's official guideline snapshot. If a title-page reference count
-   is present, verify that both the canonical source and the user-edited DOCX still equal the
-   number of distinct citekeys actually used in `full_manuscript.md`, not the library size.
+   is present, verify that both the integration source and the user-edited DOCX still equal the
+   number of distinct citekeys actually used in
+   `08_submission/integration/full_manuscript.md`, not the library size.
 5. At S24, verify each atomic request against its acceptance criteria. Mark the final changed
    files and checks, then close the revision round with `tools/rework.py close`. Present the
    resulting package again; later feedback opens a new round without a fixed round limit.
@@ -79,6 +86,9 @@ approves the exact visible files.
   confirmation again.
 - A direct Word content edit can never be classified as format-only. Visible-text drift blocks
   freezing until it is applied to the owning source and rebuilt through S23.
+- Journal-specific adaptations stay in `08_submission/integration/` and the bundle. Frozen
+  scientific-master files may change only after source-routed scientific rework, renewed S19
+  review and a new freeze.
 - Never infer or rewrite user-owned authorship, affiliation, funding, ethics or conflict data.
 - Do not trade away a requested correction, full validation, independent review or visual QA
   to save tokens. Save tokens by reading the persisted item and its dependency closure only.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Show, synchronize, or check the title-page reference count against actual citations."""
+"""Bind the journal-integration title-page count to its manuscript's actual citations."""
 from __future__ import annotations
 
 import argparse
@@ -24,8 +24,8 @@ def project_root() -> Path:
 
 
 def paths(project: Path) -> tuple[Path, Path]:
-    return (project / "07_manuscript/full_manuscript.md",
-            project / "07_manuscript/title_page.md")
+    return (project / "08_submission/integration/full_manuscript.md",
+            project / "08_submission/integration/title_page.md")
 
 
 def load(project: Path) -> tuple[Path, Path, str, str, int]:
@@ -91,3 +91,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

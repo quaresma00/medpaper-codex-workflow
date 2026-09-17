@@ -54,12 +54,22 @@ then freeze its actual author instructions and Word-format rules.
   "fallbacks": ["font_family", "body_font_pt", "title_font_pt", "section_heading_font_pt", "subsection_heading_font_pt", "line_spacing", "paragraph_spacing_after_pt", "margins_in", "paper_size"]
 }
 ```
+8. Derive a pristine journal-specific integration workspace from the accepted scientific
+   freeze after the target journal, guideline snapshot and style file are final:
+```
+.\.venv\Scripts\python.exe tools/manuscript/journal_workspace.py init
+.\.venv\Scripts\python.exe tools/manuscript/journal_workspace.py verify --require-pristine
+```
+   This copies the accepted manuscript, optional supplementary Methods, legends, captions and
+   abbreviation statements into `project/08_submission/integration/`. All journal-specific
+   content changes now occur there, never in `project/07_manuscript/`.
 
 ## Outputs
 - `08_submission/journal_shortlist.md`
 - `08_submission/target_journal.json`
 - `08_submission/guidelines_extract.md`
 - `08_submission/docx_style.json`
+- `08_submission/integration/journal_workspace.json`
 
 ## Hard rules
 - Never state indexing, quartile, fees, turnaround or format rules from memory.
@@ -69,6 +79,10 @@ then freeze its actual author instructions and Word-format rules.
 - Formatting defaults are used only where the chosen journal is silent and are documented.
 - `fallbacks` lists only the canonical JSON keys whose rules are silent; every other style
   value must be supported by the official `guidelines_url`, which is included in `source`.
+- The S19 scientific freeze must verify unchanged before journal selection closes.
+- For a later journal, run `journal_workspace.py init --replace`; the tool preserves the
+  previous generated integration and bundle under `08_submission/journal_archives/`, then
+  derives the new target from the same frozen scientific master.
 
 ## Close
 ```
@@ -76,3 +90,4 @@ then freeze its actual author instructions and Word-format rules.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "target=<journal>; current SCIE/JCR verified; Word rules frozen; journal deltas=<...>"
 ```
+

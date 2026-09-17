@@ -2,8 +2,8 @@
 """Manuscript de-AI and academic-English linter. Stdlib only.
 
     .venv/Scripts/python.exe tools/text/polish.py snapshot      # freeze the pre-polish text (do this first)
-    .venv/Scripts/python.exe tools/text/polish.py lint          # full report -> 07_manuscript/polish_report.json
-    .venv/Scripts/python.exe tools/text/polish.py lint --file 07_manuscript/discussion.md
+    .venv/Scripts/python.exe tools/text/polish.py lint          # report -> 08_submission/integration/polish_report.json
+    .venv/Scripts/python.exe tools/text/polish.py lint --file 08_submission/integration/full_manuscript.md
     .venv/Scripts/python.exe tools/text/polish.py diff          # what polishing changed, and what it must not have
 
 Three jobs, deliberately separated:
@@ -30,8 +30,8 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Fallback order for legacy workspaces. Once full_manuscript.md exists it is the canonical
-# main source and the component drafts are deliberately not polished in parallel.
+# Component fallback is retained for focused lint calls. Journal polishing itself uses the
+# derived integration manuscript and never edits the S19 scientific master.
 LEGACY_SECTION_ORDER = [
     "07_manuscript/title_page.md",
     "07_manuscript/abstract.md",
@@ -43,14 +43,14 @@ LEGACY_SECTION_ORDER = [
     "07_manuscript/statements.md",
 ]
 CANONICAL_ORDER = [
-    "07_manuscript/full_manuscript.md",
-    "07_manuscript/supplementary_methods.md",
-    "07_manuscript/title_page.md",
-    "07_manuscript/statements.md",
+    "08_submission/integration/full_manuscript.md",
+    "08_submission/integration/supplementary_methods.md",
+    "08_submission/integration/title_page.md",
+    "08_submission/integration/statements.md",
 ]
-SNAPSHOT_DIR = "07_manuscript/prepolish"
-REPORT = "07_manuscript/polish_report.json"
-ALLOWLIST = "07_manuscript/polish_allowlist.tsv"
+SNAPSHOT_DIR = "08_submission/integration/prepolish"
+REPORT = "08_submission/integration/polish_report.json"
+ALLOWLIST = "08_submission/integration/polish_allowlist.tsv"
 
 FENCE_RE = re.compile(r"```.*?```", re.S)
 CITE_RE = re.compile(r"\[[^\]]*@[^\]]*\]")
@@ -198,7 +198,7 @@ def sections(only: str | None = None) -> list[tuple[str, str]]:
     proj = project_root()
     if only:
         rels = [only]
-    elif (proj / "07_manuscript/full_manuscript.md").exists():
+    elif (proj / "08_submission/integration/full_manuscript.md").exists():
         rels = CANONICAL_ORDER
     else:
         rels = LEGACY_SECTION_ORDER
@@ -681,3 +681,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

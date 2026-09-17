@@ -78,7 +78,10 @@ INVALIDATE_BY_KIND = {
     "introduction": COMMON_MANUSCRIPT_INVALIDATION,
     "discussion": COMMON_MANUSCRIPT_INVALIDATION,
     "title-abstract-keywords": COMMON_MANUSCRIPT_INVALIDATION,
-    "manuscript-copyedit": COMMON_MANUSCRIPT_INVALIDATION,
+    # At S24 this edits only the journal integration copy. The S19 branch below upgrades
+    # it to COMMON_MANUSCRIPT_INVALIDATION because the accepted scientific master is then
+    # still the file under review.
+    "manuscript-copyedit": PACKAGE_INVALIDATION | {"polish_reviewed"},
     "journal": PACKAGE_INVALIDATION | {"journal_chosen", "polish_reviewed"},
     "title-page-or-statements": PACKAGE_INVALIDATION | {"polish_reviewed"},
     "cover-letter-or-package-structure": PACKAGE_INVALIDATION,
@@ -260,12 +263,10 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
     state.save()
     invalidations: set[str] = set()
     for item in plan["items"]:
-        invalidations.update(INVALIDATE_BY_KIND[item["kind"]])
-    # A late package-round correction passes the scientific-review checkpoint on its way
-    # back to S24. The user will inspect the changed content in the actual package there;
-    # retain the earlier S19 approval while still requiring a fresh S18 independent verdict.
-    if review_stage == "S24_package_human_review":
-        invalidations.discard("manuscript_human_reviewed")
+        if item["kind"] == "manuscript-copyedit" and review_stage == "S19_human_review":
+            invalidations.update(COMMON_MANUSCRIPT_INVALIDATION)
+        else:
+            invalidations.update(INVALIDATE_BY_KIND[item["kind"]])
     removed = _clear_decisions(state, invalidations)
     target = min(
         (item["owning_stage"] for item in plan["items"]),

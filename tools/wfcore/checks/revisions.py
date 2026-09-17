@@ -6,7 +6,9 @@ import json
 
 from . import Ctx, Result, check
 from ..packagecontent import verify_baseline
+from ..journalworkspace import verify as verify_journal_workspace
 from ..reviewpackage import verify as verify_review_package
+from ..scientificfreeze import verify as verify_scientific_freeze
 
 
 def _sha256(path) -> str:
@@ -146,6 +148,68 @@ def s19_review_release_explicit(ctx: Ctx) -> Result:
         True, "s19_review_release_explicit",
         f"user explicitly ended review for S19 ZIP v{manifest['package_revision']:03d} "
         f"({package_token})",
+    )
+
+
+def _scientific_freeze_result(ctx: Ctx, check_name: str) -> Result:
+    ok, details, freeze = verify_scientific_freeze(ctx.project)
+    if not ok or freeze is None:
+        return Result(
+            False, check_name, "; ".join(details[:8]),
+            [
+                "Do not edit the accepted 07_manuscript scientific master for journal formatting.",
+                "At S19, record explicit no-further-review approval and run "
+                "tools/manuscript/scientific_freeze.py freeze.",
+                "For a real scientific correction, route the request to its owning stage, "
+                "then repeat S19 review and create a new freeze.",
+            ],
+        )
+    decision = ctx.state.decision("manuscript_human_reviewed")
+    token = str(freeze.get("review_package_id", ""))[:12]
+    if (not decision or decision.get("value") != "NO_FURTHER_REVIEW" or
+            token not in str(decision.get("rationale", ""))):
+        return Result(
+            False, check_name,
+            "scientific freeze is not bound to the current explicit S19 approval",
+        )
+    if str(freeze.get("created_at", "")) < str(decision.get("at", "")):
+        return Result(False, check_name, "scientific freeze predates the current S19 approval")
+    return Result(
+        True, check_name,
+        f"journal-independent scientific master {str(freeze['freeze_id'])[:12]} is unchanged "
+        f"and bound to S19 review package {token}",
+    )
+
+
+@check("scientific_master_frozen")
+def scientific_master_frozen(ctx: Ctx) -> Result:
+    return _scientific_freeze_result(ctx, "scientific_master_frozen")
+
+
+@check("scientific_master_unchanged")
+def scientific_master_unchanged(ctx: Ctx) -> Result:
+    return _scientific_freeze_result(ctx, "scientific_master_unchanged")
+
+
+@check("journal_workspace_ready")
+def journal_workspace_ready(ctx: Ctx) -> Result:
+    pristine = bool(ctx.spec.get("require_pristine", False))
+    ok, problems, workspace = verify_journal_workspace(
+        ctx.project, require_pristine=pristine
+    )
+    if not ok or workspace is None:
+        return Result(
+            False, "journal_workspace_ready", "; ".join(problems[:8]),
+            [
+                "Run tools/manuscript/journal_workspace.py init after the target journal is recorded.",
+                "Edit only project/08_submission/integration for journal-specific requirements.",
+            ],
+        )
+    state = "pristine" if pristine else "active"
+    return Result(
+        True, "journal_workspace_ready",
+        f"{state} integration workspace for {workspace.get('journal')} derives from "
+        f"scientific freeze {str(workspace.get('scientific_freeze_id', ''))[:12]}",
     )
 
 

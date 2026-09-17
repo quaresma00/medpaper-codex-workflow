@@ -11,7 +11,7 @@ journal-guideline audit.
    extras. Write the journal-specific cover letter source outside the bundle at
    `project/08_submission/cover_letter.md`.
 2. Before building the title page, synchronize any existing reference-count field with the
-   distinct citekeys actually used in `full_manuscript.md`:
+   distinct citekeys actually used in `08_submission/integration/full_manuscript.md`:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/reference_count.py sync
 ```
@@ -19,8 +19,8 @@ journal-guideline audit.
    derive it from the candidate literature-library size.
 3. Build every prose upload with `tools/manuscript/build_docx.py`. At minimum:
 ```
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind manuscript --input project/07_manuscript/full_manuscript.md --output project/08_submission/bundle/manuscript.docx --style-config project/08_submission/docx_style.json --bibliography project/06_refs/refs.bib --csl <journal.csl>
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind title_page --input project/07_manuscript/title_page.md --output project/08_submission/bundle/title_page.docx --style-config project/08_submission/docx_style.json
+.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind manuscript --input project/08_submission/integration/full_manuscript.md --output project/08_submission/bundle/manuscript.docx --style-config project/08_submission/docx_style.json --bibliography project/06_refs/refs.bib --csl <journal.csl>
+.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind title_page --input project/08_submission/integration/title_page.md --output project/08_submission/bundle/title_page.docx --style-config project/08_submission/docx_style.json
 .\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind cover_letter --input project/08_submission/cover_letter.md --output project/08_submission/bundle/cover_letter.docx --style-config project/08_submission/docx_style.json
 ```
    If supplementary Methods exists, build it (or the journal-mandated combined supplement)
@@ -85,7 +85,7 @@ journal-guideline audit.
   `pageBreakBefore`, paragraph-border residue or collapsible heading level in any Word XML.
 - `References` and `Figure legends` must be visible in the manuscript.
 - Any title-page reference count must equal the distinct citations actually used in the
-  canonical manuscript; both the Markdown source and generated Word title page are checked.
+  journal integration manuscript; both the Markdown source and generated Word title page are checked.
 - Figure legends only identify and decode the display; they do not restate result direction
   or numerical findings. Crowded abbreviation lists appear once under `Declarations and
   Statements > Abbreviations`, unless an explicitly sourced journal rule requires them local.
@@ -94,6 +94,8 @@ journal-guideline audit.
   S24 and preserve any user edits made there.
 - Never recapture the visible-text baseline merely to accept a content edit made directly in
   Word. Route content changes to their source; use the baseline only to permit format-only edits.
+- Every journal-adapted narrative upload is built from `08_submission/integration/`. Never
+  rebuild from or modify the frozen `07_manuscript` master for this journal's package.
 
 ## Close
 ```

@@ -16,16 +16,16 @@ from pathlib import Path
 
 from . import Ctx, Result, check
 
-SNAPSHOT = "07_manuscript/prepolish"
-REPORT = "07_manuscript/polish_report.json"
+SNAPSHOT = "08_submission/integration/prepolish"
+REPORT = "08_submission/integration/polish_report.json"
 LEGACY_SECTIONS = ["introduction.md", "methods.md", "supplementary_methods.md", "results.md", "discussion.md", "abstract.md"]
 
 
 def _wanted_sections(ctx: Ctx) -> set[str]:
-    if ctx.p("07_manuscript/full_manuscript.md").exists():
+    if ctx.p("08_submission/integration/full_manuscript.md").exists():
         return {name for name in ("full_manuscript.md", "supplementary_methods.md",
                                   "title_page.md", "statements.md")
-                if ctx.p(f"07_manuscript/{name}").exists()}
+                if ctx.p(f"08_submission/integration/{name}").exists()}
     return {name for name in LEGACY_SECTIONS if ctx.p(f"07_manuscript/{name}").exists()}
 
 
@@ -120,7 +120,7 @@ def ai_tells_clean(ctx: Ctx) -> Result:
             "; ".join(bits),
             ["Full detail: .venv/Scripts/python.exe tools/text/polish.py lint",
              "Rewrite the clause. Do not delete the sentence to make the check pass.",
-             f"A genuine exception goes in project/07_manuscript/polish_allowlist.tsv."],
+             f"A genuine exception goes in project/08_submission/integration/polish_allowlist.tsv."],
         )
     tier_b = [x for x in rep.get("ai_tells", []) if x.get("tier") == "B"]
     if tier_b:
@@ -174,8 +174,8 @@ def journal_limits_met(ctx: Ctx) -> Result:
              "If the journal states no limit, write 'no stated limit' explicitly."],
         )
 
-    if ctx.p("07_manuscript/full_manuscript.md").exists():
-        sections = _canonical_section_counts(ctx.read("07_manuscript/full_manuscript.md"))
+    if ctx.p("08_submission/integration/full_manuscript.md").exists():
+        sections = _canonical_section_counts(ctx.read("08_submission/integration/full_manuscript.md"))
         abstract_words = sections.get("abstract", 0)
         body_words = sum(sections.get(k, 0) for k in
                          ("introduction", "methods", "results", "discussion"))
@@ -248,10 +248,11 @@ def _declared_limits(text: str) -> dict[str, int]:
 
 def _ref_count(ctx: Ctx) -> int:
     keys: set[str] = set()
-    names = (("full_manuscript.md",) if ctx.p("07_manuscript/full_manuscript.md").exists()
+    names = (("full_manuscript.md",) if ctx.p("08_submission/integration/full_manuscript.md").exists()
              else ("introduction.md", "methods.md", "results.md", "discussion.md"))
     for name in names:
-        p = ctx.p(f"07_manuscript/{name}")
+        base = "08_submission/integration" if name == "full_manuscript.md" else "07_manuscript"
+        p = ctx.p(f"{base}/{name}")
         if p.exists():
             text = p.read_text(encoding="utf-8", errors="replace")
             for grp in re.findall(r"\[([^\]]*@[^\]]*)\]", text):
@@ -273,3 +274,4 @@ def _canonical_section_counts(text: str) -> dict[str, int]:
         block = re.sub(r"(?m)^Keywords\s*:.*$", "", block, flags=re.I)
         out[name] = len(re.findall(r"[A-Za-z][A-Za-z'-]*", block))
     return out
+

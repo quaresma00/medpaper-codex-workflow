@@ -87,10 +87,20 @@ further review is needed.
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide manuscript_human_reviewed NO_FURTHER_REVIEW --why "<quote or closely preserve the explicit confirmation; include the exact ZIP revision and at least the first 12 characters of its package_id>"
 ```
+8. Freeze and verify that exact journal-independent scientific master after recording the
+   decision:
+```
+.\.venv\Scripts\python.exe tools/manuscript/scientific_freeze.py freeze
+.\.venv\Scripts\python.exe tools/manuscript/scientific_freeze.py verify
+```
+   The manifest binds the accepted manuscript components, analysis-result records,
+   references, tables, figures, review record and exact S19 ZIP with SHA-256. Every later
+   journal-specific copy must derive from this freeze.
 
 ## Outputs
 - `07_manuscript/human_review.md`
 - `07_manuscript/review_packages/latest_review_package.json`
+- `07_manuscript/scientific_master_freeze.json`
 - versioned `07_manuscript/review_packages/S19-review-vNNN-<package-id>.zip`
 
 ## Hard rules
@@ -102,6 +112,12 @@ further review is needed.
   stale sources or include patient-level/private data.
 - The S19 release gate is non-overridable and binds the user's confirmation to the exact
   current package ID. A confirmation for v001 cannot release v002.
+- S20-S25 must not edit anything covered by the scientific freeze. Journal word limits,
+  abstract structure, title-page administration, declarations and formatting belong only in
+  `08_submission/integration/` or the final bundle.
+- A genuine scientific correction must route to its earliest source stage, invalidate the old
+  S19 approval, rebuild and review a new ZIP, obtain explicit approval again, and create a new
+  scientific freeze.
 - Do not change a number without rerunning the analysis that produced it.
 - Do not edit the assembled manuscript as a detached file. Every revision is recorded inside
   the workflow and applied to the source owned by the routed stage.

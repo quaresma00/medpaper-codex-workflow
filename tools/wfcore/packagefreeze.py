@@ -17,10 +17,12 @@ REQUIRED_EVIDENCE = (
     "08_submission/package_content_baseline.json",
 )
 OPTIONAL_EVIDENCE = (
-    "07_manuscript/full_manuscript.md",
-    "07_manuscript/supplementary_methods.md",
-    "07_manuscript/title_page.md",
-    "07_manuscript/statements.md",
+    "07_manuscript/scientific_master_freeze.json",
+    "08_submission/integration/journal_workspace.json",
+    "08_submission/integration/full_manuscript.md",
+    "08_submission/integration/supplementary_methods.md",
+    "08_submission/integration/title_page.md",
+    "08_submission/integration/statements.md",
     "08_submission/cover_letter.md",
     "05_figures/legends.md",
     "04_tables/table_captions.md",
@@ -73,7 +75,7 @@ def expected_files(project: Path) -> dict[str, Path]:
             raise ValueError(f"manifest item missing: {normalized}")
         files[normalized] = path
 
-    for folder_rel in ("08_submission/bundle", "08_submission/cache"):
+    for folder_rel in ("08_submission/bundle", "08_submission/cache", "08_submission/integration"):
         _, folder = _safe_path(project, folder_rel)
         if folder.is_dir():
             for path in sorted(p for p in folder.rglob("*") if p.is_file()):
@@ -168,3 +170,4 @@ def verify_freeze(project: Path, freeze: Path | None = None) -> tuple[bool, list
         if item.get("size") != path.stat().st_size or item.get("sha256") != _sha256(path):
             problems.append(f"changed after user confirmation: {rel}")
     return not problems, problems, len(recorded)
+

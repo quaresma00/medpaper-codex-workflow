@@ -121,7 +121,7 @@ def supplementary_methods_clean(ctx: Ctx) -> Result:
 
 @check("manuscript_structure")
 def manuscript_structure(ctx: Ctx) -> Result:
-    rel = "07_manuscript/full_manuscript.md"
+    rel = ctx.spec.get("path", "07_manuscript/full_manuscript.md")
     if not ctx.p(rel).is_file():
         return Result(False, "manuscript_structure", f"{rel} missing")
     text = ctx.read(rel)
@@ -154,7 +154,7 @@ def manuscript_structure(ctx: Ctx) -> Result:
     title = heads[0][0]
     if title.casefold() in expected or len(re.findall(r"[A-Za-z][A-Za-z'-]*", title)) < 5:
         problems.append("the first level-1 heading is not a substantive selected title")
-    title_file = ctx.p("07_manuscript/title.md")
+    title_file = ctx.p(ctx.spec.get("title_path", "07_manuscript/title.md"))
     if title_file.exists():
         chosen = re.sub(r"(?m)^#\s+", "", title_file.read_text(encoding="utf-8").strip(), count=1).strip()
         if chosen != title:
@@ -464,7 +464,16 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
         return Result(False, "docx_bundle_ready", f"cannot read manifest/style config: {exc}")
     roles: dict[str, list[Path]] = {}
     problems: list[str] = []
-    source_check = supplementary_methods_clean(ctx)
+    supplementary_rel = ctx.spec.get(
+        "supplementary_path", "08_submission/integration/supplementary_methods.md"
+    )
+    source_check = supplementary_methods_clean(Ctx(
+        pipeline=ctx.pipeline,
+        state=ctx.state,
+        project=ctx.project,
+        stage=ctx.stage,
+        spec={**ctx.spec, "path": supplementary_rel},
+    ))
     if not source_check.ok:
         problems.append(source_check.detail)
     planned = _figure_ids(ctx)
@@ -483,7 +492,7 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
     for role in ("manuscript", "title_page", "cover_letter"):
         if not any(p.suffix.casefold() == ".docx" for p in roles.get(role, [])):
             problems.append(f"no DOCX for required role '{role}'")
-    if ctx.p("07_manuscript/supplementary_methods.md").exists():
+    if ctx.p(supplementary_rel).exists():
         if not any(p.suffix.casefold() == ".docx" for p in roles.get("supplementary", [])):
             problems.append("supplementary Methods exists but no supplementary DOCX is packaged")
     if problems:

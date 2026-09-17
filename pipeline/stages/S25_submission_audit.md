@@ -11,8 +11,12 @@ the chosen journal's current official instructions.
 1. Before delegation, verify that the package still matches the user's freeze:
 ```
 .\.venv\Scripts\python.exe tools/package_review.py verify --project project
+.\.venv\Scripts\python.exe tools/manuscript/scientific_freeze.py verify
+.\.venv\Scripts\python.exe tools/manuscript/journal_workspace.py verify
 ```
-   Stop and return to S24 if any file was added, removed or changed.
+   Stop and return to S24 if any package file was added, removed or changed. If the scientific
+   master changed, return to its owning scientific stage and require renewed S19 review before
+   rebuilding the package.
 2. Spawn exactly one independent read-only subagent for this frozen package revision. Do not
    give it the intended verdict, prior reviewers' conclusions, or ask it to edit files. Tell
    it to read the actual package in normal submission order before consulting backstage QA.
@@ -21,6 +25,9 @@ the chosen journal's current official instructions.
    - the selected journal metadata, `guidelines_extract.md`, and the cached official author
      instructions;
    - `bundle/manifest.json`, `SUBMISSION_CHECKLIST.md`, and `submission_qc.md`.
+   - `07_manuscript/scientific_master_freeze.json` and
+     `08_submission/integration/journal_workspace.json`, to prove that journal changes were
+     isolated from the accepted scientific master.
 3. Require the reviewer to inspect the actual upload files rather than trusting the manifest
    or earlier QA. It must perform all three lenses and report exact locations for every
    actionable finding:
@@ -86,7 +93,7 @@ the chosen journal's current official instructions.
 - The subagent reports defects but never edits the frozen package. Corrections occur only after
   returning to S24, followed by renewed user confirmation and a new freeze.
 - A reference-count field is optional when the journal is silent, but if present it must match
-  the actual citation set in both the canonical title page and frozen Word file.
+  the actual citation set in both the integration title page and frozen Word file.
 - `PASS` is required to complete the pipeline. Portal-only user tasks may be listed, but an
   unmet required local upload or unresolved cross-file mismatch is not a pass.
 
@@ -95,3 +102,4 @@ the chosen journal's current official instructions.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "independent final submission audit=PASS; frozen package unchanged; remaining portal-only user tasks=<none or list>"
 ```
+

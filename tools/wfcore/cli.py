@@ -36,6 +36,9 @@ NON_OVERRIDABLE_GATES = {
     "citekeys_resolve",
     "revision_rounds_closed",
     "s19_review_release_explicit",
+    "scientific_master_frozen",
+    "scientific_master_unchanged",
+    "journal_workspace_ready",
 }
 
 
@@ -50,8 +53,23 @@ def _load(need_state: bool = True):
     st = State(proj, pipe.layout.get("state_dir", ".wf"))
     if need_state:
         st.load()
+        previous_version = str(st.data.get("pipeline_version", "unknown"))
         st.migrate_pipeline(str(pipe.meta.get("version", "0")),
                             [stage.id for stage in pipe.stages], STAGE_ALIASES)
+        # v1.4 introduces the S19 scientific-master freeze and derived per-journal sources.
+        # A legacy run already in the journal tail cannot prove that its 07_manuscript files
+        # were not polished in place, so return it to S19 without deleting any artifact.
+        if (previous_version != str(pipe.meta.get("version", "0")) and
+                st.current in {stage.id for stage in pipe.stages[pipe.stage("S20_journal").index:]} and
+                not (proj / "07_manuscript/scientific_master_freeze.json").is_file()):
+            later = [stage.id for stage in pipe.stages_after("S19_human_review")]
+            st.reset_forward(later)
+            st.clear_decisions_for(later)
+            st.rewind(
+                "S19_human_review",
+                "pipeline v1.4 requires review/freeze of the scientific master before "
+                "journal-specific integration work",
+            )
     return pipe, st, proj
 
 

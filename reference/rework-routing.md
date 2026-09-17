@@ -11,9 +11,10 @@ an implementation step, not permission to bypass the owning stage, source of tru
   selection until the user approves the scientific version.
 - **S24 is the repeated journal-package loop.** Use it after journal selection for DOCX/PDF
   appearance, title page, declarations, cover letter, filenames, upload composition and any
-  late content correction. Content still routes back to its scientific source; format-only
-  changes may remain at S24. Do not freeze or start S25 until the user approves the actual
-  package.
+  late correction. Journal-specific, meaning-preserving content changes route to the
+  `08_submission/integration/` source owned by S21-S23; format-only changes may remain at S24.
+  A genuine scientific change still routes back to its pre-S19 source and requires renewed
+  S19 review. Do not freeze or start S25 until the user approves the actual package.
 
 Feedback can also arrive at any other stage. Record it immediately and route it to the
 earliest owner; the review loop to return to is the active S19 or S24 round.
@@ -101,7 +102,7 @@ Use the earliest stage that owns the changed fact or artifact:
 | Introduction | `introduction` -> S14 |
 | Discussion | `discussion` -> S16 |
 | title, abstract, keywords or initial assembly | `title-abstract-keywords` -> S17 |
-| meaning-preserving copyedit | `manuscript-copyedit` -> S19 before journal polish, otherwise S22 |
+| meaning-preserving copyedit | `manuscript-copyedit` -> S19 before freeze; at S24, S22 integration copy only |
 | target journal or its rules | `journal` -> S20 |
 | title page or declarations | `title-page-or-statements` -> S21 |
 | cover letter, filename, upload list or package composition | `cover-letter-or-package-structure` -> S23 |
@@ -111,6 +112,14 @@ For S19 copyedits, update the owning component Markdown and rerun
 `tools/manuscript/assemble.py`; `full_manuscript.md` must still match its components. A change
 to a claim, interpretation, method, number, table or figure is not a copyedit and must use its
 earlier route.
+
+After S19 approval, `07_manuscript/scientific_master_freeze.json` is the boundary. S20-S25
+must verify it unchanged. The active target journal works only on files derived under
+`08_submission/integration/`, and the resulting differences stay in that journal's package.
+Changing target journals creates a new integration copy from the same freeze; it does not
+rewrite the accepted master. If a user requests a real scientific correction from S24, do
+not retain the old `manuscript_human_reviewed` decision: route to the scientific owner,
+rebuild, generate a new S19 review ZIP, obtain explicit approval again and replace the freeze.
 
 At S23, capture `package_content_baseline.json` after all DOCX files and `manifest.json` are
 final. S24 may preserve manual Word formatting only while the visible-text hash is unchanged.

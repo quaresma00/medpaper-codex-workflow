@@ -320,9 +320,24 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.3.9",
+           legacy.data["pipeline_version"] == "1.4.0",
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
+
+    freeze_migration_root = proj / "temp/freeze_migration_fixture"
+    late_legacy = State(freeze_migration_root, ".wf")
+    late_legacy.create("medpaper", "1.3.9", "S24_package_human_review")
+    migrate_env = {**os.environ, "MEDPAPER_PROJECT": str(freeze_migration_root),
+                   "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
+    migrated = subprocess.run(
+        [sys.executable, str(ROOT / "tools/wf.py"), "status", "--brief"],
+        capture_output=True, text=True, env=migrate_env, encoding="utf-8", errors="replace")
+    migrated_state = State(freeze_migration_root, ".wf").load()
+    record("pre-freeze late-stage workspace migrates back to S19 without deleting artifacts",
+           migrated.returncode == 0 and migrated_state.current == "S19_human_review" and
+           migrated_state.data["pipeline_version"] == "1.4.0",
+           f"current={migrated_state.current}; version={migrated_state.data['pipeline_version']}")
+    shutil.rmtree(freeze_migration_root, ignore_errors=True)
 
     decision_root = proj / "temp/decision_invalidation_fixture"
     revisited = State(decision_root, ".wf")
@@ -849,6 +864,10 @@ def run_codex_integration() -> None:
         ROOT / "tools/rework.py",
         ROOT / "tools/manuscript/review_package.py",
         ROOT / "tools/wfcore/reviewpackage.py",
+        ROOT / "tools/manuscript/scientific_freeze.py",
+        ROOT / "tools/wfcore/scientificfreeze.py",
+        ROOT / "tools/manuscript/journal_workspace.py",
+        ROOT / "tools/wfcore/journalworkspace.py",
         ROOT / "tools/package_content.py",
         ROOT / "tools/wfcore/refproof.py",
         ROOT / "tools/wfcore/dataproof.py",
@@ -870,7 +889,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.3.9" and 'version: "1.3.9"' in skill,
+           pipe["meta"]["version"] == "1.4.0" and 'version: "1.4.0"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -945,6 +964,26 @@ def run_codex_integration() -> None:
            '"s19_review_release_explicit"' in
            (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
            "versioned review ZIP + exact paths + package-bound non-overridable stop")
+    journal = next(s for s in pipe["stage"] if s["id"] == "S20_journal")
+    late_stages = [next(s for s in pipe["stage"] if s["id"] == stage_id) for stage_id in
+                   ("S20_journal", "S21_authors", "S22_polish", "S23_package",
+                    "S24_package_human_review", "S25_submission_audit")]
+    cli_text = (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8")
+    record("S19 scientific master is frozen and journal adaptation is isolated",
+           "07_manuscript/scientific_master_freeze.json" in human["outputs"] and
+           any(g["check"] == "scientific_master_frozen" for g in human["gate"]) and
+           "08_submission/integration/journal_workspace.json" in journal["outputs"] and
+           all(any(g["check"] == "scientific_master_unchanged" for g in stage["gate"])
+               for stage in late_stages) and
+           all(any(g["check"] == "journal_workspace_ready" for g in stage["gate"])
+               for stage in late_stages) and
+           all(name in cli_text for name in
+               ("scientific_master_frozen", "scientific_master_unchanged",
+                "journal_workspace_ready")) and
+           "tools/manuscript/scientific_freeze.py freeze" in human_card and
+           "tools/manuscript/journal_workspace.py init" in
+           (ROOT / "pipeline/stages/S20_journal.md").read_text(encoding="utf-8"),
+           "S19 hash freeze -> immutable master -> per-journal integration sources")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
                                                   "supplementary Methods", "Figure legends",
@@ -1131,7 +1170,7 @@ def run_codex_integration() -> None:
            batch_state.data.get("active_revision_round") == "R001" and
            round_payload.get("earliest_stage") == "S08_methods" and
            len(round_payload.get("items", [])) == 2 and
-           batch_state.decision("manuscript_human_reviewed") is not None and
+           batch_state.decision("manuscript_human_reviewed") is None and
            batch_state.decision("submission_package_user_confirmed") is None,
            ((opened.stdout or "") + (opened.stderr or "")).strip()[:180])
     status = subprocess.run(
@@ -1501,6 +1540,65 @@ def run_manuscript_docx(proj: Path) -> None:
            revised_manifest.get("archive_path") != review_manifest.get("archive_path") and
            review_archive.is_file() and (proj / revised_manifest["archive_path"]).is_file(),
            ((rebuilt_review_zip.stdout or "") + revised_review.detail).strip()[:180])
+
+    # Explicit approval creates an immutable scientific master; journal work is a derived copy.
+    (manuscript / "human_review.md").write_text(
+        "# Human review\n\n## Materials presented\nS19 v002.\n\n"
+        "## Independent verdict\nREADY.\n\n## User-requested revisions\nNone.\n\n"
+        "## Revalidation\nPassed.\n\n## Approval to proceed\nNo further review.\n",
+        encoding="utf-8",
+    )
+    state.record_decision(
+        "manuscript_human_reviewed", "NO_FURTHER_REVIEW",
+        "The user explicitly stated no further review was needed for current ZIP v002 "
+        f"package {revised_manifest['package_id'][:12]}.")
+    scientific_tool = ROOT / "tools/manuscript/scientific_freeze.py"
+    frozen_science = subprocess.run(
+        [sys.executable, str(scientific_tool), "freeze", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    frozen_gate = gate("scientific_master_frozen", "S19_human_review")
+    record("S19 freezes the exact user-approved journal-independent scientific master",
+           frozen_science.returncode == 0 and frozen_gate.ok,
+           ((frozen_science.stdout or "") + (frozen_science.stderr or "") +
+            frozen_gate.detail).strip()[:180])
+    approved_full = (manuscript / "full_manuscript.md").read_text(encoding="utf-8")
+    (manuscript / "full_manuscript.md").write_text(
+        approved_full + "\nDetached post-freeze edit.\n", encoding="utf-8")
+    changed_science = subprocess.run(
+        [sys.executable, str(scientific_tool), "verify", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("post-S19 scientific-master drift is rejected",
+           changed_science.returncode != 0 and
+           any(marker in (changed_science.stderr or "") for marker in
+               ("scientific source changed after freeze", "review materials changed")),
+           (changed_science.stderr or "").strip()[:150])
+    (manuscript / "full_manuscript.md").write_text(approved_full, encoding="utf-8")
+
+    (submission / "target_journal.json").write_text(json.dumps({
+        "journal": "Fixture Clinical Journal", "issn": "1234-5678",
+        "chosen_by_user": True, "guidelines_url": "https://journal.example/authors",
+        "guidelines_fetched_at": date.today().isoformat(),
+    }, indent=2), encoding="utf-8")
+    workspace_tool = ROOT / "tools/manuscript/journal_workspace.py"
+    workspace_init = subprocess.run(
+        [sys.executable, str(workspace_tool), "init", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    workspace_gate = gate("journal_workspace_ready", "S20_journal", require_pristine=True)
+    record("S20 derives a pristine journal integration layer from the frozen master",
+           workspace_init.returncode == 0 and workspace_gate.ok and
+           (submission / "integration/full_manuscript.md").is_file(),
+           ((workspace_init.stdout or "") + (workspace_init.stderr or "") +
+            workspace_gate.detail).strip()[:180])
+    integration_full = submission / "integration/full_manuscript.md"
+    integration_full.write_text(
+        integration_full.read_text(encoding="utf-8").replace("evaluated", "assessed", 1),
+        encoding="utf-8")
+    unchanged_science = subprocess.run(
+        [sys.executable, str(scientific_tool), "verify", "--project", str(proj)],
+        capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+    record("journal-specific integration edits do not alter the frozen scientific master",
+           unchanged_science.returncode == 0,
+           ((unchanged_science.stdout or "") + (unchanged_science.stderr or "")).strip()[:140])
     state.data = prior_state
     state.save()
 
@@ -1586,11 +1684,15 @@ def run_manuscript_docx(proj: Path) -> None:
 
     # A title-page count is optional, but when present it must be derived from the
     # distinct citekeys used by the canonical manuscript rather than library size.
-    title_page = manuscript / "title_page.md"
+    integration = submission / "integration"
+    integration_full = integration / "full_manuscript.md"
+    title_page = integration / "title_page.md"
     title_page.write_text(
         "# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\n"
         "Fixture Author\n\nNumber of references: 50\n", encoding="utf-8")
-    outcome = gate("title_page_reference_count", "S21_authors")
+    outcome = gate("title_page_reference_count", "S21_authors",
+                   manuscript="08_submission/integration/full_manuscript.md",
+                   title_page="08_submission/integration/title_page.md")
     record("incorrect title-page reference count is rejected", not outcome.ok,
            outcome.detail[:110])
     counter = ROOT / "tools/manuscript/reference_count.py"
@@ -1601,14 +1703,18 @@ def run_manuscript_docx(proj: Path) -> None:
            synced.returncode == 0 and "Number of references: 1" in
            title_page.read_text(encoding="utf-8"),
            ((synced.stdout or "") + (synced.stderr or "")).strip()[:110])
-    outcome = gate("title_page_reference_count", "S21_authors")
+    outcome = gate("title_page_reference_count", "S21_authors",
+                   manuscript="08_submission/integration/full_manuscript.md",
+                   title_page="08_submission/integration/title_page.md")
     record("title-page reference count gate passes after synchronization", outcome.ok,
            outcome.detail)
 
     title_page.write_text(
         "# Exposure and Clinical Outcome in a Multicentre Cohort Study\n\nFixture Author\n",
         encoding="utf-8")
-    outcome = gate("title_page_reference_count", "S21_authors")
+    outcome = gate("title_page_reference_count", "S21_authors",
+                   manuscript="08_submission/integration/full_manuscript.md",
+                   title_page="08_submission/integration/title_page.md")
     record("reference count remains optional when journal does not request it", outcome.ok,
            outcome.detail)
     added = subprocess.run(
@@ -1624,7 +1730,8 @@ def run_manuscript_docx(proj: Path) -> None:
         "section_heading_font_pt": 12, "subsection_heading_font_pt": 12,
         "line_spacing": 2.0, "paragraph_spacing_after_pt": 0, "margins_in": 1.0,
         "paper_size": "A4", "all_text_black": True, "external_hyperlinks": False,
-        "source": "Fixture journal is silent; documented medical-manuscript fallback.",
+        "source": "Fixture journal is silent; documented medical-manuscript fallback. "
+                  "https://journal.example/authors",
         "fallbacks": ["font_family", "body_font_pt", "title_font_pt",
                       "section_heading_font_pt", "subsection_heading_font_pt",
                       "line_spacing", "paragraph_spacing_after_pt", "margins_in",
@@ -1660,10 +1767,10 @@ def run_manuscript_docx(proj: Path) -> None:
         return proc_.returncode == 0
 
     builds_ok = all([
-        build("manuscript", full, "manuscript.docx"),
-        build("title_page", manuscript / "title_page.md", "title_page.docx"),
+        build("manuscript", integration_full, "manuscript.docx"),
+        build("title_page", title_page, "title_page.docx"),
         build("cover_letter", cover, "cover_letter.docx"),
-        build("supplementary", manuscript / "supplementary_methods.md", "supplementary_methods.docx"),
+        build("supplementary", integration / "supplementary_methods.md", "supplementary_methods.docx"),
     ])
     word_xmls = []
     for name in ("manuscript.docx", "title_page.docx", "cover_letter.docx",
@@ -1791,7 +1898,9 @@ def run_manuscript_docx(proj: Path) -> None:
     outcome = gate("docx_bundle_ready", "S23_package")
     record("Word bundle gate accepts normalized DOCX files", builds_ok and outcome.ok,
            outcome.detail)
-    outcome = gate("title_page_reference_count", "S23_package")
+    outcome = gate("title_page_reference_count", "S23_package",
+                   manuscript="08_submission/integration/full_manuscript.md",
+                   title_page="08_submission/integration/title_page.md")
     record("Word title-page reference count matches canonical manuscript", outcome.ok,
            outcome.detail)
     title_page_docx = bundle / "title_page.docx"
@@ -1801,7 +1910,9 @@ def run_manuscript_docx(proj: Path) -> None:
         if "Number of references:" in paragraph.text:
             paragraph.text = "Number of references: 50"
     altered_title.save(title_page_docx)
-    outcome = gate("title_page_reference_count", "S23_package")
+    outcome = gate("title_page_reference_count", "S23_package",
+                   manuscript="08_submission/integration/full_manuscript.md",
+                   title_page="08_submission/integration/title_page.md")
     record("manually altered Word reference count is rejected", not outcome.ok,
            outcome.detail[:110])
     title_page_docx.write_bytes(approved_title_page)
@@ -1854,10 +1965,10 @@ def run_manuscript_docx(proj: Path) -> None:
     # Freeze the exact package the user approved and reject any post-confirmation mutation.
     today = date.today().isoformat()
     guidelines_url = "https://journal.example/authors"
-    (submission / "target_journal.json").write_text(json.dumps({
-        "journal": "Fixture Clinical Journal", "guidelines_url": guidelines_url,
-        "guidelines_fetched_at": today,
-    }, indent=2), encoding="utf-8")
+    target_payload = json.loads((submission / "target_journal.json").read_text(encoding="utf-8"))
+    target_payload.update({"guidelines_url": guidelines_url, "guidelines_fetched_at": today})
+    (submission / "target_journal.json").write_text(
+        json.dumps(target_payload, indent=2), encoding="utf-8")
     (submission / "guidelines_extract.md").write_text(
         f"# Guidelines\n\nSource: {guidelines_url}\n\n## Submission items\nAll fixture files.\n",
         encoding="utf-8")
@@ -1970,20 +2081,20 @@ def run_polish(proj: Path) -> None:
         return fn(Ctx(pipeline=pipe, state=st, project=proj,
                       stage=pipe.stage(stage), spec={"check": name, **spec}))
 
-    disc = proj / "07_manuscript/discussion.md"
-    abstract = proj / "07_manuscript/abstract.md"
+    integration = proj / "08_submission/integration"
+    integration.mkdir(parents=True, exist_ok=True)
+    disc = integration / "full_manuscript.md"
 
     section("polish: linting AI slop")
     disc.write_text(SLOP, encoding="utf-8")
-    abstract.write_text("# Abstract\n\nExposure was associated with the outcome "
-                        "(HR 1.87, 95% CI 1.34 to 2.61).\n", encoding="utf-8")
     p = polish("snapshot")
-    record("snapshot taken", p.returncode == 0 and (proj / "07_manuscript/prepolish/facts.json").exists())
+    record("snapshot taken", p.returncode == 0 and
+           (integration / "prepolish/facts.json").exists())
     record("snapshot refuses to overwrite silently", polish("snapshot").returncode == 1)
 
     p = polish("lint")
     out = p.stdout or ""
-    counts = json.loads((proj / "07_manuscript/polish_report.json").read_text(encoding="utf-8"))["counts"]
+    counts = json.loads((integration / "polish_report.json").read_text(encoding="utf-8"))["counts"]
     record("tier-A AI phrases detected", counts["ai_tier_a"] >= 10, f"{counts['ai_tier_a']} found")
     record("structural tells detected", counts["structure_blocking"] >= 1,
            f"{counts['structure_blocking']} blocking")
@@ -2049,15 +2160,15 @@ def run_polish(proj: Path) -> None:
                     encoding="utf-8")
     polish("lint")
     record("allowlist absent -> phrase blocks", not gate("ai_tells_clean").ok)
-    (proj / "07_manuscript/polish_allowlist.tsv").write_text(
+    (integration / "polish_allowlist.tsv").write_text(
         "plays a crucial role\tquoted verbatim from the 2023 guideline\n", encoding="utf-8")
     polish("lint")
     record("allowlisted phrase stops blocking", gate("ai_tells_clean").ok)
 
-    for f in (disc, abstract, gx, proj / "07_manuscript/polish_allowlist.tsv"):
+    for f in (disc, gx, integration / "polish_allowlist.tsv"):
         f.unlink(missing_ok=True)
-    shutil.rmtree(proj / "07_manuscript/prepolish", ignore_errors=True)
-    (proj / "07_manuscript/polish_report.json").unlink(missing_ok=True)
+    shutil.rmtree(integration / "prepolish", ignore_errors=True)
+    (integration / "polish_report.json").unlink(missing_ok=True)
 
 
 def run_online(proj: Path) -> None:

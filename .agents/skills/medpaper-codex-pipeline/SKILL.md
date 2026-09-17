@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.3.9"
+  version: "1.4.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -88,6 +88,13 @@ the active stage:
   stop for feedback. Advance only after the user explicitly says no further review is needed;
   delivery, silence, thanks or a generic “continue” is not approval. Bind that decision to the
   exact current package ID; this release gate cannot be bypassed with `--force`.
+- Scientific-master freeze: after that explicit S19 approval, run
+  `tools/manuscript/scientific_freeze.py freeze`. From S20 onward, the accepted
+  `07_manuscript` sources are immutable. Initialize `08_submission/integration/` with
+  `tools/manuscript/journal_workspace.py init`; all target-journal wording, abstract
+  structure, title-page, statements and package changes stay in that derived layer. A real
+  scientific correction routes to its earliest owner and requires a new S19 ZIP, approval
+  and freeze. Switching journals derives a new integration layer from the same frozen master.
 - Documents/PDF: build, render and inspect S23 submission files without rewriting scientific
   facts. Use the deterministic DOCX builder so typography, links and heading behavior pass.
 - Final package review: at S24 let the user inspect and modify the actual upload files, ask

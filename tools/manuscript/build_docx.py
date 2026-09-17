@@ -595,7 +595,7 @@ def audit_manifest(args) -> int:
     for role in ("manuscript", "title_page", "cover_letter"):
         if not any(p.suffix.lower() == ".docx" for p in roles.get(role, [])):
             problems.append(f"manifest lacks a DOCX item for role '{role}'")
-    if (project_root() / "07_manuscript/supplementary_methods.md").exists():
+    if (project_root() / "08_submission/integration/supplementary_methods.md").exists():
         if not any(p.suffix.lower() == ".docx" for p in roles.get("supplementary", [])):
             problems.append("supplementary_methods.md exists but no supplementary DOCX is listed")
     if problems:

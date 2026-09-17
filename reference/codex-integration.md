@@ -92,7 +92,16 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   supplementary Methods, table workbooks, rendered PNG figures, verified BibTeX/RIS exports,
   independent verdict and exact versioned ZIP. The ZIP is safe for third-party scientific review because it excludes raw or
   patient-level data, credentials, full-text literature and internal analysis code. Remain at
-  S19 until the user explicitly says no further review is needed.
+  S19 until the user explicitly says no further review is needed. Then run
+  `tools/manuscript/scientific_freeze.py freeze`; this hashes the accepted journal-independent
+  manuscript sources, scientific artifacts, references, review record and exact S19 ZIP.
+- S20-S22: verify the scientific freeze and run
+  `tools/manuscript/journal_workspace.py init` after the journal is chosen. The derived
+  `08_submission/integration/` files are the only editable source for journal-specific
+  wording, abstract organization, title page and declarations. Switching journals starts a
+  new derived integration copy and may archive the previous generated attempt. A true
+  scientific correction must invalidate the old S19 approval, return to its earliest source,
+  and repeat S19 review and freeze.
 - S23: build each journal-required narrative upload with
   `tools/manuscript/build_docx.py`, including the cover letter and supplementary Methods.
   The builder wraps Pandoc/citeproc, applies the sourced journal style (Times New Roman

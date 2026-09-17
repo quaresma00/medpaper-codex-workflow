@@ -20,12 +20,12 @@ MANIFEST_REL = "08_submission/bundle/manifest.json"
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 NS = {"w": W}
 DEFAULT_SOURCES = {
-    "manuscript": "07_manuscript/full_manuscript.md",
-    "title_page": "07_manuscript/title_page.md",
+    "manuscript": "08_submission/integration/full_manuscript.md",
+    "title_page": "08_submission/integration/title_page.md",
     "cover_letter": "08_submission/cover_letter.md",
-    "supplementary": "07_manuscript/supplementary_methods.md",
-    "statements": "07_manuscript/statements.md",
-    "declarations": "07_manuscript/statements.md",
+    "supplementary": "08_submission/integration/supplementary_methods.md",
+    "statements": "08_submission/integration/statements.md",
+    "declarations": "08_submission/integration/statements.md",
     "figure_legends": "05_figures/legends.md",
 }
 
@@ -205,3 +205,4 @@ def verify_baseline(project: Path) -> tuple[bool, list[str], int]:
     if formatting_only:
         detail += f"; {formatting_only} binary change(s) are formatting-only"
     return True, [detail], len(records)
+

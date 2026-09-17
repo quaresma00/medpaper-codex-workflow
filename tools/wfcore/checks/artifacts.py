@@ -263,7 +263,7 @@ def legend_no_results_restatement(ctx: Ctx) -> Result:
 
 def _display_sources(ctx: Ctx) -> list[tuple[str, str]]:
     sources: list[tuple[str, str]] = []
-    for rel in (LEGENDS, CAPTIONS):
+    for rel in ctx.spec.get("display_text_paths", [LEGENDS, CAPTIONS]):
         if ctx.p(rel).is_file():
             sources.append((rel, ctx.read(rel)))
     for path in ctx.glob("04_tables/main/*.xlsx") + ctx.glob("04_tables/supplementary/*.xlsx"):
@@ -308,9 +308,10 @@ def abbreviations_centralized(ctx: Ctx) -> Result:
         return Result(False, "abbreviations_centralized",
                       "abbreviation_placement must be central or local_required")
 
-    statements_rel = "07_manuscript/statements.md"
+    statements_rel = ctx.spec.get("statements", "07_manuscript/statements.md")
     statements = ctx.read(statements_rel) if ctx.p(statements_rel).is_file() else ""
-    full = ctx.read("07_manuscript/full_manuscript.md") if ctx.p("07_manuscript/full_manuscript.md").is_file() else ""
+    manuscript_rel = ctx.spec.get("manuscript", "07_manuscript/full_manuscript.md")
+    full = ctx.read(manuscript_rel) if ctx.p(manuscript_rel).is_file() else ""
     central_defs = central_abbreviations(full or statements)
     central_present = bool(central_defs)
     problems: list[str] = []

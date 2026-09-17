@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.3.9"
+version = "1.4.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -31,8 +31,8 @@ temp_dir = "temp"
 "04_tables" = "main/ (one xlsx per main table), supplementary/ (single xlsx, one sheet per table)."
 "05_figures" = "code/ (plot scripts), out/ (rendered png+tiff), qc/ (QC reports), legends.md."
 "06_refs" = "refs.bib, refs.ris, library.json, verified.json, fulltext/, deepread/."
-"07_manuscript" = "Section drafts, canonical full_manuscript.md, independent review, and front matter."
-"08_submission" = "Journal shortlist, chosen journal guideline extract, final submission bundle, user confirmation and independent final audit."
+"07_manuscript" = "Section drafts, accepted journal-independent full_manuscript.md, S19 review ZIP, and scientific-master freeze."
+"08_submission" = "Journal shortlist, guideline extract, derived journal integration sources, final bundle, user confirmation and independent audit."
 
 # ------------------------------------------------------------------------------
 # Global invariants. Printed by `wf status` on EVERY call so they survive
@@ -54,6 +54,7 @@ invariants = [
   "A user-requested revision never leaves the workflow. Route it with tools/rework.py to the earliest owning stage, update the source of truth, rebuild only true dependants, and invalidate downstream approvals. Word-only layout edits are allowed at S24 only when the S23 visible-text baseline is unchanged.",
   "Repeated feedback is handled as a persisted revision round at S19 (scientific manuscript) or S24 (journal package). Interpret the feedback once into atomic items, route the batch to its earliest owner, read and rebuild only affected sources/dependants, preserve unaffected approved evidence, and still run every applicable quality gate. Token or context pressure is never permission to omit an item, shorten the scientific work or skip validation; resume from tools/rework.py status after compaction.",
   "Every initial or revised S19 scientific version must have a current, versioned third-party review ZIP and be presented with clickable locations for the manuscript, optional supplementary Methods, tables, figures and independent verdict. Remain at S19 until the user explicitly states that no further review is needed; silence, file delivery, thanks, or a generic continue instruction is not approval.",
+  "After explicit S19 approval, freeze the journal-independent scientific master. S20-S25 may edit only the derived 08_submission/integration copies and package files. A real scientific change invalidates S19 approval, returns to the owning source stage, and requires a new review ZIP, user confirmation and freeze.",
   "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
 ]
 
@@ -530,7 +531,7 @@ id = "S19_human_review"
 title = "User review of the full manuscript, supplementary Methods and tables"
 card = "stages/S19_human_review.md"
 needs_user = true
-outputs = ["07_manuscript/human_review.md", "07_manuscript/review_packages/latest_review_package.json"]
+outputs = ["07_manuscript/human_review.md", "07_manuscript/review_packages/latest_review_package.json", "07_manuscript/scientific_master_freeze.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -563,15 +564,19 @@ check = "revision_rounds_closed"
 check = "manuscript_review_package_current"
 [[stage.gate]]
 check = "s19_review_release_explicit"
+[[stage.gate]]
+check = "scientific_master_frozen"
 
 [[stage]]
 id = "S20_journal"
 title = "Select the most realistic current SCIE journal and freeze its requirements"
 card = "stages/S20_journal.md"
 needs_user = true
-outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json"]
+outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json"]
 [[stage.gate]]
 check = "outputs_exist"
+[[stage.gate]]
+check = "scientific_master_unchanged"
 [[stage.gate]]
 check = "md_sections"
 path = "08_submission/journal_shortlist.md"
@@ -587,39 +592,57 @@ name = "journal_chosen"
 check = "guidelines_sourced"
 [[stage.gate]]
 check = "docx_style_config"
+[[stage.gate]]
+check = "journal_workspace_ready"
+require_pristine = true
 
 [[stage]]
 id = "S21_authors"
 title = "Collect authors and journal-required administrative statements"
 card = "stages/S21_authors.md"
 needs_user = true
-outputs = ["00_input/author_info.json", "07_manuscript/title_page.md", "07_manuscript/statements.md"]
+outputs = ["00_input/author_info.json", "08_submission/integration/title_page.md", "08_submission/integration/statements.md"]
 [[stage.gate]]
 check = "outputs_exist"
+[[stage.gate]]
+check = "scientific_master_unchanged"
+[[stage.gate]]
+check = "journal_workspace_ready"
 [[stage.gate]]
 check = "json_keys"
 path = "00_input/author_info.json"
 keys = ["authors", "affiliations", "corresponding", "funding", "conflicts", "ethics_approval", "data_availability"]
 [[stage.gate]]
 check = "manuscript_structure"
+path = "08_submission/integration/full_manuscript.md"
 [[stage.gate]]
 check = "supplementary_methods_clean"
+path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "title_page_reference_count"
+manuscript = "08_submission/integration/full_manuscript.md"
+title_page = "08_submission/integration/title_page.md"
 [[stage.gate]]
 check = "abbreviations_centralized"
+manuscript = "08_submission/integration/full_manuscript.md"
+statements = "08_submission/integration/statements.md"
+display_text_paths = ["08_submission/integration/figure_legends.md", "08_submission/integration/table_captions.md"]
 [[stage.gate]]
 check = "forbidden_symbols_absent"
-paths = ["07_manuscript/full_manuscript.md", "07_manuscript/statements.md", "05_figures/legends.md", "04_tables/table_captions.md"]
+paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/statements.md", "08_submission/integration/figure_legends.md", "08_submission/integration/table_captions.md"]
 
 [[stage]]
 id = "S22_polish"
 title = "Journal-specific de-AI and academic-English polish, fact-preserving"
 card = "stages/S22_polish.md"
-outputs = ["07_manuscript/polish_report.json", "07_manuscript/polish_log.md"]
+outputs = ["08_submission/integration/polish_report.json", "08_submission/integration/polish_log.md"]
+[[stage.gate]]
+check = "scientific_master_unchanged"
+[[stage.gate]]
+check = "journal_workspace_ready"
 [[stage.gate]]
 check = "polish_snapshot_exists"
 [[stage.gate]]
@@ -632,30 +655,37 @@ check = "style_consistent"
 check = "journal_limits_met"
 [[stage.gate]]
 check = "manuscript_structure"
+path = "08_submission/integration/full_manuscript.md"
 [[stage.gate]]
 check = "supplementary_methods_clean"
+path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "title_page_reference_count"
+manuscript = "08_submission/integration/full_manuscript.md"
+title_page = "08_submission/integration/title_page.md"
 [[stage.gate]]
 check = "legend_no_results_restatement"
-path = "07_manuscript/full_manuscript.md"
+path = "08_submission/integration/full_manuscript.md"
 [[stage.gate]]
 check = "abbreviations_centralized"
+manuscript = "08_submission/integration/full_manuscript.md"
+statements = "08_submission/integration/statements.md"
+display_text_paths = ["08_submission/integration/figure_legends.md", "08_submission/integration/table_captions.md"]
 [[stage.gate]]
 check = "forbidden_symbols_absent"
-paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md", "07_manuscript/statements.md"]
+paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/supplementary_methods.md", "08_submission/integration/statements.md"]
 [[stage.gate]]
 check = "citekeys_resolve"
-paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/supplementary_methods.md"]
 [[stage.gate]]
 check = "numbers_have_provenance"
-path = "07_manuscript/full_manuscript.md"
+path = "08_submission/integration/full_manuscript.md"
 [[stage.gate]]
 check = "artifact_refs_consistent"
-paths = ["07_manuscript/full_manuscript.md"]
+paths = ["08_submission/integration/full_manuscript.md"]
 require_all_cited = true
 require_rendered = true
 [[stage.gate]]
@@ -671,31 +701,42 @@ outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHE
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "scientific_master_unchanged"
+[[stage.gate]]
+check = "journal_workspace_ready"
+[[stage.gate]]
 check = "data_acquisition_complete"
 [[stage.gate]]
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+supplementary_path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "supplementary_methods_clean"
+path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "title_page_reference_count"
+manuscript = "08_submission/integration/full_manuscript.md"
+title_page = "08_submission/integration/title_page.md"
 [[stage.gate]]
 check = "package_content_matches_baseline"
 [[stage.gate]]
 check = "legend_no_results_restatement"
-path = "07_manuscript/full_manuscript.md"
+path = "08_submission/integration/full_manuscript.md"
 [[stage.gate]]
 check = "abbreviations_centralized"
+manuscript = "08_submission/integration/full_manuscript.md"
+statements = "08_submission/integration/statements.md"
+display_text_paths = ["08_submission/integration/figure_legends.md", "08_submission/integration/table_captions.md"]
 [[stage.gate]]
 check = "forbidden_symbols_absent"
-paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md", "07_manuscript/statements.md", "08_submission/cover_letter.md"]
+paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/supplementary_methods.md", "08_submission/integration/statements.md", "08_submission/cover_letter.md"]
 [[stage.gate]]
 check = "citekeys_resolve"
-paths = ["07_manuscript/full_manuscript.md", "07_manuscript/supplementary_methods.md"]
+paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/supplementary_methods.md"]
 [[stage.gate]]
 check = "no_orphans"
 [[stage.gate]]
@@ -718,6 +759,10 @@ outputs = ["08_submission/package_human_review.md", "08_submission/package_revie
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "scientific_master_unchanged"
+[[stage.gate]]
+check = "journal_workspace_ready"
+[[stage.gate]]
 check = "md_sections"
 path = "08_submission/package_human_review.md"
 headings = ["Package presented", "User modifications", "Revalidation", "User confirmation", "Frozen package"]
@@ -725,11 +770,14 @@ headings = ["Package presented", "User modifications", "Revalidation", "User con
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+supplementary_path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "title_page_reference_count"
+manuscript = "08_submission/integration/full_manuscript.md"
+title_page = "08_submission/integration/title_page.md"
 [[stage.gate]]
 check = "package_content_matches_baseline"
 [[stage.gate]]
@@ -751,6 +799,10 @@ outputs = ["08_submission/independent_submission_audit.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "scientific_master_unchanged"
+[[stage.gate]]
+check = "journal_workspace_ready"
+[[stage.gate]]
 check = "data_acquisition_complete"
 [[stage.gate]]
 check = "md_sections"
@@ -760,11 +812,14 @@ headings = ["Verdict", "Reader comprehension", "Editorial screening and low-leve
 check = "bundle_complete"
 [[stage.gate]]
 check = "docx_bundle_ready"
+supplementary_path = "08_submission/integration/supplementary_methods.md"
 [[stage.gate]]
 check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "title_page_reference_count"
+manuscript = "08_submission/integration/full_manuscript.md"
+title_page = "08_submission/integration/title_page.md"
 [[stage.gate]]
 check = "package_content_matches_baseline"
 [[stage.gate]]
@@ -802,9 +857,9 @@ globs = [
   "06_refs/cache/**",
   "06_refs/fulltext/*",
   "06_refs/deepread/*.md",
-  "07_manuscript/prepolish/*",
-  "07_manuscript/polish_allowlist.tsv",
   "07_manuscript/review_packages/*.zip",
+  "08_submission/integration/**",
+  "08_submission/journal_archives/**",
   "08_submission/cache/**",
   "08_submission/*.csl",
   "08_submission/bundle/**",
