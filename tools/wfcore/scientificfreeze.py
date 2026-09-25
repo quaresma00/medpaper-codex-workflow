@@ -9,12 +9,11 @@ from pathlib import Path
 from .reviewpackage import verify as verify_review_package
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 FREEZE_REL = "07_manuscript/scientific_master_freeze.json"
 CORE_FILES = (
     "01_protocol/artifact_plan.json",
     "06_refs/library.json",
-    "06_refs/verified.json",
     "06_refs/refs.bib",
     "06_refs/refs.ris",
     "07_manuscript/title.md",
@@ -39,6 +38,7 @@ COLLECTION_GLOBS = (
     "04_tables/main/*.xlsx",
     "04_tables/supplementary/*.xlsx",
     "05_figures/out/*.png",
+    "05_figures/out/*.pdf",
     "05_figures/out/*.tif",
     "05_figures/out/*.tiff",
 )
@@ -134,7 +134,7 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     except json.JSONDecodeError as exc:
         return False, [f"{FREEZE_REL} is invalid JSON: {exc}"], None
     problems: list[str] = []
-    if payload.get("schema_version") != SCHEMA_VERSION or payload.get("algorithm") != "SHA-256":
+    if payload.get("schema_version") not in (1, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
         problems.append("scientific freeze schema or hash algorithm is invalid")
     ok, review_problems, review = verify_review_package(project)
     if not ok or review is None:
@@ -149,9 +149,12 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     recorded = payload.get("files")
     if not isinstance(recorded, list):
         return False, problems + ["scientific freeze has no files list"], payload
-    if current != recorded:
+    # Legacy receipts included a renewable verification file. Its identity is checked
+    # separately by the non-overridable reference gates; refreshing it is not science rework.
+    scientific_records = [item for item in recorded if item.get("path") != "06_refs/verified.json"]
+    if current != scientific_records:
         current_map = {item["path"]: item for item in current}
-        recorded_map = {str(item.get("path", "")): item for item in recorded if isinstance(item, dict)}
+        recorded_map = {str(item.get("path", "")): item for item in scientific_records if isinstance(item, dict)}
         for rel in sorted(set(current_map) | set(recorded_map)):
             if rel not in recorded_map:
                 problems.append(f"scientific source added after freeze: {rel}")
@@ -161,8 +164,7 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
                 problems.append(f"scientific source changed after freeze: {rel}")
             if len(problems) >= 10:
                 break
-    expected_id = _freeze_id(str(review["package_id"]), current)
+    expected_id = _freeze_id(str(review["package_id"]), recorded)
     if payload.get("freeze_id") != expected_id:
         problems.append("freeze_id does not match the current scientific source records")
     return not problems, problems, payload
-

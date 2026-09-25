@@ -130,7 +130,10 @@ def to_bibtex(entries: list[dict]) -> str:
     chunks = ["% Generated from library.json. Do not edit by hand - regenerate with --export.\n"]
     for e in entries:
         authors = " and ".join(
-            (a["last"] if a.get("collective") else f"{a['last']}, {a.get('first') or a.get('initials', '')}".strip(", "))
+            ("{" + _bib_escape(a["last"]) + "}" if a.get("collective") else
+             "{" + _bib_escape(a["last"]) + "}, " +
+             (_bib_escape(a["suffix"]) + ", " if a.get("suffix") else "") +
+             _bib_escape(a.get("first") or a.get("initials", "")))
             for a in e.get("authors", []) if a.get("last")
         )
         fields = [
@@ -158,7 +161,9 @@ def to_ris(entries: list[dict]) -> str:
         lines = ["TY  - JOUR"]
         for a in e.get("authors", []):
             if a.get("last"):
-                name = a["last"] if a.get("collective") else f"{a['last']}, {a.get('first') or a.get('initials', '')}".strip(", ")
+                name = a["last"] if a.get("collective") else (
+                    f"{a['last']}, {a.get('first') or a.get('initials', '')}".strip(", ") +
+                    (f", {a['suffix']}" if a.get("suffix") else ""))
                 lines.append(f"AU  - {name}")
         lines += [
             f"TI  - {e.get('title', '')}",

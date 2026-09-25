@@ -1,5 +1,14 @@
 # S11 - Render figures, then actually look at them
 
+## Production boundary
+Read `reference/efficient-quality.md`. Reuse the approved S07 semantics and prototype code.
+Keep each new Python script beside its vector PDF under `05_figures/out/` with literal
+filenames. `save()` produces PDF + PNG; TIFF is opt-in when required by the selected journal.
+Use the installed Tavotto skill for user-facing Matplotlib output and its desktop handoff
+after visual QA; user instructions override the embedded-canvas default. Record successful
+handoff JSON, or report its structured failure. Internal diagnostics do not require it.
+Journal-specific visual adaptations belong to integration copies after S19 freeze.
+
 ## Purpose
 Produce journal-grade figures. This stage has a mandatory two-phase verification:
 deterministic QC by code, then visual inspection of the rendered PNG. Reading the
@@ -90,7 +99,7 @@ save(fig, "project/05_figures/out/Figure1", width="double", archetype="box_jitte
    bars). All of it black or near-black, at or above the size floor.
 8. Write `project/05_figures/manifest.json`:
 ```json
-{"built_at": "", "figures": [{"id": "Figure 1", "script": "", "png": "", "tiff": "",
+{"built_at": "", "figures": [{"id": "Figure 1", "script": "", "png": "", "pdf": "",
   "width": "double", "size_mm": [180, 90], "dpi": 600, "review_rounds": 2}]}
 ```
 9. Mark the visual review as done only after you have genuinely looked at every figure:
@@ -103,7 +112,7 @@ save(fig, "project/05_figures/out/Figure1", width="double", archetype="box_jitte
 - `05_figures/manifest.json`
 - `05_figures/qc/qc_report.json`
 - `05_figures/moved_to_legend.md`
-- (plus scripts in `05_figures/code/` and PNG+TIFF in `05_figures/out/`)
+- (plus co-located scripts and PDF/PNG in `05_figures/out/`; legacy script paths remain supported)
 
 ## Hard rules
 - Never claim visual verification without having loaded the image. If the image cannot be

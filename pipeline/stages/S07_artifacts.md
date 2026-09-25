@@ -28,9 +28,9 @@ first keep panels from filling up with explanatory text later.
      "content": "what the reader learns from it, in one sentence",
      "archetype": "flow_diagram",
      "panels": ["A", "B"], "width": "single|1.5|double",
-     "script": "05_figures/code/fig1_flow.py",
+     "script": "05_figures/out/Figure1.py",
      "file": "05_figures/out/Figure1.png",
-     "tiff": "05_figures/out/Figure1.tiff",
+     "pdf": "05_figures/out/Figure1.pdf",
      "source_results": ["03_analysis/results/dataset_summary.json"]}
   ],
   "main_tables": [
@@ -78,14 +78,22 @@ first keep panels from filling up with explanatory text later.
    across figures and tables, or a local list exceeds 50 words, S17 will move the complete list into `Declarations and
    Statements` and regenerate the affected tables without repeated abbreviation blocks.
 
+6. Read `reference/efficient-quality.md` and create cheap semantic prototypes for every
+   planned display under `01_protocol/prototypes/`. Open them and conduct the one-minute
+   reader-comprehension screen. Record exact preview/source hashes, denominator/encoding
+   explanations, layout and reviewer identity in `01_protocol/display_review.json`; do not
+   claim a human reviewed an agent simulation. Run `tools/manuscript/readiness.py displays`.
+
 ## Outputs
 - `01_protocol/artifact_benchmark.md`
 - `01_protocol/artifact_plan.json`
 - `05_figures/legends.md`
 - `04_tables/table_captions.md`
+- `01_protocol/display_review.json`
+- low-cost previews under `01_protocol/prototypes/`
 
 ## Hard rules
-- Do not draw anything yet. No xlsx, no png.
+- Only low-cost prototypes are allowed here. No formatted XLSX, Word or journal-specific TIFF.
 - Do not plan a display item you have no result JSON for.
 - Detailed methods, cohort provenance and general caveats belong in Methods or
   supplementary Methods, not in panels and not automatically in every legend.
@@ -99,4 +107,3 @@ first keep panels from filling up with explanatory text later.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "inventory: <F main / T main / F supp / T supp> vs benchmark <range>; legends written"
 ```
-

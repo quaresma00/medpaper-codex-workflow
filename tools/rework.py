@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from wfcore import paths, registry  # noqa: E402
 from wfcore.state import State  # noqa: E402
+from wfcore.dependencies import closure  # noqa: E402
 
 
 ROUTES = {
@@ -34,6 +35,8 @@ ROUTES = {
     "journal": "S20_journal",
     "title-page-or-statements": "S21_authors",
     "cover-letter-or-package-structure": "S23_package",
+    "journal-figure-layout": "S23_package",
+    "journal-table-layout": "S23_package",
 }
 
 ROUND_SCHEMA = 1
@@ -86,6 +89,8 @@ INVALIDATE_BY_KIND = {
     "title-page-or-statements": PACKAGE_INVALIDATION | {"polish_reviewed"},
     "cover-letter-or-package-structure": PACKAGE_INVALIDATION,
     "word-format-only": PACKAGE_INVALIDATION,
+    "journal-figure-layout": PACKAGE_INVALIDATION,
+    "journal-table-layout": PACKAGE_INVALIDATION,
 }
 
 
@@ -181,10 +186,16 @@ def _read_batch_plan(path: Path, kinds: list[str], review_stage: str, pipe) -> d
         if (not isinstance(acceptance, list) or not acceptance or
                 not all(isinstance(x, str) and len(x.strip()) >= 8 for x in acceptance)):
             raise ValueError(f"items[{index}].acceptance_criteria must contain substantive checks")
+        owner = resolve_route(kind, review_stage, pipe)
+        if pipe.stage(owner).index > pipe.stage(review_stage).index:
+            raise ValueError(f"{kind} belongs after {review_stage}; finish the current review first")
+        if kind in {"journal-figure-layout", "journal-table-layout"} and any(
+                not rel.replace("\\", "/").startswith("08_submission/") for rel in sources):
+            raise ValueError("journal layout changes must name derived submission sources only")
         normalized.append({
             "kind": kind,
             "request": request,
-            "owning_stage": resolve_route(kind, review_stage, pipe),
+            "owning_stage": owner,
             "affected_sources": sources,
             "acceptance_criteria": acceptance,
             "status": "pending",
@@ -238,11 +249,18 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
             "round_id": round_id,
             "review_stage": review_stage,
             "created_at": _now(),
-            "status": "active",
+            "status": "collecting",
+            "full_builds": 0,
             "feedback_updates": [],
             "items": [],
         }
     plan = _read_batch_plan(args.plan.resolve(), kinds, review_stage, pipe)
+    if any(update.get("feedback_sha256") == plan["feedback_sha256"] for update in revision["feedback_updates"]):
+        print("identical feedback already recorded; no duplicate items or rebuild")
+        if args.sealed and revision.get("status") == "collecting":
+            return _seal_round(state, pipe, args.why or plan["feedback_verbatim"])
+        return 0
+    revision["status"] = "collecting"
     first_new = len(revision["items"]) + 1
     for offset, item in enumerate(plan["items"]):
         item["id"] = f"{revision['round_id']}-{first_new + offset:02d}"
@@ -256,25 +274,42 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
         key=lambda stage_id: pipe.stage(stage_id).index,
     )
     revision["updated_at"] = _now()
+    revision["rebuild_files"] = closure(project, [rel for item in revision["items"]
+                                                for rel in item["affected_sources"]])
     _write_round(round_path, revision)
     state.data["active_revision_round"] = revision["round_id"]
     state.event("revision_round_opened" if not active else "revision_round_extended",
                 f"{revision['round_id']}: {len(revision['items'])} item(s)")
     state.save()
+    print(f"collected {revision['round_id']}: {len(revision['items'])} item(s); builds deferred")
+    if not args.sealed:
+        print("When the user has finished this feedback batch, run seal --why <their instruction>.")
+        return 0
+    return _seal_round(state, pipe, args.why or plan["feedback_verbatim"])
+
+
+def _seal_round(state: State, pipe, why: str) -> int:
+    if len(why.strip()) < 10:
+        raise ValueError("seal requires the user's end-of-batch or apply-now instruction")
+    round_path, revision = _load_round(state)
+    revision.update({"status": "active", "sealed_at": _now(), "seal_instruction": why})
+    _write_round(round_path, revision)
+    review_stage = revision["review_stage"]
     invalidations: set[str] = set()
-    for item in plan["items"]:
+    for item in revision["items"]:
         if item["kind"] == "manuscript-copyedit" and review_stage == "S19_human_review":
             invalidations.update(COMMON_MANUSCRIPT_INVALIDATION)
         else:
             invalidations.update(INVALIDATE_BY_KIND[item["kind"]])
     removed = _clear_decisions(state, invalidations)
     target = min(
-        (item["owning_stage"] for item in plan["items"]),
+        (item["owning_stage"] for item in revision["items"] if item.get("status") != "done"),
         key=lambda stage_id: pipe.stage(stage_id).index,
+        default=review_stage,
     )
     rewound = _rewind_batch(
         state, pipe, target,
-        f"{revision['round_id']} user feedback; {len(plan['items'])} new atomic item(s)",
+        f"{revision['round_id']} consolidated feedback; {len(revision['items'])} atomic item(s)",
     )
     print(f"revision round {revision['round_id']}: {len(revision['items'])} total item(s)")
     print(f"review return point: {review_stage}; earliest owner: {revision['earliest_stage']}")
@@ -292,6 +327,9 @@ def _cmd_status(state: State) -> int:
         return 0
     print(f"{revision['round_id']}  status={revision['status']}  return={revision['review_stage']}")
     print(f"earliest owner: {revision['earliest_stage']}; current stage: {state.current}")
+    print(f"full builds: {revision.get('full_builds', 0)}; affected closure: {len(revision.get('rebuild_files', []))} files")
+    for rel in revision.get("rebuild_files", []):
+        print(f"    rebuild/check: {rel}")
     for item in revision["items"]:
         print(f"  [{item['status']}] {item['id']} {item['kind']} -> {item['owning_stage']}")
         print(f"      {item['request']}")
@@ -302,6 +340,8 @@ def _cmd_status(state: State) -> int:
 
 def _cmd_mark(args, project: Path, state: State) -> int:
     path, revision = _load_round(state)
+    if revision.get("status") == "collecting":
+        raise ValueError("cannot mark while collecting feedback; seal the batch first")
     if state.current != revision["review_stage"]:
         raise ValueError(
             f"mark items only after the gated workflow returns to {revision['review_stage']}; "
@@ -345,6 +385,8 @@ def _cmd_mark(args, project: Path, state: State) -> int:
 
 def _cmd_close(args, state: State) -> int:
     path, revision = _load_round(state)
+    if revision.get("status") == "collecting":
+        raise ValueError("cannot close while collecting feedback; seal and implement the batch first")
     pending = [item["id"] for item in revision["items"] if item.get("status") != "done"]
     if pending:
         raise ValueError("cannot close; pending items: " + ", ".join(pending))
@@ -384,7 +426,9 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "start", "batch", "status", "mark", "close"])
+    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "mark", "close"])
+    parser.add_argument("--sealed", action="store_true", help="user already asked to apply this complete batch now")
+    parser.add_argument("--scope", choices=["full", "targeted"], default="targeted")
     parser.add_argument("--kind", choices=kinds)
     parser.add_argument("--why",
                         help="specific user-requested change and why this route owns it")
@@ -404,6 +448,23 @@ def main() -> int:
         state = State(project, pipe.layout.get("state_dir", ".wf")).load()
         if args.command == "status":
             return _cmd_status(state)
+        if args.command == "seal":
+            return _seal_round(state, pipe, args.why or "")
+        if args.command == "build":
+            path, revision = _load_round(state)
+            if revision.get("status") == "collecting":
+                raise ValueError("feedback collection is open; seal before building")
+            if args.scope == "full" and revision.get("full_builds", 0) >= 2:
+                raise ValueError("two full builds already used; identify unstable input and use targeted correction")
+            if args.scope == "full":
+                revision["full_builds"] = revision.get("full_builds", 0) + 1
+            else:
+                if not args.why:
+                    raise ValueError("targeted build needs --why naming the changed artifacts")
+            revision.setdefault("builds", []).append({"at": _now(), "scope": args.scope, "why": args.why})
+            _write_round(path, revision)
+            print(f"{args.scope} build recorded; use the persisted dependency closure")
+            return 0
         if args.command == "batch":
             if args.plan is None:
                 raise ValueError("batch requires --plan <revision-plan.json>")
@@ -443,4 +504,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

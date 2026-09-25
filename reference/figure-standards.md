@@ -96,7 +96,8 @@ Encoded in `tools/figures/style.py`:
   non-significant points. Never for text.
 - `pdf.fonttype=42`, `ps.fonttype=42`, `svg.fonttype=none` so text stays editable;
   `axes.unicode_minus=False` so a negative sign never renders as a missing-glyph box.
-- PNG preview plus LZW-compressed TIFF master at 600 dpi from one `save()` call.
+- Vector PDF master plus PNG preview from one `save()` call. Export a LZW-compressed TIFF
+  only if the chosen journal requires it; specify the journal's actual resolution.
 
 Checked by `tools/figures/qc.py`:
 
@@ -106,7 +107,7 @@ Checked by `tools/figures/qc.py`:
 | `not_clipped`, `no_excess_whitespace` | `no_panel_overlap`, `no_text_clipped` |
 | `margins_symmetric` | `no_missing_glyphs` (glyph warnings during rasterization) |
 | `no_grey_footnote_text` | `no_tick_label_collision` (adjacent tick-label bboxes) |
-| `tiff_master` | `no_interior_void` (dead bands between panels) |
+| `publication_master` | `no_interior_void` (dead bands between panels) |
 | | `bar_baseline_zero` |
 | | `element:*` for the declared archetype |
 

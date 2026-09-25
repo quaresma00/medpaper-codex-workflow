@@ -56,8 +56,11 @@ further review is needed.
 .\.venv\Scripts\python.exe tools/rework.py batch --plan project\temp\revision_plan.json
 .\.venv\Scripts\python.exe tools/rework.py status
 ```
-   The tool rewinds once to the earliest owner across the whole batch and persists the plan
-   under `.wf/revisions/`. If the context compacts, resume from `tools/rework.py status`; do
+   The tool persists the open batch under `.wf/revisions/` without rewinding or building.
+   After the user finishes the batch, run `tools/rework.py seal --why "<user's instruction>"`.
+   Use `batch --sealed` when the user already asked to apply this complete request now;
+   do not demand a redundant confirmation. Sealing routes once to the earliest owner.
+   If the context compacts, resume from `tools/rework.py status`; do
    not reinterpret the conversation or silently reduce the requested work.
 3. Update each earliest source of truth, then rebuild only its true dependants. Unchanged raw
    data, results, verified references, tables, figures and journal evidence are reused when
@@ -130,4 +133,3 @@ further review is needed.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "user was shown exact review paths and ZIP revision=<vNNN/package-id>; revisions=<summary>; explicitly stated that no further review is needed"
 ```
-

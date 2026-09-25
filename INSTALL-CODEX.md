@@ -65,6 +65,7 @@ The command loop is:
 
 ```powershell
 .\.venv\Scripts\python.exe tools\wf.py status
+.\.venv\Scripts\python.exe tools\wf.py card
 .\.venv\Scripts\python.exe tools\wf.py check
 .\.venv\Scripts\python.exe tools\wf.py advance --note "specific handoff note"
 ```
@@ -112,8 +113,10 @@ the active stage only. Follow `reference/codex-integration.md`:
 Formal references are fail-closed. Candidate-search tools may suggest papers, but only
 `tools/pubmed/verify.py` may create the verification receipt. It performs a fresh PubMed
 EFetch and records the raw-XML hash, parsed-record fingerprint, and exact `library.json`
-hash. S13 and every later manuscript/submission checkpoint separately re-fetch the PMIDs
-live. A handwritten `verified: true`, a locally
+hash. S13 and S25 always separately re-fetch the PMIDs live; intermediate gates can reuse
+hash-bound independent live XML for at most 24 hours while all identities still match.
+Expired or changed evidence requires another live request and fails closed if unavailable.
+A handwritten `verified: true`, a locally
 fabricated DOI, or a green Pandoc build cannot satisfy these gates, and `wf advance --force`
 cannot waive them.
 
@@ -159,4 +162,3 @@ formatting only when those hashes still match.
 
 Packaging refuses non-placeholder credentials and personal email addresses, runs the doctor
 and offline tests, and excludes `.venv`, run state, caches, and user project data.
-

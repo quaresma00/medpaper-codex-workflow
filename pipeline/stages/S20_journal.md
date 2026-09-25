@@ -64,11 +64,17 @@ then freeze its actual author instructions and Word-format rules.
    abbreviation statements into `project/08_submission/integration/`. All journal-specific
    content changes now occur there, never in `project/07_manuscript/`.
 
+Before leaving S20, write `08_submission/submission_requirements.json` as described in
+`reference/efficient-quality.md`: exact required upload roles, article type, blinding rules,
+and sourced main/abstract word-count scopes and limits. Do not produce submission files
+until the user has confirmed the journal and administrative facts are available.
+
 ## Outputs
 - `08_submission/journal_shortlist.md`
 - `08_submission/target_journal.json`
 - `08_submission/guidelines_extract.md`
 - `08_submission/docx_style.json`
+- `08_submission/submission_requirements.json`
 - `08_submission/integration/journal_workspace.json`
 
 ## Hard rules
@@ -90,4 +96,3 @@ then freeze its actual author instructions and Word-format rules.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "target=<journal>; current SCIE/JCR verified; Word rules frozen; journal deltas=<...>"
 ```
-

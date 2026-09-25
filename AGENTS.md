@@ -11,6 +11,10 @@ Before doing project work, run:
 .\.venv\Scripts\python.exe tools\wf.py status
 ```
 
+`status` is compact/local. Read `tools/wf.py card` for active-stage instructions; use
+`status --full` only for diagnostics. Read `reference/efficient-quality.md` at S06/S07,
+when processing feedback and before building/finalizing a journal package.
+
 If the virtual environment does not exist yet, run
 `uv run --python 3.13 python bootstrap.py`. After a context compaction, run `status` again.
 Complete only the active stage, then run `check` and `advance --note "..."`. Never infer or
@@ -114,8 +118,18 @@ skip a stage.
     journal-specific wording, structure, title-page, declaration and packaging change there.
     A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
     and requires a new review ZIP, explicit approval and freeze before submission work resumes.
+15. At S06 freeze the analysis contract and clinical story; at S07 verify real low-cost display
+    prototypes before production. Feedback batches collect before they are sealed and built.
+    Rebuild true file dependencies, never an entire stage tail merely because an earlier stage
+    owns an edit. After two full builds use targeted correction; quality work remains mandatory.
+16. S23 derives portal fields/counts from final DOCX and unified administrative facts. S24 creates
+    a read-only release containing actual uploads only. Evidence/caches/control refreshes do not
+    require another author confirmation; upload changes do. S25 binds the independent verdict
+    to upload identity and current guideline context. Never fabricate independent review.
+17. Use the installed Tavotto skill for user-facing Matplotlib figures, with Python beside PDF
+    and desktop handoff per the user's instructions. Internal diagnostics are exempt; a missing
+    embedded-canvas authorization does not block desktop preview.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external
 action, stop and ask one concise question.
-

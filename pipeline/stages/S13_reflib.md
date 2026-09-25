@@ -23,8 +23,9 @@ Everything the Introduction and Discussion say about the literature comes from h
 ```
 .\.venv\Scripts\python.exe tools/pubmed/verify.py
 ```
-   This command always performs a fresh PubMed EFetch, compares PMID, DOI, title, journal,
-   year, first author and abstract status, and writes `06_refs/verified.json` together with
+   This command always performs a fresh PubMed EFetch, compares PMID, DOI, PMCID, title,
+   journal, year, the complete ordered author list and abstract status, and writes
+   `06_refs/verified.json` together with
    the exact `library.json` hash and hashes/fingerprints of the cached raw PubMed XML.
    Confirm the stored proof by running:
 ```
@@ -34,6 +35,8 @@ Everything the Introduction and Discussion say about the literature comes from h
    a second time and recomputes the comparisons. If NCBI cannot be reached, the gate fails
    closed; it must never be replaced with a handwritten boolean, fabricated DOI, copied
    metadata, or an alternate script. Entries that fail are quarantined, not patched.
+   S25 also always performs a new independent live check. Intermediate gates may reuse
+   hash-bound independent live XML for at most 24 hours only while all identities match.
 4. Export both formats from `library.json` - never hand-edit them:
 ```
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --export
@@ -68,4 +71,3 @@ Everything the Introduction and Discussion say about the literature comes from h
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> fresh-PubMed-proven entries with abstracts; independent live gate passed; coverage gaps: <...>"
 ```
-

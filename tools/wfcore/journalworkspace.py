@@ -49,7 +49,8 @@ def _target(project: Path) -> tuple[dict, str]:
         raise ValueError("08_submission/target_journal.json is missing") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"target_journal.json is invalid: {exc}") from exc
-    canonical = json.dumps(target, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    identity = {key: target.get(key) for key in ("journal", "issn")}
+    canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return target, hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -66,7 +67,7 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
         except json.JSONDecodeError:
             previous = {}
         same = (previous.get("scientific_freeze_id") == freeze.get("freeze_id") and
-                previous.get("target_journal_sha256") == target_hash)
+                previous.get("journal") == target.get("journal") and previous.get("issn") == target.get("issn"))
         if same:
             verified, verify_problems, current = verify(project, require_pristine=False)
             if verified and current is not None:
@@ -149,8 +150,8 @@ def verify(project: Path, *, require_pristine: bool = False) -> tuple[bool, list
         target, target_hash = _target(project)
     except ValueError as exc:
         return False, problems + [str(exc)], payload
-    if payload.get("target_journal_sha256") != target_hash:
-        problems.append("target journal metadata changed after the integration workspace was created")
+    # Guide dates and indexing receipts may be refreshed without replacing the journal copy.
+    # Journal identity and frozen scientific source remain the binding boundary below.
     if payload.get("journal") != target.get("journal") or payload.get("issn") != target.get("issn"):
         problems.append("journal identity does not match target_journal.json")
     frozen = {item["path"]: item for item in freeze.get("files", [])}
@@ -184,4 +185,3 @@ def verify(project: Path, *, require_pristine: bool = False) -> tuple[bool, list
         elif require_pristine and _sha256(destination) != item.get("initial_destination_sha256"):
             problems.append(f"journal integration copy changed before S20 closed: {destination_rel}")
     return not problems, problems, payload
-

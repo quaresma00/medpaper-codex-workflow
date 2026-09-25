@@ -5,8 +5,8 @@ Let the user inspect and modify the assembled journal-specific submission files,
 an explicit final `OK` before an independent reviewer sees a frozen package.
 
 ## This stage needs the user
-Present clickable paths to the complete `08_submission/bundle/`, its
-`SUBMISSION_CHECKLIST.md`, `manifest.json`, the rendered previews used for visual QA, and
+Present clickable paths to the complete `08_submission/bundle/`, the
+`08_submission/evidence/SUBMISSION_CHECKLIST.md`, `manifest.json`, the rendered previews used for visual QA, and
 `guidelines_extract.md`. Tell the user that both content and formatting may be edited. Do not
 treat delivery, silence, or an earlier manuscript approval as approval of this submission
 package.
@@ -26,7 +26,10 @@ approves the exact visible files.
 .\.venv\Scripts\python.exe tools/rework.py batch --plan project\temp\revision_plan.json
 .\.venv\Scripts\python.exe tools/rework.py status
 ```
-   A content change routes to its earliest Markdown, analysis, table, figure, reference,
+   Keep collecting without rebuilding until the user finishes the batch, then run
+   `tools/rework.py seal --why "<user's instruction>"`. If the complete request already asks
+   to implement now, use `batch --sealed` directly without another confirmation.
+   After sealing, a content change routes to its earliest Markdown, analysis, table, figure, reference,
    title-page or package source; rebuild its true dependants and return through S23. Never edit
    narrative content only in DOCX. Format-only work stays at S24. Preserve every unrelated
    user edit and modify only the affected Word file or deterministic style/build source.
@@ -61,19 +64,27 @@ approves the exact visible files.
 7. After all revision rounds are closed and the user's edits have been revalidated, ask exactly one clear confirmation question:
    **“投稿包已按您的修改重新校验。是否确认 OK，并调用一个独立子代理，以普通读者和期刊编辑的视角终审当前冻结版本？”**
    Continue only after an explicit affirmative answer such as `OK`, `确认` or `可以`.
-8. Freeze the exact reviewed bundle and its journal/source evidence:
-```
-.\.venv\Scripts\python.exe tools/package_review.py freeze --project project
-```
-   Record the package file count, freeze timestamp and `freeze_id` under `Frozen package`,
-   then record:
+8. Record the actual explicit user confirmation before creating the release:
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide submission_package_user_confirmed OK --why "<what the user reviewed or changed, what was revalidated, and that independent audit was explicitly approved>"
 ```
 
+   Then create and verify the upload-only read-only release:
+```
+.\.venv\Scripts\python.exe tools/manuscript/submission_fields.py
+.\.venv\Scripts\python.exe tools/package_review.py freeze --project project
+.\.venv\Scripts\python.exe tools/package_review.py verify --project project
+```
+   Present the exact `08_submission/releases/<freeze_id>/` path and portal fields. Record the
+   file count and freeze ID under `Frozen package`. Read `reference/efficient-quality.md`.
+   Keep backstage evidence in its own manifest; refreshing evidence does not require another
+   author approval of identical upload bytes.
+
 ## Outputs
 - `08_submission/package_human_review.md`
 - `08_submission/package_review_freeze.json`
+- `08_submission/evidence/evidence_manifest.json`
+- the exact read-only release under `08_submission/releases/`
 
 ## Hard rules
 - The confirmation must concern the final journal-specific upload package, not the earlier
@@ -82,8 +93,9 @@ approves the exact visible files.
   freeze.
 - The user's confirmation is also the explicit request to invoke one independent subagent
   for the final reader/editor/compliance review; an earlier review request does not substitute.
-- Any change after confirmation invalidates the freeze and requires this stage's checks and
-  confirmation again.
+- Any actual upload change after confirmation requires revalidation and new confirmation.
+  Background cache/log/control refreshes do not; changed journal rules require compliance
+  revalidation bound to the new audit context.
 - A direct Word content edit can never be classified as format-only. Visible-text drift blocks
   freezing until it is applied to the owning source and rebuilt through S23.
 - Journal-specific adaptations stay in `08_submission/integration/` and the bundle. Frozen
@@ -98,4 +110,3 @@ approves the exact visible files.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "user reviewed and explicitly confirmed the final package; changed files=<...>; freeze=<timestamp and file count>"
 ```
-

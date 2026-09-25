@@ -29,6 +29,7 @@ except ImportError as exc:  # pragma: no cover - clear deployment failure
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools"))
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PKG_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -543,6 +544,8 @@ def run_pandoc(inputs: list[Path], output: Path, bibliography: Path | None,
 
 
 def build(args) -> int:
+    from wfcore.dependencies import guard_build
+    guard_build(project_root())
     style = load_style(args.style_config)
     if style.get("all_text_black") is not True or style.get("external_hyperlinks") is not False:
         print("style config must require black text and prohibit external hyperlinks", file=sys.stderr)
@@ -628,4 +631,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

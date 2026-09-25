@@ -44,7 +44,7 @@ def no_future_artifacts(ctx: Ctx) -> Result:
     """Enforce 'one thing at a time': later stages' outputs must not exist yet."""
     offenders = []
     for st in ctx.pipeline.stages_after(ctx.stage.id):
-        if ctx.state.is_done(st.id):
+        if ctx.state.is_done(st.id) or ctx.state.stage_info(st.id).get("completed_at"):
             continue
         for rel in st.outputs:
             if ctx.p(rel).exists():
@@ -68,7 +68,8 @@ def single_section_written(ctx: Ctx) -> Result:
     ]
     unexpected = []
     for st in manuscript_stages:
-        if st.index <= ctx.stage.index or ctx.state.is_done(st.id):
+        if (st.index <= ctx.stage.index or ctx.state.is_done(st.id) or
+                ctx.state.stage_info(st.id).get("completed_at")):
             continue
         for rel in st.outputs:
             if rel.startswith("07_manuscript/") and ctx.p(rel).exists():

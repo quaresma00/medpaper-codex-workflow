@@ -56,10 +56,15 @@ guess. Otherwise start or extend the current round:
 
 The batch command stores the verbatim feedback, its SHA-256, the interpretation, atomic
 items, acceptance criteria and earliest owning stage under `.wf/revisions/RNNN.json`. It
-invalidates only decisions whose evidence can change and preserves unrelated approvals. If
+initially remains `collecting`, without invalidation or expensive construction. When the
+user finishes the batch, run `tools/rework.py seal --why "<user end/apply instruction>"`.
+An explicit request to implement a complete set of feedback permits `batch --sealed` directly.
+Sealing invalidates only decisions whose evidence can change and preserves unrelated approvals. If
 new feedback arrives before the round finishes, create another small plan containing only the
 new items and run `batch` again; it is appended to the same active round and rewinds farther
-only when necessary.
+only when necessary after it is sealed. Identical feedback is deduplicated.
+`rebuild_files` records actual file dependencies. Read `reference/efficient-quality.md` for
+build scope, risk-proportionate QA and backstage control maintenance.
 
 After all affected sources and true dependants have been rebuilt and the workflow has
 returned to S19 or S24, record the final files and completed checks for each item:
@@ -106,6 +111,7 @@ Use the earliest stage that owns the changed fact or artifact:
 | target journal or its rules | `journal` -> S20 |
 | title page or declarations | `title-page-or-statements` -> S21 |
 | cover letter, filename, upload list or package composition | `cover-letter-or-package-structure` -> S23 |
+| journal-only figure/table layout | `journal-figure-layout` / `journal-table-layout` -> S23 integration only |
 | Word layout with absolutely no visible-text change | `word-format-only` -> S23/S24 |
 
 For S19 copyedits, update the owning component Markdown and rerun
@@ -154,4 +160,3 @@ reducing the requested work:
    item, shrink the analysis, skip a gate, reduce literature verification or accept a partial
    artifact. If the context compacts, continue from the persisted round until every item is
    complete.
-

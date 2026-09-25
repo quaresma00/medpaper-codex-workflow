@@ -1,4 +1,4 @@
-# S05 - Method scan + exploratory analysis (NO FIGURES)
+# S05 - Method scan + exploratory analysis (no publication figures)
 
 ## Purpose
 Find out what the data actually says, using methods the literature accepts for this
@@ -52,9 +52,14 @@ half-finish it and move on.
 - (plus scripts in `03_analysis/code/` and result JSONs in `03_analysis/results/`)
 
 ## Hard rules
-- **No plotting.** No matplotlib, seaborn, plotly, ggplot, savefig. The gate greps for
-  them. Look at numbers and tabular console output. Figures are S11, built from an
-  approved plan.
+- **No publication plotting.** Keep computational scripts under `03_analysis/code/`
+  free of matplotlib, seaborn, plotly, ggplot and savefig; that separation is gated.
+  When needed to judge model fit, missingness or bias, run a small diagnostic-only script
+  under `temp/diagnostics/` and inspect its low-cost preview there. Record its numerical
+  diagnostics and interpretation in the result JSON/log, then remove only these disposable
+  task-created scratch files before closing S05. Do not number or style them as paper
+  figures, export high-resolution production formats, or open Tavotto for them. S07 owns
+  reader-facing display prototypes; S11 produces the approved scientific figures.
 - No p-value computed in prose. If it is not in a JSON file, it does not exist.
 - Do not silently switch the primary analysis. If it changes, that is a protocol
   deviation and it gets recorded at S06.

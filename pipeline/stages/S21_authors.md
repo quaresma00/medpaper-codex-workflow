@@ -5,7 +5,9 @@ Collect user-owned authorship and compliance facts only after the scientific man
 been assembled, independently reviewed, user-reviewed and matched to a journal.
 
 ## This stage needs the user
-Ask once for the exact author order and names, affiliations, ORCIDs, corresponding-author
+Reuse already supplied facts and ask once for only journal-required missing items. Keep
+`00_input/author_info.json` as the single administrative source for every consuming file.
+Ask for the exact author order and names, affiliations, ORCIDs, corresponding-author
 details, funding/grants, conflicts, ethics/consent, data/code availability,
 acknowledgements, CRediT roles, preprint and prior presentation. Never infer a missing item.
 
@@ -37,7 +39,7 @@ Preserve the verified abbreviation list prepared at S17. Reconcile any later add
 across figure legends, table captions and finished workbooks. When there are more than eight
 unique defined terms or a local list exceeds 50 words, keep `## Abbreviations` under
 `# Declarations and Statements`, define every term once, remove all repeated
-`Abbreviations:` blocks from legends/captions and the table-building script, regenerate and
+`Abbreviations:` blocks from integration legends/captions and the journal-specific table-building copy, regenerate and
 visually check affected workbooks, and insert the Declarations and Statements section
 between Discussion and References in `08_submission/integration/full_manuscript.md`. If the journal explicitly
 requires local definitions, retain them only when `target_journal.json` records
@@ -66,4 +68,3 @@ requires local definitions, retain them only when `target_journal.json` records
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "author/admin facts supplied; title page and required statements assembled; missing user-owned fields=<none or list>"
 ```
-

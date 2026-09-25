@@ -192,11 +192,11 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None) -> dict:
         if textish else "no text-shaped mid-grey regions",
         severity="warn")
 
-    tiff_rel = entry.get("tiff", "")
+    tiff_rel = entry.get("pdf") or entry.get("tiff", "")
     tiff = project_root() / tiff_rel if tiff_rel else None
-    add("tiff_master", bool(tiff and tiff.exists()),
+    add("publication_master", bool(tiff and tiff.exists()),
         f"{tiff_rel} ({tiff.stat().st_size // 1024} KB)" if tiff and tiff.exists()
-        else f"{tiff_rel or '(none declared)'} missing - journals want TIFF or EPS")
+        else f"{tiff_rel or '(none declared)'} missing - retain a vector PDF or existing TIFF master")
 
     archetype = entry.get("archetype")
     elements_found: dict = {}

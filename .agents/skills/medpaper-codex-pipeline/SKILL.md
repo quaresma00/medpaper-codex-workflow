@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -18,6 +18,9 @@ Run this before project work and again after context compaction:
 ```powershell
 .\.venv\Scripts\python.exe tools\wf.py status
 ```
+
+`status` is compact and local; read `tools/wf.py card` before acting. Use `status --full`
+only for complete diagnostics and `check` for current validation.
 
 If `.venv` is absent, run `uv run --python 3.13 python bootstrap.py` first. Then complete only
 the active card's declared outputs:
@@ -56,8 +59,8 @@ when `tools/package_content.py verify` proves that visible text is unchanged.
 - A bibliographic fact is usable only after the bundled verifier performs a fresh PubMed
   EFetch. `verified: true` alone is never evidence: the gate reparses hashed raw PubMed XML,
   binds it to the exact `library.json`, compares PMID and DOI as well as bibliographic fields,
-  and independently re-fetches the records live at S13 and every later manuscript/submission
-  checkpoint through the final audit. Never hand-write or patch
+  and checks independent live evidence at S13 and later manuscript/submission checkpoints,
+  with hash-bound reuse inside the configured short freshness window. Never hand-write or patch
   `library.json`, `verified.json`, `refs.bib` or `refs.ris`; reference-integrity gates cannot
   be waived with `--force`.
 - A full text acquired through an open-access or explicitly authorized institutional route
@@ -123,10 +126,28 @@ Use exactly one Figure legends section title and do not repeat `Figure N` in the
 Supplementary Methods contains prose only: move every table to the separate three-line
 supplementary workbook and remove Markdown thematic breaks.
 
+## Quality and efficient execution (v1.5)
+
+Read [quality-preserving execution](../../../reference/efficient-quality.md) at S06/S07, for revisions and submission production.
+S06 freezes the analysis contract and four-part clinical story before writing. S07 requires
+actual low-cost display prototypes and source-bound reader explanations before formatted work.
+Feedback `batch` defaults to collection; seal after the user's apply/end instruction, or use
+`--sealed` for an already complete apply-now request. Rebuild the persisted file dependency
+closure; after two full build cycles switch to targeted correction, without limiting revisions.
+Use Tavotto's desktop handoff for user-facing Matplotlib figures; keep Python beside vector PDF
+and respect the user's desktop-first preference. Internal diagnostics are exempt.
+S23 derives portal fields and explicit word counts from the final DOCX and the existing unified
+`author_info.json`. S24 records user OK before creating a read-only upload-only release.
+Caches, rendering evidence and control records are outside the upload freeze; their refresh
+is not a new author revision. S25 audits the release and binds both upload and guideline-context
+identities. Independent review unavailability is a pending audit, never a fabricated PASS.
+Reference verification covers PMID/DOI/PMCID and complete ordered authors. S13/S25 always
+make fresh independent live requests. At other gates, reuse independent live XML only when identities/hashes match and it is within the 24-hour freshness window;
+otherwise fetch again and fail closed. Renewed evidence alone does not alter scientific facts.
+
 ## Safety and completion
 
 Keep patient-level/private data local unless the user explicitly authorizes an external
 transfer. Inspect every rendered visual artifact before recording its visual-review decision.
 At a stage requiring a material user choice, such as the target journal or private-data
 access, ask once and wait; otherwise keep working until the gate passes and the stage advances.
-

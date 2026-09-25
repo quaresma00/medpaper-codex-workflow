@@ -26,9 +26,21 @@ the effect size and the data's limits are known. This is the last cheap exit.
 .\.venv\Scripts\python.exe tools/wf.py decide go_nogo_2 GO --why "<the finding, its precision, why a journal takes it, which journal tier is realistic>"
 ```
 
+5. Before writing, read `reference/efficient-quality.md`. Persist the scientific rules in
+   `01_protocol/analysis_contract.json` and the four-part clinical story in
+   `01_protocol/study_facts.json`; link the main finding to executed result JSONs. Resolve
+   any material clinical ambiguity; do not invent validation. After convergence and GO:
+```
+.\.venv\Scripts\python.exe tools/manuscript/readiness.py freeze
+```
+   Writing remains blocked if those sources later drift. A PIVOT or STOP does not advance.
+
 ## Outputs
 - `01_protocol/protocol_final.md`
 - `01_protocol/protocol_diff.md`
+- `01_protocol/analysis_contract.json`
+- `01_protocol/study_facts.json`
+- `01_protocol/writing_readiness.json`
 
 ## Hard rules
 - Do not retro-fit the protocol to make the result look pre-specified. The diff file

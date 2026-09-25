@@ -17,7 +17,7 @@ journal-guideline audit.
 ```
    Use `sync --add` only when the official title-page instructions require that field. Do not
    derive it from the candidate literature-library size.
-3. Build every prose upload with `tools/manuscript/build_docx.py`. At minimum:
+3. Build every prose upload with `tools/manuscript/build_docx.py`. For each journal-required narrative role (do not add roles absent from the guide):
 ```
 .\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind manuscript --input project/08_submission/integration/full_manuscript.md --output project/08_submission/bundle/manuscript.docx --style-config project/08_submission/docx_style.json --bibliography project/06_refs/refs.bib --csl <journal.csl>
 .\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind title_page --input project/08_submission/integration/title_page.md --output project/08_submission/bundle/title_page.docx --style-config project/08_submission/docx_style.json
@@ -47,13 +47,22 @@ journal-guideline audit.
    Markdown horizontal rules. Put every supplementary table in the separate three-line
    workbook under `04_tables/supplementary/` and list that workbook as a table upload; the
    supplementary-Methods DOCX audit rejects embedded Word tables. Write
-   `SUBMISSION_CHECKLIST.md` and `manifest.json`;
-   every bundle file is listed with its role and the guideline rule that requires it.
-7. Run the structural Word audit:
+   `08_submission/evidence/SUBMISSION_CHECKLIST.md` and `bundle/manifest.json`;
+   every bundle upload is listed with its role, exact guideline rule and `source_files`
+   dependency list. Keep renders and backstage QA outside the upload folder.
+7. After all affected DOCX files are final, derive portal text/counts from them:
+```
+.\.venv\Scripts\python.exe tools/manuscript/submission_fields.py
+```
+   This reads the final DOCX and unified administrative facts; it does not use Markdown word
+   counts. Check any journal-specific Word/portal counting convention before confirmation.
+   Run the structural Word audit:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/build_docx.py audit --manifest project/08_submission/bundle/manifest.json --style-config project/08_submission/docx_style.json
 ```
-8. Render every final DOCX with Microsoft Word or the Codex document workflow and inspect
+8. Read `reference/efficient-quality.md`. For a feedback batch, record the build scope with
+   `tools/rework.py build`; default to at most two full build cycles, then targeted correction.
+   Render every new/changed final DOCX with Microsoft Word or the Codex document workflow and inspect
    the title/abstract, heading transitions, first/last pages, references, figure legends,
    tables, symbols, page breaks and missing glyphs. Fix the source or builder and rebuild
    only affected files.
@@ -71,7 +80,8 @@ journal-guideline audit.
 
 ## Outputs
 - `08_submission/cover_letter.md`
-- `08_submission/bundle/SUBMISSION_CHECKLIST.md`
+- `08_submission/evidence/SUBMISSION_CHECKLIST.md`
+- `08_submission/portal_fields.json`
 - `08_submission/bundle/manifest.json`
 - `08_submission/package_content_baseline.json`
 - `08_submission/submission_qc.md`
@@ -102,4 +112,3 @@ journal-guideline audit.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "submission package built and visually verified; Word typography/link/heading audit passed; ready for user package review"
 ```
-

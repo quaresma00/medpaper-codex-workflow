@@ -344,6 +344,13 @@ def reference_provenance(ctx: Ctx) -> Result:
     try:
         library = ctx.read_json(LIB)
         entries = library.get("entries", [])
+        from ..liverefs import cached_sources, store_sources
+        cached = (None if ctx.stage.id in {"S13_reflib", "S25_submission_audit"} else
+                  cached_sources(ctx.project, entries,
+                                 float(ctx.target("live_reference_age_hours_max", 24))))
+        if cached is not None:
+            return Result(True, "reference_provenance",
+                          f"{len(entries)} unchanged records match hashed independent live XML within the freshness window")
         pmids = [str(item.get("pmid", "")) for item in entries]
         if not pmids or any(not re.fullmatch(r"\d+", pmid) for pmid in pmids):
             raise ValueError("every entry must have a numeric PMID")
@@ -374,6 +381,7 @@ def reference_provenance(ctx: Ctx) -> Result:
     if live_problems:
         return Result(False, "reference_provenance", "; ".join(live_problems[:8]),
                       ["Rebuild the affected entry from the returned PubMed record; never edit the proof to match."])
+    store_sources(ctx.project, live_records)
     return Result(True, "reference_provenance",
                   f"{len(entries)} record(s) independently re-fetched and matched against live PubMed")
 
@@ -392,6 +400,12 @@ def bib_ris_match_library(ctx: Ctx) -> Result:
         only_lib = sorted(lib_keys - bkeys)[:5]
         only_bib = sorted(bkeys - lib_keys)[:5]
         problems.append(f"library/bib mismatch (library-only: {only_lib}, bib-only: {only_bib})")
+    from pubmed.build_library import to_bibtex, to_ris
+    entries = sorted(lib.get("entries", []), key=lambda entry: entry["citekey"])
+    if ctx.read(BIB).strip() != to_bibtex(entries).strip():
+        problems.append("BibTeX content/author rendering differs from verified library export")
+    if ctx.read(RIS).strip() != to_ris(entries).strip():
+        problems.append("RIS content/author rendering differs from verified library export")
     if n_ris != len(lib_keys):
         problems.append(f"RIS has {n_ris} records vs {len(lib_keys)} library entries")
     if problems:
@@ -616,4 +630,3 @@ def _dupes(items) -> list[str]:
             out.append(x)
         seen.add(x)
     return out
-

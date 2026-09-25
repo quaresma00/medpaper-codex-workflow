@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.4.0"
+version = "1.5.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -29,14 +29,14 @@ temp_dir = "temp"
 "02_data" = "raw/ (immutable), acquisition/ (retrieval code), derived/ (code-built only), acquisition_manifest.json, codebook.md, provenance.md."
 "03_analysis" = "code/ (scripts), results/ (machine-readable JSON), analysis_log.md, notes.md."
 "04_tables" = "main/ (one xlsx per main table), supplementary/ (single xlsx, one sheet per table)."
-"05_figures" = "code/ (plot scripts), out/ (rendered png+tiff), qc/ (QC reports), legends.md."
+"05_figures" = "out/ (co-located plot scripts, vector PDF and PNG previews), code/ (legacy scripts), qc/ (QC reports), legends.md."
 "06_refs" = "refs.bib, refs.ris, library.json, verified.json, fulltext/, deepread/."
 "07_manuscript" = "Section drafts, accepted journal-independent full_manuscript.md, S19 review ZIP, and scientific-master freeze."
 "08_submission" = "Journal shortlist, guideline extract, derived journal integration sources, final bundle, user confirmation and independent audit."
 
 # ------------------------------------------------------------------------------
-# Global invariants. Printed by `wf status` on EVERY call so they survive
-# context compaction. Keep short and absolute.
+# Global invariants. Available through `wf status --full`; compact status points
+# to the active card. Keep short and absolute.
 # ------------------------------------------------------------------------------
 [policy]
 invariants = [
@@ -48,6 +48,8 @@ invariants = [
   "Do not create files outside the stage's declared `outputs`. Scratch work goes in project/temp/ and is deleted before `wf advance`.",
   "Figures are verified by looking at the rendered PNG, not by reading the plotting code. Deterministic QC first, then visual.",
   "No explanatory prose inside figure panels. Explanation belongs in the figure legend.",
+  "At S06 freeze analysis_contract.json and the four-part clinical story in study_facts.json before writing. S07 requires actual low-cost display previews and reader explanations. Scientific uncertainty cannot be repaired by expensive formatting.",
+  "Collect feedback batches before rebuilding. Control-record refreshes are automatic maintenance, not new human review rounds. Use true file dependencies and preserve every requested analysis and quality check.",
   "Do not draft or insert an AI-use disclosure unless the user explicitly requests that exact content; record journal requirements only as a user-controlled compliance item.",
   "Never upload patient-level, private or credential data to an external skill, plugin or service without explicit authorization.",
   "The S23 package is not final until S24 records the user's explicit request for final review and freezes the exact files, then S25 obtains one independent PASS from reader, editor and journal-compliance perspectives. Any post-confirmation change returns to S24.",
@@ -96,6 +98,7 @@ abbreviation_centralize_threshold = 8
 abbreviation_local_words_max = 50
 journal_source_age_days_max = 90
 reference_verification_age_days_max = 90
+live_reference_age_hours_max = 24
 
 # ==============================================================================
 # STAGES
@@ -139,7 +142,7 @@ allow_unverified = true
 [[stage.gate]]
 check = "decision_recorded"
 name = "go_nogo_1"
-allowed = ["GO", "PIVOT", "STOP"]
+allowed = ["GO"]
 
 [[stage]]
 id = "S03_protocol"
@@ -214,7 +217,7 @@ check = "temp_clean"
 id = "S06_protocol_final"
 title = "Refine protocol from findings + publishability go/no-go #2"
 card = "stages/S06_protocol_final.md"
-outputs = ["01_protocol/protocol_final.md", "01_protocol/protocol_diff.md"]
+outputs = ["01_protocol/protocol_final.md", "01_protocol/protocol_diff.md", "01_protocol/analysis_contract.json", "01_protocol/study_facts.json", "01_protocol/writing_readiness.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -230,13 +233,16 @@ allowed = ["YES"]
 [[stage.gate]]
 check = "decision_recorded"
 name = "go_nogo_2"
-allowed = ["GO", "PIVOT", "STOP"]
+allowed = ["GO"]
+
+[[stage.gate]]
+check = "writing_ready"
 
 [[stage]]
 id = "S07_artifacts"
 title = "Artifact inventory (benchmarked vs comparable papers) + legends"
 card = "stages/S07_artifacts.md"
-outputs = ["01_protocol/artifact_plan.json", "05_figures/legends.md", "04_tables/table_captions.md", "01_protocol/artifact_benchmark.md"]
+outputs = ["01_protocol/artifact_plan.json", "05_figures/legends.md", "04_tables/table_captions.md", "01_protocol/artifact_benchmark.md", "01_protocol/display_review.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -262,6 +268,12 @@ check = "legend_no_results_restatement"
 [[stage.gate]]
 check = "forbidden_symbols_absent"
 paths = ["05_figures/legends.md", "04_tables/table_captions.md"]
+
+[[stage.gate]]
+check = "writing_ready"
+
+[[stage.gate]]
+check = "display_prototypes_reviewed"
 
 [[stage]]
 id = "S08_methods"
@@ -293,6 +305,9 @@ check = "no_ai_boilerplate"
 path = "07_manuscript/supplementary_methods.md"
 optional = true
 
+[[stage.gate]]
+check = "writing_ready"
+
 [[stage]]
 id = "S09_results"
 title = "Write Results (cites planned figures/tables)"
@@ -312,6 +327,9 @@ require_all_cited = true
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/results.md"
+
+[[stage.gate]]
+check = "writing_ready"
 
 [[stage]]
 id = "S10_tables"
@@ -334,6 +352,9 @@ check = "decision_recorded"
 name = "tables_visually_confirmed"
 allowed = ["YES"]
 
+[[stage.gate]]
+check = "display_prototypes_reviewed"
+
 [[stage]]
 id = "S11_figures"
 title = "Render figures + deterministic QC + visual verification loop"
@@ -354,6 +375,9 @@ allowed = ["YES"]
 [[stage.gate]]
 check = "temp_clean"
 
+[[stage.gate]]
+check = "display_prototypes_reviewed"
+
 [[stage]]
 id = "S12_reconcile"
 title = "Reconcile rendered artifacts against Methods/Results text"
@@ -371,6 +395,9 @@ check = "numbers_have_provenance"
 path = "07_manuscript/results.md"
 [[stage.gate]]
 check = "numbers_cross_match"
+
+[[stage.gate]]
+check = "writing_ready"
 
 [[stage]]
 id = "S13_reflib"
@@ -505,6 +532,9 @@ require_rendered = true
 check = "no_ai_boilerplate"
 path = "07_manuscript/abstract.md"
 
+[[stage.gate]]
+check = "writing_ready"
+
 [[stage]]
 id = "S18_independent_review"
 title = "Independent publication-readiness review of the frozen manuscript, supplement and tables"
@@ -567,12 +597,15 @@ check = "s19_review_release_explicit"
 [[stage.gate]]
 check = "scientific_master_frozen"
 
+[[stage.gate]]
+check = "writing_ready"
+
 [[stage]]
 id = "S20_journal"
 title = "Select the most realistic current SCIE journal and freeze its requirements"
 card = "stages/S20_journal.md"
 needs_user = true
-outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json"]
+outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json", "08_submission/submission_requirements.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -595,6 +628,11 @@ check = "docx_style_config"
 [[stage.gate]]
 check = "journal_workspace_ready"
 require_pristine = true
+
+[[stage.gate]]
+check = "json_keys"
+path = "08_submission/submission_requirements.json"
+keys = ["article_type", "required_upload_roles", "word_count", "blinding"]
 
 [[stage]]
 id = "S21_authors"
@@ -697,7 +735,7 @@ allowed = ["YES"]
 id = "S23_package"
 title = "Build and visually verify the journal-ready Word submission package"
 card = "stages/S23_package.md"
-outputs = ["08_submission/cover_letter.md", "08_submission/bundle/SUBMISSION_CHECKLIST.md", "08_submission/bundle/manifest.json", "08_submission/package_content_baseline.json", "08_submission/submission_qc.md"]
+outputs = ["08_submission/cover_letter.md", "08_submission/evidence/SUBMISSION_CHECKLIST.md", "08_submission/bundle/manifest.json", "08_submission/package_content_baseline.json", "08_submission/submission_qc.md", "08_submission/portal_fields.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -750,12 +788,15 @@ check = "decision_recorded"
 name = "submission_files_visually_confirmed"
 allowed = ["YES"]
 
+[[stage.gate]]
+check = "portal_fields_current"
+
 [[stage]]
 id = "S24_package_human_review"
 title = "User review, modification and explicit confirmation of the final submission package"
 card = "stages/S24_package_human_review.md"
 needs_user = true
-outputs = ["08_submission/package_human_review.md", "08_submission/package_review_freeze.json"]
+outputs = ["08_submission/package_human_review.md", "08_submission/package_review_freeze.json", "08_submission/evidence/evidence_manifest.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -790,6 +831,9 @@ check = "revision_rounds_closed"
 check = "decision_recorded"
 name = "submission_package_user_confirmed"
 allowed = ["OK"]
+
+[[stage.gate]]
+check = "portal_fields_current"
 
 [[stage]]
 id = "S25_submission_audit"
@@ -836,6 +880,9 @@ check = "decision_recorded"
 name = "submission_package_independent_audit"
 allowed = ["PASS"]
 
+[[stage.gate]]
+check = "portal_fields_current"
+
 # ------------------------------------------------------------------------------
 # Directories where the agent may legitimately create many files.
 # Anything under project/ that matches neither a stage `outputs` entry nor one of
@@ -863,5 +910,7 @@ globs = [
   "08_submission/cache/**",
   "08_submission/*.csl",
   "08_submission/bundle/**",
+  "08_submission/evidence/**",
+  "08_submission/releases/**",
+  "01_protocol/prototypes/**",
 ]
-

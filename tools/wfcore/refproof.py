@@ -17,7 +17,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 
-SCHEMA = 2
+SCHEMA = 3
 GENERATOR = "tools/pubmed/verify.py"
 SOURCE = "ncbi_pubmed_efetch"
 TITLE_THRESHOLD = 0.92
@@ -64,19 +64,23 @@ def _source_record(article) -> dict:
         collective = _text(author, "CollectiveName")
         last = collective or _text(author, "LastName")
         if last:
-            authors.append({"last": last, "first": _text(author, "ForeName")})
+            authors.append({"last": last, "first": _text(author, "ForeName"),
+                            "initials": _text(author, "Initials"),
+                            "suffix": _text(author, "Suffix"), "collective": bool(collective)})
     year = _text(article, ".//Journal/JournalIssue/PubDate/Year")
     if not year:
         match = re.search(r"(?:19|20)\d{2}",
                           _text(article, ".//Journal/JournalIssue/PubDate/MedlineDate"))
         year = match.group(0) if match else ""
-    doi = ""
+    doi, pmcid = "", ""
     for item in article.findall(".//ELocationID"):
         if item.get("EIdType") == "doi":
             doi = (item.text or "").strip()
     for item in article.findall(".//ArticleIdList/ArticleId"):
         if item.get("IdType") == "doi" and not doi:
             doi = (item.text or "").strip()
+        if item.get("IdType") == "pmc":
+            pmcid = (item.text or "").strip().upper()
     publication_types = [(item.text or "").strip()
                          for item in article.findall(".//PublicationTypeList/PublicationType")]
     corrections = [item.get("RefType", "") for item in
@@ -91,6 +95,8 @@ def _source_record(article) -> dict:
     return {
         "pmid": pmid,
         "doi": doi.casefold(),
+        "pmcid": pmcid,
+        "authors": authors,
         "title": re.sub(r"\s+", " ", title).strip().rstrip("."),
         "journal": _text(article, ".//Journal/Title"),
         "year": year,
@@ -118,6 +124,8 @@ def canonical_source(record: dict) -> dict:
     return {
         "pmid": str(record.get("pmid", "")),
         "doi": str(record.get("doi", "")).strip().casefold(),
+        "pmcid": str(record.get("pmcid", "")).strip().upper(),
+        "authors": canonical_authors(record),
         "title": re.sub(r"\s+", " ", str(record.get("title", ""))).strip().rstrip("."),
         "journal": re.sub(r"\s+", " ", str(record.get("journal", ""))).strip(),
         "year": str(record.get("year", "")),
@@ -126,6 +134,15 @@ def canonical_source(record: dict) -> dict:
         "abstract": str(record.get("abstract", "")).strip(),
         "flags": sorted(str(item) for item in record.get("flags", [])),
     }
+
+
+def canonical_authors(record: dict) -> list[dict]:
+    return [{"last": str(a.get("last", "")).strip(),
+             "first": str(a.get("first", "")).strip(),
+             "initials": str(a.get("initials", "")).strip(),
+             "suffix": str(a.get("suffix", "")).strip(),
+             "collective": bool(a.get("collective", False))}
+            for a in record.get("authors", [])]
 
 
 def record_sha256(record: dict) -> str:
@@ -156,6 +173,10 @@ def compare_entry_to_source(entry: dict, source: dict) -> list[str]:
     entry_doi = str(entry.get("doi", "")).strip().casefold()
     if entry_doi != source["doi"]:
         problems.append("DOI differs from PubMed payload")
+    if str(entry.get("pmcid", "")).strip().upper() != source["pmcid"]:
+        problems.append("PMCID differs from PubMed payload")
+    if canonical_authors(entry) != source["authors"]:
+        problems.append("ordered authors, collective names or name parts differ from PubMed payload")
     if source["flags"]:
         problems.append("non-citable PubMed flag(s): " + ", ".join(source["flags"]))
     return problems
@@ -287,4 +308,3 @@ def validate_local_proof(project: Path, required_keys: set[str] | None = None,
         if str(receipt.get("doi", "")).strip().casefold() != source["doi"]:
             problems.append(f"{key}: receipt DOI differs from its PubMed payload")
     return not problems, problems, len(wanted & set(entries))
-

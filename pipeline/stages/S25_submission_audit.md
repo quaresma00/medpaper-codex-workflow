@@ -21,10 +21,10 @@ the chosen journal's current official instructions.
    give it the intended verdict, prior reviewers' conclusions, or ask it to edit files. Tell
    it to read the actual package in normal submission order before consulting backstage QA.
    Give it:
-   - `08_submission/package_review_freeze.json` and every frozen file listed there;
+   - `08_submission/package_review_freeze.json` and every upload file in its read-only `release_dir`;
    - the selected journal metadata, `guidelines_extract.md`, and the cached official author
      instructions;
-   - `bundle/manifest.json`, `SUBMISSION_CHECKLIST.md`, and `submission_qc.md`.
+   - `bundle/manifest.json`, `evidence/SUBMISSION_CHECKLIST.md`, `portal_fields.json`, and `submission_qc.md`.
    - `07_manuscript/scientific_master_freeze.json` and
      `08_submission/integration/journal_workspace.json`, to prove that journal changes were
      isolated from the accepted scientific master.
@@ -57,7 +57,9 @@ the chosen journal's current official instructions.
    `Guideline compliance`, `Required files and omissions`, `Cross-file consistency`,
    `Formatting and technical checks`, `Issues requiring correction`, `Final recommendation`.
    Under `Verdict`, write the exact `Freeze ID: <freeze_id>` from
-   `package_review_freeze.json` so a stale review cannot be attached to a changed package.
+   `package_review_freeze.json`, plus `Audit context ID: <audit_context_id>` from
+   `08_submission/evidence/evidence_manifest.json`. This binds the verdict to the actual
+   uploads and the journal rules, without treating cache/log changes as author revisions.
    Every finding names the affected file and, where available, page plus heading, paragraph,
    table cell or figure panel; include only a short identifying fragment rather than rewriting
    the manuscript. Classify it as `BLOCKING`, `MINOR` or `PREFERENCE`, and cite the exact
@@ -73,7 +75,7 @@ the chosen journal's current official instructions.
 6. For `REVISE`, summarise the findings, return to S24, correct the package, revalidate it and
    obtain a new explicit user confirmation before auditing the changed freeze:
 ```
-.\.venv\Scripts\python.exe tools/wf.py loop S24_package_human_review --why "<material audit defects requiring correction and renewed user confirmation>"
+.\.venv\Scripts\python.exe tools/wf.py loop --to S24_package_human_review --why "<material audit defects requiring correction and renewed user confirmation>"
 ```
    For `BLOCKED`, ask only for the missing user-owned fact/file. If the package changes, use
    the same S24 loop. Do not repeat an independent audit of an unchanged freeze.
@@ -82,6 +84,13 @@ the chosen journal's current official instructions.
 
 ## Outputs
 - `08_submission/independent_submission_audit.md`
+
+If an independent agent is unavailable, perform a clearly labelled preliminary local check,
+preserve the pending independent audit and report the exact blocker. Never claim independence
+or final PASS for that fallback. Reuse an audit of unchanged upload bytes/context; repeat only
+when the package/context changes or a material defect warrants it. Verify release hashes and
+read-only attributes immediately before actual upload; preview working copies must not
+replace the release.
 
 ## Hard rules
 - The independent subagent is read-only and audits exactly the user-confirmed frozen files.
@@ -102,4 +111,3 @@ the chosen journal's current official instructions.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "independent final submission audit=PASS; frozen package unchanged; remaining portal-only user tasks=<none or list>"
 ```
-

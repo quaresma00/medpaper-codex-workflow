@@ -57,6 +57,10 @@ def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
     live_doi = str(live.get("doi", "")).strip().casefold()
     doi_ok = entry_doi == live_doi
     checks.append({"field": "doi", "ok": doi_ok, "expected": live_doi})
+    checks.append({"field": "pmcid", "ok": str(entry.get("pmcid", "")).upper() == str(live.get("pmcid", "")).upper(),
+                   "expected": live.get("pmcid", "")})
+    checks.append({"field": "authors", "ok": refproof.canonical_authors(entry) == refproof.canonical_authors(live),
+                   "expected": refproof.canonical_authors(live)})
 
     t = ratio(entry.get("title", ""), live.get("title", ""))
     checks.append({"field": "title", "score": round(t, 3), "ok": t >= TITLE_THRESHOLD,
@@ -205,4 +209,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

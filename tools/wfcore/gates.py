@@ -10,6 +10,11 @@ from .checks import Ctx, Result
 def run_stage(pipeline, state, project: Path, stage) -> list[Result]:
     checks.load_all()
     results: list[Result] = []
+    if state.data.get("active_revision_round"):
+        guard = checks.get("feedback_batch_sealed")
+        result = guard(Ctx(pipeline, state, project, stage, {}))
+        if not result.ok:
+            return [result]
     if not stage.gate:
         results.append(Result(True, "-", "stage declares no gate"))
         return results

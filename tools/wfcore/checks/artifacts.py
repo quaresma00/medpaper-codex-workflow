@@ -513,11 +513,9 @@ def figures_match_plan(ctx: Ctx) -> Result:
             v = e.get(key)
             if v and not ctx.p(v).exists():
                 problems.append(f"{e.get('id')}: {what} {v} missing")
-        tiff = e.get("tiff")
-        if tiff and not ctx.p(tiff).exists():
-            problems.append(f"{e.get('id')}: print master {tiff} missing")
-        elif not tiff:
-            problems.append(f"{e.get('id')}: no 'tiff' print master declared")
+        master = e.get("pdf") or e.get("tiff")
+        if not master or not ctx.p(master).is_file():
+            problems.append(f"{e.get('id')}: vector PDF (or existing TIFF) master missing")
     if problems:
         return Result(False, "figures_match_plan", "; ".join(problems[:8]))
     return Result(True, "figures_match_plan", f"{len(entries)} figure(s) rendered with print masters")
@@ -574,8 +572,9 @@ def bundle_complete(ctx: Ctx) -> Result:
         return Result(False, "bundle_complete", f"{rel} invalid JSON: {exc}")
     items = man.get("items", [])
     problems = []
-    roles = {str(i.get("role", "")).lower() for i in items}
-    for need in ("title_page", "manuscript", "cover_letter", "figures", "tables", "checklist"):
+    roles = {str(i.get("role", "")).lower() for i in items if i.get("upload", True)}
+    requirements = ctx.read_json("08_submission/submission_requirements.json") if ctx.exists("08_submission/submission_requirements.json") else {}
+    for need in requirements.get("required_upload_roles", ["manuscript"]):
         if need not in roles:
             problems.append(f"no bundle item with role '{need}'")
     listed = set()
@@ -589,10 +588,23 @@ def bundle_complete(ctx: Ctx) -> Result:
             problems.append(f"{f} listed but absent")
         if not i.get("required_by"):
             problems.append(f"{f}: no 'required_by' reference to the journal guideline")
+        if requirements and i.get("upload", True):
+            from ..packagefreeze import _safe_path
+            sources = i.get("source_files")
+            if not isinstance(sources, list) or not sources:
+                problems.append(f"{f}: declare the actual source_files for incremental rebuilding")
+            else:
+                for source in sources:
+                    try:
+                        _, path = _safe_path(ctx.project, source)
+                        if not path.is_file():
+                            problems.append(f"{f}: source absent: {source}")
+                    except (ValueError, TypeError) as exc:
+                        problems.append(f"{f}: invalid source: {exc}")
     on_disk = {
         p.relative_to(ctx.project).as_posix()
         for p in (ctx.project / "08_submission/bundle").rglob("*")
-        if p.is_file() and p.name != "manifest.json"
+        if p.is_file() and p.name not in {"manifest.json", ".gitkeep", "SUBMISSION_CHECKLIST.md"}
     }
     stray = sorted(on_disk - listed)
     if stray:
@@ -617,7 +629,7 @@ def bundle_matches_freeze(ctx: Ctx) -> Result:
                 "Return to S24, reconcile the changes, ask the user to confirm OK again, then create a new freeze.",
             ],
         )
-    return Result(True, "bundle_matches_freeze", f"{count} approved package/evidence file(s) unchanged")
+    return Result(True, "bundle_matches_freeze", f"{count} approved upload file(s) unchanged in read-only release")
 
 
 @check("submission_audit_matches_freeze")
@@ -637,6 +649,11 @@ def submission_audit_matches_freeze(ctx: Ctx) -> Result:
             "independent audit does not identify the exact current freeze_id",
             ["Put `Freeze ID: <freeze_id>` under the audit Verdict heading after reviewing that frozen package."],
         )
+    from ..packagefreeze import sync_evidence
+    evidence = sync_evidence(ctx.project)
+    if evidence["audit_context_id"] not in audit:
+        return Result(False, "submission_audit_matches_freeze",
+                      "audit context changed or is missing; recheck changed journal requirements without asking the user to reapprove unchanged uploads")
     return Result(True, "submission_audit_matches_freeze", f"audit identifies freeze {freeze_id[:12]}...")
 
 
@@ -670,4 +687,3 @@ def _split_blocks(text: str) -> dict[str, str]:
 def _same_id(a: str, b: str) -> bool:
     norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower()).replace("figure", "fig")  # noqa: E731
     return norm(a) == norm(b)
-

@@ -489,7 +489,8 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
         if path.suffix.casefold() == ".docx":
             problems.extend(_audit_docx(path, style, role, planned,
                                         int(ctx.target("figure_legend_words_max", 180))))
-    for role in ("manuscript", "title_page", "cover_letter"):
+    requirements = ctx.read_json("08_submission/submission_requirements.json") if ctx.exists("08_submission/submission_requirements.json") else {}
+    for role in [name for name in requirements.get("required_upload_roles", ["manuscript", "title_page", "cover_letter"]) if name in TEXT_ROLES]:
         if not any(p.suffix.casefold() == ".docx" for p in roles.get(role, [])):
             problems.append(f"no DOCX for required role '{role}'")
     if ctx.p(supplementary_rel).exists():
@@ -501,4 +502,3 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
     count = sum(path.suffix.casefold() == ".docx" for paths in roles.values() for path in paths)
     return Result(True, "docx_bundle_ready",
                   f"{count} DOCX file(s): black journal font, consistent sizes, no links or outline headings")
-

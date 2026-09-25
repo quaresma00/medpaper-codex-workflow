@@ -212,16 +212,24 @@ def significance(ax, x1: float, x2: float, y: float, text: str = "*",
 
 
 def save(fig, stem: str | Path, width: str = "single", dpi: int = 600,
-         tiff: bool = True, audit: bool = True, archetype: str | None = None) -> dict:
-    """Write the PNG preview and the TIFF print master, then audit the artists.
+         tiff: bool = False, audit: bool = True, archetype: str | None = None) -> dict:
+    """Write the PDF master and PNG preview, optionally TIFF, then audit the artists.
 
     `stem` has no extension: save(fig, "project/05_figures/out/Figure1").
     `archetype` is recorded in the sidecar so qc.py can check the archetype's mandatory
     elements; if omitted it is read from artifact_plan.json by qc.py instead.
     """
     stem = Path(stem)
+    from wfcore.dependencies import guard_build
+    for parent in stem.resolve().parents:
+        if (parent / ".wf/state.json").exists():
+            guard_build(parent)
+            break
     stem.parent.mkdir(parents=True, exist_ok=True)
     written = {}
+    pdf = stem.with_suffix(".pdf")
+    fig.savefig(pdf, format="pdf")
+    written["pdf"] = str(pdf)
 
     png = stem.with_suffix(".png")
     fig.savefig(png, dpi=dpi, format="png")

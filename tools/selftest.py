@@ -115,7 +115,7 @@ def build_fixture(proj: Path) -> None:
     axB.set_ylabel("Grip strength (kg)")
     significance(axB, 1, 2, max(v.max() for v in vals) + 0.3, "***")
     sfB.suptitle("Grip strength by group")
-    save(fig, proj / "05_figures/out/Figure1", width="double")
+    save(fig, proj / "05_figures/out/Figure1", width="double", tiff=True)
 
     plan = {
         "main_figures": [{"id": "Figure 1", "slug": "primary",
@@ -320,7 +320,7 @@ def run_checks(proj: Path) -> None:
          "S19_polish": "S17_assemble", "S20_package": "S17_assemble"})
     record("legacy tail state migrates without resetting project artifacts",
            changed and legacy.current == "S17_assemble" and
-           legacy.data["pipeline_version"] == "1.4.0",
+           legacy.data["pipeline_version"] == pipe.meta["version"],
            f"current={legacy.current}; version={legacy.data['pipeline_version']}")
     shutil.rmtree(migration_root, ignore_errors=True)
 
@@ -335,7 +335,7 @@ def run_checks(proj: Path) -> None:
     migrated_state = State(freeze_migration_root, ".wf").load()
     record("pre-freeze late-stage workspace migrates back to S19 without deleting artifacts",
            migrated.returncode == 0 and migrated_state.current == "S19_human_review" and
-           migrated_state.data["pipeline_version"] == "1.4.0",
+           migrated_state.data["pipeline_version"] == pipe.meta["version"],
            f"current={migrated_state.current}; version={migrated_state.data['pipeline_version']}")
     shutil.rmtree(freeze_migration_root, ignore_errors=True)
 
@@ -889,7 +889,7 @@ def run_codex_integration() -> None:
            "allow_implicit_invocation: false" in metadata,
            "agents/openai.yaml")
     record("pipeline and skill versions agree",
-           pipe["meta"]["version"] == "1.4.0" and 'version: "1.4.0"' in skill,
+           f'version: "{pipe["meta"]["version"]}"' in skill,
            f'pipeline={pipe["meta"]["version"]}')
     record("all 25 stage cards exist",
            len(pipe["stage"]) == 25 and
@@ -928,7 +928,7 @@ def run_codex_integration() -> None:
            "Freeze ID: <freeze_id>" in final_audit_card and
            "allowed = [\"PASS\"]" in
            (ROOT / "pipeline/pipeline.toml").read_text(encoding="utf-8") and
-           "loop S24_package_human_review" in final_audit_card,
+           "loop --to S24_package_human_review" in final_audit_card,
            "user confirmation -> immutable freeze -> one guideline audit -> PASS or S24 loop")
     final_headings = next(g for g in final_audit["gate"]
                           if g["check"] == "md_sections")["headings"]
@@ -1159,7 +1159,7 @@ def run_codex_integration() -> None:
     batch_env = {**os.environ, "MEDPAPER_PROJECT": str(batch_project),
                  "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
     opened = subprocess.run(
-        [sys.executable, str(ROOT / "tools/rework.py"), "batch", "--plan", str(plan_path),
+        [sys.executable, str(ROOT / "tools/rework.py"), "batch", "--sealed", "--plan", str(plan_path),
          "--project", str(batch_project)], capture_output=True, text=True, env=batch_env,
         encoding="utf-8", errors="replace")
     batch_state = State(batch_project, ".wf").load()
@@ -1977,6 +1977,9 @@ def run_manuscript_docx(proj: Path) -> None:
     (submission / "cache").mkdir(exist_ok=True)
     (submission / "cache/guidelines.html").write_text("<html>fixture</html>", encoding="utf-8")
     freezer = ROOT / "tools/package_review.py"
+    state.data["current"] = "S24_package_human_review"
+    state.record_decision("submission_package_user_confirmed", "OK",
+                          "Fixture user approved these exact final upload files for independent review.")
     frozen = subprocess.run(
         [sys.executable, str(freezer), "freeze", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
@@ -2001,15 +2004,18 @@ def run_manuscript_docx(proj: Path) -> None:
     record("restoring the approved package clears freeze gate", verified.returncode == 0,
            ((verified.stdout or "") + (verified.stderr or "")).strip()[:120])
     freeze_payload = json.loads((submission / "package_review_freeze.json").read_text(encoding="utf-8"))
-    record("final freeze includes the S23 content baseline",
-           any(item.get("path") == "08_submission/package_content_baseline.json"
-               for item in freeze_payload.get("files", [])))
+    record("upload freeze excludes backstage baseline while evidence retains it",
+           not any(item.get("path") == "08_submission/package_content_baseline.json"
+                   for item in freeze_payload.get("files", [])) and
+           "08_submission/package_content_baseline.json" in
+           (submission / "evidence/evidence_manifest.json").read_text(encoding="utf-8"))
     audit_path = submission / "independent_submission_audit.md"
     audit_path.write_text("# Verdict\n\nPASS\n", encoding="utf-8")
     outcome = gate("submission_audit_matches_freeze", "S25_submission_audit")
     record("stale or unbound independent audit is rejected", not outcome.ok, outcome.detail[:120])
     audit_path.write_text(
         "# Verdict\n\nPASS\n\nFreeze ID: " + freeze_payload["freeze_id"] +
+        "\nAudit context ID: " + json.loads((submission / "evidence/evidence_manifest.json").read_text(encoding="utf-8"))["audit_context_id"] +
         "\n\n# Guideline compliance\n\nPass.\n\n# Required files and omissions\n\nNone.\n"
         "\n# Cross-file consistency\n\nPass.\n\n# Formatting and technical checks\n\nPass.\n"
         "\n# Issues requiring correction\n\nNone.\n\n# Final recommendation\n\nReady.\n",
@@ -2255,13 +2261,21 @@ def main() -> int:
         run_journal_eligibility(proj)
         run_manuscript_docx(proj)
         run_polish(proj)
+        optimized = subprocess.run([sys.executable, str(ROOT / "tools/test_optimization.py")],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("optimization behavioral regression suite", optimized.returncode == 0,
+               (optimized.stdout + optimized.stderr)[-1200:].strip())
         if args.online:
             run_online(proj)
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")
         else:
-            shutil.rmtree(tmp, ignore_errors=True)
+            def remove_readonly(function, path, _exc):
+                import stat
+                Path(path).chmod(stat.S_IWRITE | stat.S_IREAD)
+                function(path)
+            shutil.rmtree(tmp, onexc=remove_readonly)
 
     failed = [r for r in results if r[1] == FAIL]
     print("\n" + "=" * 70)
@@ -2276,4 +2290,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -1,9 +1,9 @@
 """wf - the workflow driver.
 
 Design intent: this CLI is the agent's only source of truth about *where it is*
-and *what is allowed next*. `wf status` alone must be enough to resume work
-correctly after a context reset, so it prints the invariants, the progress map,
-the gate state, the last handoff and the full stage card.
+and *what is allowed next*. `wf status` prints compact local state without running
+gates or network checks. Read `wf card` for the active instructions; `status --full`
+includes invariants, progress, gate diagnostics and the stage card when needed.
 """
 from __future__ import annotations
 
@@ -39,6 +39,9 @@ NON_OVERRIDABLE_GATES = {
     "scientific_master_frozen",
     "scientific_master_unchanged",
     "journal_workspace_ready",
+    "writing_ready", "display_prototypes_reviewed", "feedback_batch_sealed",
+    "portal_fields_current", "bundle_matches_freeze", "submission_audit_matches_freeze",
+    "bundle_complete", "docx_bundle_ready", "package_content_matches_baseline",
 }
 
 
@@ -150,6 +153,37 @@ def cmd_init(args) -> int:
 def cmd_status(args) -> int:
     pipe, st, proj = _load()
     stage = pipe.stage(st.current)
+    if not getattr(args, "full", False):
+        active = st.data.get("active_revision_round")
+        revision = {}
+        if active:
+            revision = json.loads((st.dir / "revisions" / f"{active}.json").read_text(encoding="utf-8"))
+        missing = [rel for rel in stage.outputs if not (proj / rel).exists()]
+        cached = st.data.get("last_check", {})
+        payload = {
+            "pipeline": f"{pipe.meta.get('name')} {pipe.meta.get('version')}",
+            "current": stage.id, "title": stage.title,
+            "missing_outputs": missing, "active_feedback": active,
+            "feedback_status": revision.get("status"),
+            "affected_files": revision.get("rebuild_files", []),
+            "last_check": cached if cached.get("stage") == stage.id else None,
+            "next": ("Collect feedback; seal only after the user's apply/end instruction."
+                     if revision.get("status") == "collecting" else
+                     f"Read tools/wf.py card {stage.id}; complete outputs; run check then advance."),
+        }
+        if args.json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print(f"{payload['pipeline']} | {stage.id} | {stage.title}")
+            print("Missing outputs: " + (", ".join(missing) or "none"))
+            print(f"Feedback: {active or 'none'} {revision.get('status', '')}")
+            if revision.get("rebuild_files"):
+                print("Affected: " + ", ".join(revision["rebuild_files"]))
+            if payload["last_check"]:
+                print("Previous check (not rerun): " + "; ".join(cached.get("failures", [])))
+            print("Next: " + payload["next"])
+            print("Status does not run network/checks. Use check for current validation; --full for diagnostics.")
+        return 0
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, warned = gates.summarize(results)
 
@@ -239,6 +273,9 @@ def cmd_check(args) -> int:
     stage = pipe.resolve(args.stage) if args.stage else pipe.stage(st.current)
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, warned = gates.summarize(results)
+    st.data["last_check"] = {"stage": stage.id, "ok": ok,
+                             "failures": [f"{r.check}: {r.detail}" for r in results if not r.ok]}
+    st.save()
     if args.json:
         print(json.dumps({
             "stage": stage.id, "gate_ok": ok, "blocking": blocking, "warnings": warned,
@@ -248,7 +285,7 @@ def cmd_check(args) -> int:
         return 0 if ok else 2
     print(f"gate: {stage.id} - {stage.title}")
     print(DASH)
-    _gate_lines(results)
+    _gate_lines(results if getattr(args, "full", False) else [r for r in results if not r.ok])
     print(DASH)
     if ok:
         print(f"GREEN ({warned} warning(s))" if warned else "GREEN")
@@ -567,8 +604,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true")
     p.set_defaults(fn=cmd_init)
 
-    p = sub.add_parser("status", help="where am I, what is blocking, and the full stage card")
+    p = sub.add_parser("status", help="compact local status; no network or gate rerun")
     p.add_argument("--brief", action="store_true", help="omit the stage card")
+    p.add_argument("--full", action="store_true", help="run gates and print full diagnostic context")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_status)
 
@@ -577,6 +615,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_card)
 
     p = sub.add_parser("check", help="run the gate for a stage without advancing")
+    p.add_argument("--full", action="store_true", help="include passing checks")
     p.add_argument("stage", nargs="?")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_check)
@@ -641,4 +680,3 @@ def main(argv: list[str] | None = None) -> int:
     except KeyError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-
