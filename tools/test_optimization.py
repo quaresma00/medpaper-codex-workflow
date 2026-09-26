@@ -86,7 +86,10 @@ class OptimizationTests(unittest.TestCase):
     def test_display_review_detects_changed_preview_and_missing_coverage(self):
         preview = self.text("01_protocol/prototypes/Table1.md", "| Group | Patients |\n| A | 100 |")
         source = self.data("03_analysis/results/main.json", {"n": 100})
-        self.data("01_protocol/artifact_plan.json", {"main_tables": [{"id": "Table 1", "source_results": ["03_analysis/results/main.json"]}]})
+        self.data("01_protocol/artifact_plan.json", {"main_tables": [{"id": "Table 1", "source_results": ["03_analysis/results/main.json"],
+            "reader_contract": {"population": "All eligible adults", "comparison": "Descriptive cohort, no comparison",
+                                "measure": "Patient counts", "denominator_and_units": "100 patients total",
+                                "interpretation_limit": "Characteristics do not establish causation"}}]})
         row = {"id": "Table 1", "preview": "01_protocol/prototypes/Table1.md",
                "preview_sha256": _sha256(preview), "source_hashes": {"03_analysis/results/main.json": _sha256(source)},
                "question": "Who was included?", "reader_explanation": "The table describes the full eligible cohort.",
@@ -127,7 +130,7 @@ class OptimizationTests(unittest.TestCase):
         self.assertEqual(len(row["items"]), 1)
         self.assertNotEqual(self.command("build", "--scope", "full").returncode, 0)
         self.assertEqual(self.command("seal", "--why", "The user has finished the batch and asked to apply it now.").returncode, 0)
-        self.assertEqual(State(self.project).load().current, "S21_authors")
+        self.assertEqual(State(self.project).load().current, "S24_package_human_review")
         guard_build(self.project)
 
     def test_third_full_build_switches_to_targeted_without_closing_round(self):
@@ -146,7 +149,7 @@ class OptimizationTests(unittest.TestCase):
         row = json.loads((self.project / ".wf/revisions/R001.json").read_text())
         self.assertEqual(len(row["items"]), 1)
         self.assertEqual(row["status"], "active")
-        self.assertEqual(State(self.project).load().current, "S21_authors")
+        self.assertEqual(State(self.project).load().current, "S24_package_human_review")
 
     def test_dependency_closure_does_not_rebuild_unrelated_science(self):
         self.data("08_submission/bundle/manifest.json", {"items": [

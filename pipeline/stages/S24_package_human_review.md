@@ -30,7 +30,8 @@ approves the exact visible files.
    `tools/rework.py seal --why "<user's instruction>"`. If the complete request already asks
    to implement now, use `batch --sealed` directly without another confirmation.
    After sealing, a content change routes to its earliest Markdown, analysis, table, figure, reference,
-   title-page or package source; rebuild its true dependants and return through S23. Never edit
+   title-page or package source; rebuild its true dependants under the owner rules while
+   staying at S24. Do not reset completed stages or replay S20-S23. Never edit
    narrative content only in DOCX. Format-only work stays at S24. Preserve every unrelated
    user edit and modify only the affected Word file or deterministic style/build source.
    A journal-specific wording, abstract-organization, title-page or declaration edit that
@@ -44,10 +45,13 @@ approves the exact visible files.
 .\.venv\Scripts\python.exe tools/package_content.py verify --project project
 ```
    A passing visible-text baseline proves a DOCX change was formatting-only. If it fails,
-   reconcile the changed wording back to its owning source, route the workflow there, rebuild
-   the DOCX at S23 and capture a new baseline there. Never recapture at S24 to bless drift.
+   reconcile the changed wording back to its owning source, rebuild under the scoped S23
+   task, then capture a new baseline only with the actual builder receipts. Never recapture
+   a manual Word edit to bless drift. Run `rework.py check` before marking/closing the round.
    When a genuine scientific change was requested, repeat the S19 review ZIP, explicit user
-   confirmation and scientific freeze before regenerating this journal integration package.
+   confirmation and scientific freeze. The workflow then resumes its package-only scoped
+   round at S24, preserving prior stage history and unrelated journal edits. Merge the delta
+   and use `journal_workspace.py rebase`; do not regenerate the entire integration layer.
 4. Re-run `bundle_complete`, `docx_bundle_ready`, `package_content_matches_baseline`, the
    standalone Word manifest audit and
    visual QA for every changed file. Recheck filenames, upload roles, word/keyword/reference

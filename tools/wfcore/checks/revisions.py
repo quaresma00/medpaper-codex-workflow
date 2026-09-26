@@ -29,7 +29,7 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
             )
         except (OSError, json.JSONDecodeError) as exc:
             return Result(False, "revision_rounds_closed", f"active round {active} is unreadable: {exc}")
-        if active_payload.get("review_stage") != ctx.stage.id:
+        if active_payload.get("schema_version") == 1 and active_payload.get("review_stage") != ctx.stage.id:
             return Result(
                 True, "revision_rounds_closed",
                 f"revision round {active} is in transit to {active_payload.get('review_stage')}",
@@ -54,9 +54,15 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
         except (OSError, json.JSONDecodeError) as exc:
             problems.append(f"{path.name}: unreadable ({exc})")
             continue
-        if revision.get("schema_version") != 1 or revision.get("status") != "complete":
-            problems.append(f"{path.name}: not a completed schema-1 revision round")
+        if revision.get("schema_version") not in {1, 2} or revision.get("status") != "complete":
+            problems.append(f"{path.name}: not a completed supported revision round")
             continue
+        if revision.get("schema_version") == 2:
+            proof = revision.get("validation", {})
+            if not proof.get("ok") or not proof.get("input_signature") or not proof.get("results"):
+                problems.append(f"{path.name}: no actual scoped-check evidence")
+            for rel, expected in proof.get("artifact_hashes", {}).items():
+                latest_receipts[rel] = (path.name, "scoped validation", expected)
         items = revision.get("items")
         if not isinstance(items, list) or not items:
             problems.append(f"{path.name}: no revision items")
@@ -84,7 +90,7 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
         source = ctx.project / rel
         if not source.is_file():
             problems.append(f"{round_name}/{item_id}: changed source missing ({rel})")
-        elif _sha256(source) != expected:
+        elif _sha256(source).casefold() != expected.casefold():
             problems.append(f"{round_name}/{item_id}: changed source drifted after latest closure ({rel})")
     if problems:
         return Result(False, "revision_rounds_closed", "; ".join(problems[:8]))
@@ -228,4 +234,3 @@ def package_content_matches_baseline(ctx: Ctx) -> Result:
         )
     return Result(True, "package_content_matches_baseline",
                   details[0] if details else f"{count} DOCX visible-text baseline(s) match")
-

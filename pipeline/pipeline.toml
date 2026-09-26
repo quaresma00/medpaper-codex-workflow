@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.5.0"
+version = "1.6.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -537,7 +537,7 @@ check = "writing_ready"
 
 [[stage]]
 id = "S18_independent_review"
-title = "Independent publication-readiness review of the frozen manuscript, supplement and tables"
+title = "Independent publication-readiness and reader review of prose, tables and rendered figures"
 card = "stages/S18_independent_review.md"
 outputs = ["07_manuscript/independent_publishability_review.md"]
 [[stage.gate]]
@@ -555,6 +555,8 @@ headings = ["Verdict", "Critical barriers", "Scientific validity", "Reporting co
 check = "decision_recorded"
 name = "independent_publishability"
 allowed = ["READY", "REVISE", "NOT_READY"]
+[[stage.gate]]
+check = "reader_review_coverage"
 
 [[stage]]
 id = "S19_human_review"

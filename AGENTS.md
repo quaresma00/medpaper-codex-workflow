@@ -118,6 +118,10 @@ skip a stage.
     journal-specific wording, structure, title-page, declaration and packaging change there.
     A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
     and requires a new review ZIP, explicit approval and freeze before submission work resumes.
+    New scoped revisions stay at the review checkpoint and call owner rules in place; do
+    not use `wf loop` or reset completed-stage history. `rework.py check` must pass on final
+    files before closure. After a late scientific correction is approved at S19, resume the
+    affected journal-package consumers at S24 rather than replaying S20-S23.
 15. At S06 freeze the analysis contract and clinical story; at S07 verify real low-cost display
     prototypes before production. Feedback batches collect before they are sealed and built.
     Rebuild true file dependencies, never an entire stage tail merely because an earlier stage
@@ -129,6 +133,10 @@ skip a stage.
 17. Use the installed Tavotto skill for user-facing Matplotlib figures, with Python beside PDF
     and desktop handoff per the user's instructions. Internal diagnostics are exempt; a missing
     embedded-canvas authorization does not block desktop preview.
+18. At S07 benchmark real medical content, record each display's reader contract and resolve
+    abbreviation placement before production. S18 reviews actual rendered figures alongside
+    prose/tables and records exact input hashes plus substantive comprehension findings.
+    Engineering QA belongs backstage; a numeric match or a PASS field is not proof of meaning.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external

@@ -42,6 +42,7 @@ NON_OVERRIDABLE_GATES = {
     "writing_ready", "display_prototypes_reviewed", "feedback_batch_sealed",
     "portal_fields_current", "bundle_matches_freeze", "submission_audit_matches_freeze",
     "bundle_complete", "docx_bundle_ready", "package_content_matches_baseline",
+    "reader_review_coverage",
 }
 
 
@@ -169,6 +170,8 @@ def cmd_status(args) -> int:
             "last_check": cached if cached.get("stage") == stage.id else None,
             "next": ("Collect feedback; seal only after the user's apply/end instruction."
                      if revision.get("status") == "collecting" else
+                     "Read rework.py status and the listed owner cards; edit only the scoped closure, then rework.py check/mark/close. Do not advance or loop."
+                     if revision.get("schema_version") == 2 and active else
                      f"Read tools/wf.py card {stage.id}; complete outputs; run check then advance."),
         }
         if args.json:
@@ -270,6 +273,14 @@ def cmd_card(args) -> int:
 
 def cmd_check(args) -> int:
     pipe, st, proj = _load()
+    from . import revision
+    active = revision.active(proj)
+    if not args.stage and active and active.get("schema_version") == 2:
+        try:
+            return revision.check_round(proj, pipe, st, st.dir / "revisions" / f"{active['round_id']}.json", active)
+        except ValueError as exc:
+            print(f"revision check: {exc}")
+            return 2
     stage = pipe.resolve(args.stage) if args.stage else pipe.stage(st.current)
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, warned = gates.summarize(results)
@@ -296,6 +307,11 @@ def cmd_check(args) -> int:
 
 def cmd_advance(args) -> int:
     pipe, st, proj = _load()
+    from . import revision
+    active = revision.active(proj)
+    if active and active.get("schema_version") == 2:
+        print("Close the active scoped revision before advancing; --force cannot bypass it.")
+        return 2
     stage = pipe.stage(st.current)
     results = gates.run_stage(pipe, st, proj, stage)
     ok, blocking, _ = gates.summarize(results)
@@ -346,6 +362,10 @@ def cmd_advance(args) -> int:
         st.add_note(f"[FORCED ADVANCE] gate had {blocking} blocking issue(s): "
                     + "; ".join(f"{r.check}: {r.detail}" for r in results if r.blocking), stage.id)
 
+    if stage.id == "S19_human_review" and st.data.get("resume_package_revision"):
+        round_id = revision.resume_package(proj, pipe, st)
+        print(f"S19 approval verified; resumed {round_id} at S24 without resetting S20-S23. Read rework.py status.")
+        return 0
     nxt = pipe.next_of(stage.id)
     st.complete(stage.id, nxt.id if nxt else None)
     if nxt:
@@ -358,6 +378,12 @@ def cmd_advance(args) -> int:
 
 def cmd_loop(args) -> int:
     pipe, st, _ = _load()
+    if st.data.get("active_revision_round"):
+        from .revision import active
+        revision = active(st.project)
+        if revision and revision.get("schema_version") == 2:
+            print("An active scoped revision cannot reset the stage tail. Extend its plan instead.")
+            return 2
     target = pipe.resolve(args.to)
     cur = pipe.stage(st.current)
     if target.index > cur.index:

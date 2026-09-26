@@ -185,3 +185,46 @@ def verify(project: Path, *, require_pristine: bool = False) -> tuple[bool, list
         elif require_pristine and _sha256(destination) != item.get("initial_destination_sha256"):
             problems.append(f"journal integration copy changed before S20 closed: {destination_rel}")
     return not problems, problems, payload
+
+
+def rebase(project: Path, why: str) -> Path:
+    """Bind a manually merged scientific delta; never overwrite the journal's edited copies."""
+    from .revision import active, guard_outputs
+    from .readiness import atomic_json
+    revision = active(project)
+    if not revision or not revision.get("resume_from_science") or revision.get("status") != "active":
+        raise ValueError("rebase requires the package round resumed after renewed S19 approval")
+    if len(why.strip()) < 30:
+        raise ValueError("describe how the approved scientific delta was merged without losing journal edits")
+    ok, problems, freeze = verify_scientific_freeze(project)
+    if not ok or freeze is None:
+        raise ValueError("new scientific freeze is invalid: " + "; ".join(problems))
+    output = project / MANIFEST_REL
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    target, target_hash = _target(project)
+    if any(payload.get(k) != target.get(k) for k in ("journal", "issn")):
+        raise ValueError("rebase preserves the same journal; changing journals requires an explicit new integration workspace")
+    frozen = {r["path"]: r for r in freeze["files"]}
+    previous = {r["source"]: r for r in payload["files"]}
+    records = []
+    for source, destination in SOURCE_MAP.items():
+        if source not in frozen:
+            if source in previous:
+                raise ValueError(f"removed scientific source needs explicit package-plan reconciliation: {source}")
+            continue
+        dest = project / destination
+        if not dest.is_file():
+            raise ValueError(f"merge missing journal source first: {destination}")
+        old = previous.get(source, {})
+        if old.get("source_sha256") != frozen[source]["sha256"]:
+            if revision["baseline"].get(destination, "").casefold() == _sha256(dest).casefold():
+                raise ValueError(f"scientific source changed but journal copy was not merged: {destination}")
+        records.append({"source": source, "source_sha256": frozen[source]["sha256"],
+                        "destination": destination, "initial_destination_sha256": _sha256(dest)})
+    guard_outputs(project, [output])
+    payload.update({"scientific_freeze_id": freeze["freeze_id"], "review_package_id": freeze["review_package_id"],
+                    "target_journal_sha256": target_hash, "files": records,
+                    "rebase": {"round": revision["round_id"], "why": why,
+                               "at": datetime.now(timezone.utc).isoformat()}})
+    atomic_json(output, payload)
+    return output

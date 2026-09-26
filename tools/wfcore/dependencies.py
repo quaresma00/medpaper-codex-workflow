@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-def closure(project: Path, changed: list[str]) -> list[str]:
+def closure(project: Path, changed: list[str], *, change_type: str = "scientific") -> list[str]:
     edges: dict[str, set[str]] = {}
 
     def link(source, output):
@@ -34,9 +34,22 @@ def closure(project: Path, changed: list[str]) -> list[str]:
     for group in ("main_figures", "supp_figures", "main_tables", "supp_tables"):
         for entry in plan.get(group, []):
             outputs = [entry.get(key) for key in ("file", "tiff", "pdf") if entry.get(key)]
-            for source in [*entry.get("source_results", []), entry.get("script")]:
+            if "figures" in group:
+                for output in list(outputs):
+                    stem = str(Path(output).with_suffix(""))
+                    outputs.extend([stem + ".png", stem + ".pdf",
+                                    (Path(stem).parent.parent / "qc" / (Path(stem).name + ".artist.json")).as_posix()])
+            for source in [*entry.get("source_results", []), entry.get("script"), "01_protocol/artifact_plan.json"]:
                 for output in outputs:
                     link(source, output)
+    link("01_protocol/artifact_plan.json", "05_figures/legends.md")
+    link("01_protocol/artifact_plan.json", "04_tables/table_captions.md")
+    link("01_protocol/artifact_plan.json", "01_protocol/display_review.json")
+    table_manifest = read("04_tables/manifest.json")
+    for entry in table_manifest.get("tables", []):
+        for source in [*entry.get("source_results", []), entry.get("script"),
+                       entry.get("built_by", table_manifest.get("built_by"))]:
+            link(source, entry.get("file"))
     producer_scripts = set()
     for path in results:
         rel = path.relative_to(project).as_posix()
@@ -74,6 +87,7 @@ def closure(project: Path, changed: list[str]) -> list[str]:
     link("08_submission/integration/figure_legends.md", "08_submission/integration/full_manuscript.md")
     link("06_refs/library.json", "06_refs/refs.bib")
     link("06_refs/library.json", "06_refs/refs.ris")
+    link("06_refs/library.json", "06_refs/verified.json")
     role_sources = {
         "manuscript": ["08_submission/integration/full_manuscript.md", "06_refs/refs.bib"],
         "title_page": ["08_submission/integration/title_page.md"],
@@ -94,6 +108,11 @@ def closure(project: Path, changed: list[str]) -> list[str]:
     for source in ("00_input/author_info.json", "08_submission/submission_requirements.json",
                    "08_submission/bundle/manifest.json"):
         link(source, "08_submission/portal_fields.json")
+    # Explicit additional consumers cover shared supplements and project-specific builders.
+    # This augments safe defaults; missing metadata never narrows scientific dependencies.
+    for entry in plan.get("dependencies", []):
+        for source in entry.get("source_files", []):
+            link(source, entry.get("file"))
     seen = set(x.replace("\\", "/") for x in changed)
     pending = list(seen)
     while pending:

@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run a gated, resumable medical or clinical research-paper workflow from feasibility and data analysis through verified references, journal-native artifacts, manuscript sections, journal selection, and a submission-ready package. Use for medical research projects and manuscript production in this repository; do not use it for reviewing an unrelated finished paper or for non-medical writing.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -36,13 +36,22 @@ When the user requests a revision after an artifact has been presented, keep it 
 repeatable S19 scientific-review loop or S24 journal-package loop. Read
 [revision routing](../../../reference/rework-routing.md), save the verbatim feedback and its
 single interpretation as one persisted batch with `tools/rework.py batch`, and run
-`tools/rework.py status` after context compaction. Route the batch to its earliest owning
-stage, update the source of truth, rebuild only actual dependants, and close the round only
-after every atomic item has a final-file hash and validation record. Preserve unaffected
+`tools/rework.py status` after context compaction. Keep the review checkpoint; owning stages
+supply checks, not navigation targets. Follow its rebuild/check/reuse lists, update canonical
+sources and rebuild only actual dependants. Run `rework.py check` before marking/closing;
+typed validation labels alone cannot close a round. Preserve unaffected
 approved evidence, but never omit an affected gate, request, analysis, file or review to save
 tokens or context. There is no fixed revision-round limit. Never patch `full_manuscript.md` or
 narrative text inside a DOCX as a detached file. At S24, a Word-only edit is permitted only
 when `tools/package_content.py verify` proves that visible text is unchanged.
+After a late scientific correction and renewed S19 approval, resume scoped package work at
+S24 without replaying S20-S23. Merge the science delta into existing journal copies; preserve
+unrelated user edits and rebind with `journal_workspace.py rebase`. Read the routing reference.
+
+For reader-facing work, benchmark actual medical prose and displays, not counts alone.
+Use S07's reader contracts and early abbreviation policy. S18 reviews real rendered figures
+as well as tables and prose, with bound input hashes and substantive reader-comprehension
+findings. Metadata checks cannot replace the independent reviewer's actual understanding.
 
 ## Evidence and fact integrity
 
@@ -126,7 +135,7 @@ Use exactly one Figure legends section title and do not repeat `Figure N` in the
 Supplementary Methods contains prose only: move every table to the separate three-line
 supplementary workbook and remove Markdown thematic breaks.
 
-## Quality and efficient execution (v1.5)
+## Quality and efficient execution (v1.6)
 
 Read [quality-preserving execution](../../../reference/efficient-quality.md) at S06/S07, for revisions and submission production.
 S06 freezes the analysis contract and four-part clinical story before writing. S07 requires

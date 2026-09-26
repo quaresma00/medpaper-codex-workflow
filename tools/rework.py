@@ -5,8 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from wfcore import paths, registry  # noqa: E402
 from wfcore.state import State  # noqa: E402
-from wfcore.dependencies import closure  # noqa: E402
+from wfcore import revision as scoped  # noqa: E402
 
 
 ROUTES = {
@@ -37,14 +35,16 @@ ROUTES = {
     "cover-letter-or-package-structure": "S23_package",
     "journal-figure-layout": "S23_package",
     "journal-table-layout": "S23_package",
+    "figure-layout": "S11_figures",
+    "table-layout": "S10_tables",
+    "methods-wording": "S08_methods",
 }
 
-ROUND_SCHEMA = 1
+ROUND_SCHEMA = 2
 REVIEW_STAGES = {"S19_human_review", "S24_package_human_review"}
 
 # Only decisions whose evidence can be changed by the requested kind are invalidated in a
-# batch revision.  The legacy single-item `start` command retains the older conservative
-# all-forward invalidation behavior for compatibility.
+# batch revision. Owner stages supply rules without resetting the stage tail.
 COMMON_MANUSCRIPT_INVALIDATION = {
     "independent_publishability", "manuscript_human_reviewed", "polish_reviewed",
     "submission_files_visually_confirmed", "submission_package_user_confirmed",
@@ -91,6 +91,9 @@ INVALIDATE_BY_KIND = {
     "word-format-only": PACKAGE_INVALIDATION,
     "journal-figure-layout": PACKAGE_INVALIDATION,
     "journal-table-layout": PACKAGE_INVALIDATION,
+    "figure-layout": PACKAGE_INVALIDATION | {"manuscript_human_reviewed", "figures_visually_confirmed"},
+    "table-layout": PACKAGE_INVALIDATION | {"manuscript_human_reviewed", "tables_visually_confirmed"},
+    "methods-wording": PACKAGE_INVALIDATION | {"manuscript_human_reviewed"},
 }
 
 
@@ -183,10 +186,29 @@ def _read_batch_plan(path: Path, kinds: list[str], review_stage: str, pipe) -> d
             raise ValueError(f"items[{index}].request is missing or too short")
         if not isinstance(sources, list) or not sources or not all(_valid_project_rel(x) for x in sources):
             raise ValueError(f"items[{index}].affected_sources must list project-relative source paths")
+        sources = [source.replace("\\", "/") for source in sources]
         if (not isinstance(acceptance, list) or not acceptance or
                 not all(isinstance(x, str) and len(x.strip()) >= 8 for x in acceptance)):
             raise ValueError(f"items[{index}].acceptance_criteria must contain substantive checks")
         owner = resolve_route(kind, review_stage, pipe)
+        default_type = ("layout" if kind in {"figure-layout", "table-layout", "word-format-only",
+                        "journal-figure-layout", "journal-table-layout"} else
+                        "wording" if kind in {"manuscript-copyedit", "methods-wording"} else
+                        "administrative" if kind in {"title-page-or-statements", "journal",
+                        "cover-letter-or-package-structure"} else "scientific")
+        change_type = item.get("change_type", default_type)
+        if change_type not in {"layout", "wording", "administrative", "scientific"}:
+            raise ValueError("change_type must distinguish layout, wording, administrative or scientific")
+        if kind in scoped.SCIENTIFIC_KINDS and change_type != "scientific":
+            raise ValueError("data/design/model changes cannot be downgraded to cosmetic revisions")
+        if change_type != "scientific" and any(s.replace("\\", "/").startswith(("02_data/", "03_analysis/", "01_protocol/protocol", "01_protocol/analysis_contract")) for s in sources):
+            raise ValueError("non-scientific revision may not edit scientific analysis sources")
+        if change_type == "layout" and any(s.replace("\\", "/").endswith(".md") for s in sources):
+            raise ValueError("Markdown wording changes are not layout-only")
+        if any(s.replace("\\", "/").startswith((".wf/", "temp/", "08_submission/releases/")) for s in sources):
+            raise ValueError("workflow controls, scratch and immutable releases are not editable revision sources")
+        if item.get("changed_fields"):
+            raise ValueError("field-level pruning is not supported; declare file consumers conservatively")
         if pipe.stage(owner).index > pipe.stage(review_stage).index:
             raise ValueError(f"{kind} belongs after {review_stage}; finish the current review first")
         if kind in {"journal-figure-layout", "journal-table-layout"} and any(
@@ -196,6 +218,7 @@ def _read_batch_plan(path: Path, kinds: list[str], review_stage: str, pipe) -> d
             "kind": kind,
             "request": request,
             "owning_stage": owner,
+            "change_type": change_type,
             "affected_sources": sources,
             "acceptance_criteria": acceptance,
             "status": "pending",
@@ -222,21 +245,12 @@ def _clear_decisions(state: State, names: set[str]) -> list[str]:
     return removed
 
 
-def _rewind_batch(state: State, pipe, target: str, why: str) -> bool:
-    current = pipe.stage(state.current)
-    destination = pipe.stage(target)
-    if destination.index > current.index:
-        return False
-    state.add_note(f"[REVISION ROUND] returning to {target}: {why}", current.id)
-    state.reset_forward([stage.id for stage in pipe.stages_after(target)])
-    state.rewind(target, why)
-    return True
-
-
 def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int:
     active = state.data.get("active_revision_round")
     if active:
         round_path, revision = _load_round(state)
+        if revision.get("schema_version") != 2:
+            raise ValueError("finish the existing legacy round before opening a scoped revision")
         review_stage = revision["review_stage"]
     else:
         if state.current not in REVIEW_STAGES:
@@ -248,11 +262,13 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
             "schema_version": ROUND_SCHEMA,
             "round_id": round_id,
             "review_stage": review_stage,
+            "origin_stage": review_stage,
             "created_at": _now(),
             "status": "collecting",
             "full_builds": 0,
             "feedback_updates": [],
             "items": [],
+            "baseline": scoped.snapshot(project),
         }
     plan = _read_batch_plan(args.plan.resolve(), kinds, review_stage, pipe)
     if any(update.get("feedback_sha256") == plan["feedback_sha256"] for update in revision["feedback_updates"]):
@@ -274,8 +290,8 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
         key=lambda stage_id: pipe.stage(stage_id).index,
     )
     revision["updated_at"] = _now()
-    revision["rebuild_files"] = closure(project, [rel for item in revision["items"]
-                                                for rel in item["affected_sources"]])
+    revision.pop("validation", None)
+    scoped.plan_scope(project, pipe, revision)
     _write_round(round_path, revision)
     state.data["active_revision_round"] = revision["round_id"]
     state.event("revision_round_opened" if not active else "revision_round_extended",
@@ -292,29 +308,45 @@ def _seal_round(state: State, pipe, why: str) -> int:
     if len(why.strip()) < 10:
         raise ValueError("seal requires the user's end-of-batch or apply-now instruction")
     round_path, revision = _load_round(state)
+    project = state.dir.parent
+    if revision.get("schema_version") != 2:
+        raise ValueError("legacy active round: finish its recorded work before opening a v1.6 scoped round; do not discard its evidence")
+    if revision.get("baseline") is None:
+        raise ValueError("revision lacks its pre-edit baseline")
+    if revision.get("review_stage") == "S24_package_human_review" and any(
+            any(s.startswith(("01_protocol/", "02_data/", "03_analysis/", "04_tables/", "05_figures/", "06_refs/", "07_manuscript/"))
+                for s in item["affected_sources"]) for item in revision["items"]):
+        science = [i for i in revision["items"] if any(not s.startswith(("00_input/", "08_submission/"))
+                                                    for s in i["affected_sources"])]
+        if any(any(s.startswith("08_submission/") for s in i["affected_sources"]) for i in science):
+            raise ValueError("split scientific sources and journal-package sources into separate items")
+        for item in science:
+            if item["kind"] == "manuscript-copyedit":
+                item["owning_stage"] = "S19_human_review"
+        revision["deferred_package_items"] = [i for i in revision["items"] if i not in science]
+        revision["items"] = science
+        revision["review_stage"] = "S19_human_review"
+        state.data["current"] = "S19_human_review"
+        state.data["resume_package_revision"] = revision["round_id"]
+        state.save()
+    scoped.plan_scope(project, pipe, revision)
     revision.update({"status": "active", "sealed_at": _now(), "seal_instruction": why})
     _write_round(round_path, revision)
     review_stage = revision["review_stage"]
     invalidations: set[str] = set()
     for item in revision["items"]:
-        if item["kind"] == "manuscript-copyedit" and review_stage == "S19_human_review":
-            invalidations.update(COMMON_MANUSCRIPT_INVALIDATION)
-        else:
-            invalidations.update(INVALIDATE_BY_KIND[item["kind"]])
+        names = set(INVALIDATE_BY_KIND[item["kind"]])
+        if item["change_type"] != "scientific":
+            names.discard("independent_publishability")
+        if review_stage == "S19_human_review":
+            names.add("manuscript_human_reviewed")
+        invalidations.update(names)
     removed = _clear_decisions(state, invalidations)
-    target = min(
-        (item["owning_stage"] for item in revision["items"] if item.get("status") != "done"),
-        key=lambda stage_id: pipe.stage(stage_id).index,
-        default=review_stage,
-    )
-    rewound = _rewind_batch(
-        state, pipe, target,
-        f"{revision['round_id']} consolidated feedback; {len(revision['items'])} atomic item(s)",
-    )
+    state.add_note(f"[SCOPED REVISION] {revision['round_id']}; owner rules execute in place; no stage tail reset")
     print(f"revision round {revision['round_id']}: {len(revision['items'])} total item(s)")
     print(f"review return point: {review_stage}; earliest owner: {revision['earliest_stage']}")
     print(f"invalidated decisions: {', '.join(removed) if removed else 'none'}")
-    print(f"current stage: {state.current}" + (" (rewound)" if rewound else " (unchanged)"))
+    print(f"current checkpoint: {state.current}; stage completion history preserved")
     print("run tools/rework.py status after context compaction; do not reread the full conversation")
     return 0
 
@@ -329,7 +361,9 @@ def _cmd_status(state: State) -> int:
     print(f"earliest owner: {revision['earliest_stage']}; current stage: {state.current}")
     print(f"full builds: {revision.get('full_builds', 0)}; affected closure: {len(revision.get('rebuild_files', []))} files")
     for rel in revision.get("rebuild_files", []):
-        print(f"    rebuild/check: {rel}")
+        print(f"    change/rebuild: {rel}")
+    print(f"check only: {', '.join(revision.get('validation_stages', []))}")
+    print(f"reuse/protect: {len(revision.get('reuse_files', []))} unchanged files")
     for item in revision["items"]:
         print(f"  [{item['status']}] {item['id']} {item['kind']} -> {item['owning_stage']}")
         print(f"      {item['request']}")
@@ -396,6 +430,17 @@ def _cmd_close(args, state: State) -> int:
         )
     if len(args.summary.strip()) < 40:
         raise ValueError("close summary must describe the completed round in at least 40 characters")
+    if revision.get("schema_version") == 2:
+        checked = revision.get("validation", {})
+        if not checked.get("ok") or checked.get("input_signature") != scoped.input_signature(state.dir.parent, revision):
+            raise ValueError("run rework.py check on the final files; typed validation labels alone cannot close a round")
+        checked_at = datetime.fromisoformat(checked.get("checked_at", ""))
+        if not 0 <= (datetime.now(timezone.utc) - checked_at).total_seconds() < 86400:
+            raise ValueError("scoped validation expired; rerun checks before closing")
+        for item in revision["items"]:
+            for receipt in item.get("changed_files", []):
+                if _sha256_file(state.dir.parent / receipt["path"]) != receipt["sha256"]:
+                    raise ValueError("a marked file changed; mark its final version again before closing")
     revision.update({"status": "complete", "completed_at": _now(), "completion_summary": args.summary.strip()})
     _write_round(path, revision)
     state.data.pop("active_revision_round", None)
@@ -426,7 +471,7 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "mark", "close"])
+    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "mark", "close", "check"])
     parser.add_argument("--sealed", action="store_true", help="user already asked to apply this complete batch now")
     parser.add_argument("--scope", choices=["full", "targeted"], default="targeted")
     parser.add_argument("--kind", choices=kinds)
@@ -450,6 +495,9 @@ def main() -> int:
             return _cmd_status(state)
         if args.command == "seal":
             return _seal_round(state, pipe, args.why or "")
+        if args.command == "check":
+            path, revision = _load_round(state)
+            return scoped.check_round(project, pipe, state, path, revision)
         if args.command == "build":
             path, revision = _load_round(state)
             if revision.get("status") == "collecting":
@@ -465,9 +513,11 @@ def main() -> int:
             _write_round(path, revision)
             print(f"{args.scope} build recorded; use the persisted dependency closure")
             return 0
-        if args.command == "batch":
+        if args.command in {"batch", "start"}:
             if args.plan is None:
-                raise ValueError("batch requires --plan <revision-plan.json>")
+                raise ValueError("revision needs --plan with affected sources; start no longer rewinds the stage tail")
+            if args.command == "start":
+                args.sealed = True
             return _cmd_batch(args, project, pipe, state, kinds)
         if args.command == "mark":
             if not args.item or not args.summary:
@@ -492,14 +542,7 @@ def main() -> int:
     print(f"revision route: {args.kind}: {current} -> {target}")
     if args.command == "plan":
         return 0
-    tool = paths.tools_dir() / "wf.py"
-    env = {**os.environ, "MEDPAPER_PROJECT": str(project),
-           "MEDPAPER_ROOT": str(paths.repo_root()), "PYTHONIOENCODING": "utf-8"}
-    proc = subprocess.run(
-        [sys.executable, str(tool), "loop", "--to", target, "--why",
-         f"user-requested {args.kind} revision: {args.why.strip()}"],
-        text=True, env=env)
-    return proc.returncode
+    return 0
 
 
 if __name__ == "__main__":

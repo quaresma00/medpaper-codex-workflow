@@ -3,6 +3,14 @@ from . import Ctx, Result, check
 from ..readiness import verify_writing, verify_displays
 
 
+@check("reader_review_coverage")
+def reader_review_coverage(ctx: Ctx) -> Result:
+    from ..readiness import verify_reader_review
+    problems = verify_reader_review(ctx.project)
+    return Result(not problems, "reader_review_coverage", "; ".join(problems[:8]) or
+                  "independent reader report binds actual prose, tables and rendered figures; semantic judgment remains with the reviewer")
+
+
 @check("writing_ready")
 def writing_ready(ctx: Ctx) -> Result:
     problems = verify_writing(ctx.project)

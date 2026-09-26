@@ -953,7 +953,7 @@ def run_codex_integration() -> None:
            "08_submission/package_content_baseline.json" in package_stage["outputs"] and
            "tools/rework.py batch" in package_human_card and
            "tools/rework.py status" in package_human_card and
-           "Never recapture at S24" in package_human_card,
+           "actual builder receipts" in package_human_card,
            "persisted S19/S24 rounds + component equality + visible-text enforcement")
     record("S19 requires a current third-party ZIP and explicit no-further-review decision",
            "manuscript_review_package_current" in human_checks and
@@ -1112,9 +1112,9 @@ def run_codex_integration() -> None:
          "--project", str(route_project)], capture_output=True, text=True, env=route_env,
         encoding="utf-8", errors="replace")
     routed_state = State(route_project, ".wf").load()
-    record("revision router rewinds state and invalidates downstream approval",
-           routed.returncode == 0 and routed_state.current == "S16_discussion" and
-           routed_state.decision("submission_package_user_confirmed") is None,
+    record("revision router refuses unscoped legacy rewind without a plan",
+           routed.returncode != 0 and routed_state.current == "S24_package_human_review" and
+           routed_state.decision("submission_package_user_confirmed") is not None,
            ((routed.stdout or "") + (routed.stderr or "")).strip()[:140])
     shutil.rmtree(route_root, ignore_errors=True)
 
@@ -1165,8 +1165,8 @@ def run_codex_integration() -> None:
     batch_state = State(batch_project, ".wf").load()
     round_path = batch_project / ".wf/revisions/R001.json"
     round_payload = json.loads(round_path.read_text(encoding="utf-8")) if round_path.exists() else {}
-    record("multi-item revision persists interpretation and rewinds once to earliest owner",
-           opened.returncode == 0 and batch_state.current == "S08_methods" and
+    record("multi-item scientific revision anchors S19 without replaying owners",
+           opened.returncode == 0 and batch_state.current == "S19_human_review" and
            batch_state.data.get("active_revision_round") == "R001" and
            round_payload.get("earliest_stage") == "S08_methods" and
            len(round_payload.get("items", [])) == 2 and
@@ -1191,9 +1191,6 @@ def run_codex_integration() -> None:
     (manuscript / "methods.md").write_text("# Methods\n\nConcise revised methods source.\n", encoding="utf-8")
     (manuscript / "discussion.md").write_text("# Discussion\n\nRevised interpretation within the design.\n", encoding="utf-8")
     batch_state = State(batch_project, ".wf").load()
-    batch_state.data["current"] = "S24_package_human_review"
-    batch_state.stage_info("S24_package_human_review")["status"] = "active"
-    batch_state.save()
     mark_outputs = []
     for item_id, rel, summary in [
         ("R001-01", "07_manuscript/methods.md",
@@ -1213,17 +1210,25 @@ def run_codex_integration() -> None:
         encoding="utf-8", errors="replace")
     batch_state = State(batch_project, ".wf").load()
     closed_gate = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
-    record("completed revision round closes only at its review node with evidence",
-           all(proc.returncode == 0 for proc in mark_outputs) and closed.returncode == 0 and
-           batch_state.data.get("active_revision_round") is None and closed_gate.ok,
+    record("typed validation labels cannot close a new round without actual scoped checks",
+           all(proc.returncode == 0 for proc in mark_outputs) and closed.returncode != 0 and
+           batch_state.data.get("active_revision_round") == "R001" and not closed_gate.ok,
            ((closed.stdout or "") + (closed.stderr or "") + " " + closed_gate.detail).strip()[:180])
     (manuscript / "methods.md").write_text("# Methods\n\nUntracked post-close drift.\n", encoding="utf-8")
     drift_gate = revision_gate(Ctx(route_pipe, batch_state, batch_project, review_stage, {}))
     record("closed-round hash detects untracked source drift", not drift_gate.ok, drift_gate.detail[:150])
 
-    # A later completed round may legitimately supersede an older receipt for the same path.
+    # Historical schema-1 receipts remain readable after upgrade. This is a compatibility
+    # fixture, not permission to relabel a new real revision as an old one.
     import hashlib
+    legacy = json.loads(round_path.read_text(encoding="utf-8"))
+    legacy["schema_version"] = 1
+    legacy["status"] = "complete"
+    round_path.write_text(json.dumps(legacy), encoding="utf-8")
+    batch_state.data.pop("active_revision_round")
+    batch_state.save()
     newer = dict(round_payload)
+    newer["schema_version"] = 1
     newer["round_id"] = "R002"
     newer["status"] = "complete"
     newer["completed_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1927,7 +1932,7 @@ def run_manuscript_docx(proj: Path) -> None:
         [sys.executable, str(baseline_cli), "capture", "--replace", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
     record("content baseline cannot be recaptured outside S23",
-           blocked_capture.returncode != 0 and "allowed only at S23_package" in
+           blocked_capture.returncode != 0 and "capture needs an S23 build" in
            (blocked_capture.stderr or ""), (blocked_capture.stderr or "").strip()[:110])
 
     format_only_doc = Document(title_page_docx)
@@ -2265,6 +2270,10 @@ def main() -> int:
                                    capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("optimization behavioral regression suite", optimized.returncode == 0,
                (optimized.stdout + optimized.stderr)[-1200:].strip())
+        scoped = subprocess.run([sys.executable, str(ROOT / "tools/test_scoped_revision.py")],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("scoped revision behavioral regression suite", scoped.returncode == 0,
+               (scoped.stdout + scoped.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

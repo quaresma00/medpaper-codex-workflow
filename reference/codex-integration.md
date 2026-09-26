@@ -76,17 +76,19 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   fixes in plotting code, re-render, and inspect the actual new PNG. Image-generation tools
   are never substitutes for statistical plotting or the required human-visible review.
 - S18: spawn exactly one independent subagent to audit the frozen `full_manuscript.md`,
-  optional supplementary Methods and every table. It is a read-only publication-readiness
+  optional supplementary Methods, every table and the actual rendered figures. It is a read-only publication-readiness
   reviewer, not a second orchestrator or writer. Preserve its verdict for the user's S19
   review.
 - S19 and later revisions: use S19 as the repeatable scientific-content review loop and S24
   as the repeatable journal-package review loop. Read `reference/rework-routing.md`, persist
   the verbatim feedback and one interpretation with `tools/rework.py batch`, and resume from
-  `tools/rework.py status` after context compaction. Update the earliest source-owning stage,
+  `tools/rework.py status` after context compaction. Call owner rules in place at the review checkpoint,
   rebuild only its actual dependants, and preserve unaffected hash-matched evidence. Token
   efficiency comes from scoped reads and dependency-aware rebuilds, never from dropping an
   affected request, gate, validation or review. The assembled manuscript must match its
   component Markdown at S19; do not patch it as a detached final file.
+  Run `rework.py check` before marking/closing. Do not reset the stage tail or rely on typed
+  validation labels. Read S07's reader contracts and S18's exact input-hash/comprehension rules.
 - S19 delivery: run `tools/manuscript/review_package.py build` and `verify` for every initial
   or scientifically changed version. Present clickable paths for the manuscript, optional
   supplementary Methods, table workbooks, rendered PNG figures, verified BibTeX/RIS exports,
@@ -141,4 +143,3 @@ Plugin output follows the same rule as local-skill output. A plugin may help dis
 or inspect an artifact, but external content is not evidence until it passes the pipeline's
 provenance checks. Never send patient-level or private data to a plugin without explicit user
 authorization and a documented de-identification decision.
-

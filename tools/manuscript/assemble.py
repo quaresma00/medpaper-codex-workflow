@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools"))
 
 
 def project_root() -> Path:
@@ -100,6 +101,8 @@ def main() -> int:
             return 2
         print("canonical manuscript matches its source sections")
         return 0
+    from wfcore.revision import guard_outputs
+    guard_outputs(project, [output])
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(expected, encoding="utf-8")
     print(f"assembled canonical manuscript -> {output}")

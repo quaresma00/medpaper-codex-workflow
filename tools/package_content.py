@@ -31,11 +31,10 @@ def main() -> int:
     project = args.project.resolve()
     if args.command == "capture":
         stage = _current_stage(project)
-        if stage and stage != "S23_package":
-            print(f"package content: capture is allowed only at S23_package, current={stage}",
-                  file=sys.stderr)
-            return 2
         try:
+            from wfcore.revision import baseline_capture_allowed
+            if stage and stage != "S23_package" and not baseline_capture_allowed(project):
+                raise ValueError("capture needs an S23 build or a scoped source rebuild receipt; manual Word edits cannot be blessed")
             output = write_baseline(project, replace=args.replace)
         except (OSError, ValueError) as exc:
             print(f"package content: {exc}", file=sys.stderr)

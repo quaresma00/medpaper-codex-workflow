@@ -136,9 +136,11 @@ def _write_sheet(ws, spec: dict) -> None:
 def write_workbook(path: str | Path, tables: list[dict]) -> Path:
     """One workbook, one sheet per table. Use this for the supplementary tables."""
     from wfcore.dependencies import guard_build
+    from wfcore.revision import guard_outputs
     for parent in Path(path).resolve().parents:
         if (parent / ".wf/state.json").exists():
             guard_build(parent)
+            guard_outputs(parent, [Path(path)])
             break
     if not tables:
         raise ValueError("no tables given")

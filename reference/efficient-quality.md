@@ -83,8 +83,8 @@ preserving the frozen scientific figures. Internal diagnostics do not require de
 
 ## Feedback and incremental work
 
-Read `rework-routing.md`. `batch` now collects without rewinding/building; `seal --why` records
-the user's end-of-batch/apply-now instruction and routes once. A complete request to implement
+Read `rework-routing.md`. `batch` collects without rewinding/building; `seal --why` records
+the user's end-of-batch/apply-now instruction and activates scoped work at the review checkpoint. A complete request to implement
 the supplied feedback already permits `batch --sealed`; do not invent another confirmation.
 Deduplicate identical requests; merge overlapping acceptance criteria without losing a request.
 New feedback reopens collection. Do not mark/close a collecting batch.
@@ -100,6 +100,36 @@ Result JSONs may declare `source_files` plus their `script`/`built_by` producer.
 unmapped data inputs or analysis helpers, the closure conservatively includes all analysis
 results; do not infer that absent dependency metadata means no downstream effect. This list
 is a rebuild/recheck plan, not permission to overwrite user-edited or frozen files blindly.
+The engine now enforces output scope and protects unrelated files. Shared builders need a
+selective output option; otherwise editing one shared script conservatively affects its
+declared consumers. Field-level pruning is not supported: never infer independence from a
+missing JSON-field mapping. Use the saved `validation_stages` without navigating backwards.
+
+## Medical reader-facing acceptance
+
+Benchmark actual medical prose/tables/figures, not only display counts. Keep one primary
+clinical message per display, natural clinical labels, interpretable reference groups,
+explicit units/denominators and appropriate uncertainty. Store the five-field
+`reader_contract` (population, comparison, measure, denominator_and_units, interpretation_limit)
+inside each artifact-plan entry. Resolve abbreviation placement at S07 so S17 does not
+deliberately undo and rebuild table footnotes. Methods is concise design-adapted prose;
+Results follows the clinical question, not scripts or every analysis block. Retain null
+prespecified findings and clinically required model-performance/diagnostic evidence.
+
+Technical paths, receipt IDs, QA scores, pipeline states and JSON schemas stay backstage.
+They may be useful in internal notes but are not manuscript headings, figure annotations
+or table columns. Preserve scientifically necessary definitions and limitations in normal
+medical language. A value merely found somewhere in result JSON is insufficient: verify
+its endpoint, population, comparator, units, denominator, time window and adjustment set.
+
+S18 reads actual rendered figures as well as the prose and tables. Use
+`readiness.py review-inputs` and bind its hashes inside the existing independent report,
+alongside Reader comprehension and Medical presentation findings. No second report or
+additional mandatory agent is introduced. Automated coverage cannot certify human-like
+understanding; the independent reviewer must actually inspect the files and explain defects.
+
+Editorial basis: ICMJE, Preparing a Manuscript for Submission to a Medical Journal
+(checked 2026-09-26): https://www.icmje.org/recommendations/browse/manuscript-preparation/preparing-for-submission.html .
 
 Before expensive production record `rework.py build --scope full --why <batch purpose>` or
 `--scope targeted --why <changed files>`. After two full builds identify the unstable input,

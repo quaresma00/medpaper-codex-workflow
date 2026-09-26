@@ -74,7 +74,8 @@ def freeze_writing(project: Path) -> dict:
     from .state import State
 
     state = State(project).load()
-    if state.current != "S06_protocol_final":
+    from .revision import permits
+    if state.current != "S06_protocol_final" and not permits(project, "S06_protocol_final"):
         raise ValueError("writing freeze is created only at S06 after analysis has converged")
     for name, value in (("analysis_converged", "YES"), ("go_nogo_2", "GO")):
         if (state.decision(name) or {}).get("value") != value:
@@ -110,6 +111,10 @@ def verify_displays(project: Path) -> list[str]:
         problems = []
         for key, entry in expected.items():
             row = observed[key]
+            contract = entry.get("reader_contract", {})
+            for field in ("population", "comparison", "measure", "denominator_and_units", "interpretation_limit"):
+                if not _populated(contract.get(field)) or len(str(contract[field]).strip()) < 8:
+                    problems.append(f"{key}: explain reader_contract.{field}; give a reason when inapplicable")
             rel, preview = _safe_path(project, row.get("preview", ""))
             allowed = {".png", ".svg", ".pdf"} if key.startswith("Figure") else {".md", ".csv"}
             if not rel.startswith("01_protocol/prototypes/") or preview.suffix.lower() not in allowed:
@@ -127,5 +132,39 @@ def verify_displays(project: Path) -> list[str]:
             if row.get("source_hashes") != source_hashes:
                 problems.append(f"{key}: reader review does not match current result sources")
         return problems
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return [str(exc)]
+
+
+def reader_inputs(project: Path) -> dict[str, str]:
+    """Small read-only handoff inventory; no patient records or extra dossier."""
+    plan = load(project, "01_protocol/artifact_plan.json")
+    files = {"07_manuscript/full_manuscript.md", "01_protocol/artifact_plan.json",
+             "05_figures/legends.md", "04_tables/table_captions.md"}
+    optional = "07_manuscript/supplementary_methods.md"
+    if (project / optional).is_file():
+        files.add(optional)
+    for group in ("main_figures", "supp_figures", "main_tables", "supp_tables"):
+        for entry in plan.get(group, []):
+            rel = entry.get("file", "")
+            if not rel:
+                raise ValueError(f"{entry.get('id')}: no rendered display file")
+            files.add(rel)
+    return {rel: _sha256(_safe_path(project, rel)[1]) for rel in sorted(files)}
+
+
+def verify_reader_review(project: Path) -> list[str]:
+    import re
+    try:
+        report = (project / "07_manuscript/independent_publishability_review.md").read_text(encoding="utf-8")
+        metadata = [json.loads(block) for block in re.findall(r"```json\s*\n(.*?)\n```", report, re.S)]
+        evidence = [doc for doc in metadata if isinstance(doc, dict) and "reviewed_artifacts" in doc]
+        if len(evidence) != 1 or evidence[0]["reviewed_artifacts"] != reader_inputs(project):
+            return ["independent reader review must identify the exact current manuscript, supplement, tables AND rendered figures"]
+        for heading in ("Reader comprehension", "Medical presentation"):
+            match = re.search(r"(?mi)^#{1,3}\s+" + re.escape(heading) + r"\s*$\n(.*?)(?=^#{1,3}\s|\Z)", report, re.S | re.M)
+            if not match or len(match.group(1).strip()) < 80:
+                return [f"independent review needs substantive {heading} findings, not only a PASS label"]
+        return []
     except (OSError, ValueError, KeyError, TypeError) as exc:
         return [str(exc)]

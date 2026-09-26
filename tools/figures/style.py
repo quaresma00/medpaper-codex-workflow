@@ -221,9 +221,14 @@ def save(fig, stem: str | Path, width: str = "single", dpi: int = 600,
     """
     stem = Path(stem)
     from wfcore.dependencies import guard_build
+    from wfcore.revision import guard_outputs
     for parent in stem.resolve().parents:
         if (parent / ".wf/state.json").exists():
             guard_build(parent)
+            outputs = [stem.with_suffix(s) for s in [".pdf", ".png"] + ([".tiff"] if tiff else [])]
+            if audit:
+                outputs.append(stem.parent.parent / "qc" / f"{stem.name}.artist.json")
+            guard_outputs(parent, outputs)
             break
     stem.parent.mkdir(parents=True, exist_ok=True)
     written = {}

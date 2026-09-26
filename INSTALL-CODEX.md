@@ -102,7 +102,7 @@ the active stage only. Follow `reference/codex-integration.md`:
 - ImageGen may offer a second visual critique of rendered scientific figures, but it must
   not redraw them; accepted fixes are made in plotting code and re-rendered;
 - one independent subagent reviews the frozen full manuscript, optional supplementary
-  Methods and tables at S18; it reviews only and does not rewrite the source;
+  Methods, tables and actual rendered figures at S18; it reviews only and does not rewrite the source;
 - after S23 builds the journal package, S24 lets the user edit its content and formatting,
   obtains an explicit request for the final review, and freezes the exact reviewed revision;
   S25 then uses one separate read-only subagent to read the package as a first-time scientific
@@ -141,8 +141,8 @@ S24 does not advance until the user explicitly confirms the revalidated package 
 S25 requires an independent three-lens `PASS`; a changed or deficient package loops back to
 S24 for correction and renewed confirmation.
 
-User-requested revisions do not bypass the pipeline. `tools/rework.py` routes each change to
-the earliest source-owning stage described in `reference/rework-routing.md`. Repeated feedback
+User-requested revisions do not bypass the pipeline. `tools/rework.py` calls the source owner's
+rules described in `reference/rework-routing.md` without rewinding the stage tail. Repeated feedback
 is persisted as a batch at S19 for scientific content or S24 for the journal package. Run
 `tools/rework.py status` after context compaction; it restores the exact feedback,
 interpretation, atomic items, affected files and acceptance criteria without rereading the
@@ -151,6 +151,10 @@ evidence, but do not drop an affected gate or requested item for token efficienc
 requires the assembled manuscript to match its component Markdown. S23 captures DOCX
 visible-text hashes with `tools/package_content.py`; S24 accepts a Word-only change as
 formatting only when those hashes still match.
+New rounds require `rework.py check` before closure. Source-based scoped S23 builds may renew
+that baseline at S24 only with matching real builder receipts, never to bless manually changed
+Word text. A renewed scientific approval resumes the journal-package dependency closure at
+S24, preserving completed-stage history and unrelated integration edits.
 
 ## Verify or rebuild the package
 

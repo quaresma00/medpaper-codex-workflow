@@ -18,15 +18,16 @@ source for review, user editing, polishing and packaging.
    `Keywords: term 1, term 2, term 3`. Use 3-6 specific, MeSH-aligned terms where suitable.
    Commas are the only separators: no slash, semicolon, ampersand or conjunction padding.
 4. Assemble the exact order with the deterministic tool:
-   First, review the display-item abbreviation lists. When they exceed eight unique terms,
+   First, verify S07's abbreviation policy was followed. When lists exceed eight unique terms,
    any local list exceeds 50 words, or the lists visibly dominate captions, define the terms
    once in optional `07_manuscript/statements.md` under `# Declarations and Statements`
    and `## Abbreviations`. These thresholds are workflow defaults, not journal standards.
    Use one `term, full expansion` entry per line or semicolon-separated entries, preserving
    mixed-case names such as eGFR. Remove the corresponding `Abbreviations:` blocks from
    legends/captions and the table-building source. Add a short pointer to the central list
-   where needed; keep units, symbol meanings and error-bar definitions local. Regenerate
-   and visually recheck affected tables. No author/admin details or blank declaration
+   where needed; keep units, symbol meanings and error-bar definitions local. This should
+   already be reflected in the first table build; regenerate and visually recheck only an
+   actually defective table, not every table as a scheduled second pass. No author/admin details or blank declaration
    sections are needed here. Then run:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/assemble.py
@@ -65,4 +66,3 @@ source for review, user editing, polishing and packaging.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "full manuscript assembled; selected title: <title>; keywords=<n>; figure legends=<n>"
 ```
-

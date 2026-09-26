@@ -545,7 +545,9 @@ def run_pandoc(inputs: list[Path], output: Path, bibliography: Path | None,
 
 def build(args) -> int:
     from wfcore.dependencies import guard_build
+    from wfcore.revision import guard_outputs, record_build
     guard_build(project_root())
+    guard_outputs(project_root(), [args.output])
     style = load_style(args.style_config)
     if style.get("all_text_black") is not True or style.get("external_hyperlinks") is not False:
         print("style config must require black text and prohibit external hyperlinks", file=sys.stderr)
@@ -555,19 +557,21 @@ def build(args) -> int:
         source_problems = _source_problems(args.kind, args.input)
         if source_problems:
             raise ValueError("; ".join(source_problems))
-        run_pandoc(args.input, args.output, args.bibliography, args.csl)
-        normalize_docx(args.output, style, args.kind)
-        problems = audit_docx(args.output, style, args.kind,
-                              planned_figure_ids() if args.kind == "manuscript" else None,
-                              figure_legend_cap())
+        # Validate a temporary candidate; a failed rebuild must preserve the user's file.
+        with tempfile.TemporaryDirectory(prefix="medpaper-docx-", dir=args.output.parent) as folder:
+            candidate = Path(folder) / args.output.name
+            run_pandoc(args.input, candidate, args.bibliography, args.csl)
+            normalize_docx(candidate, style, args.kind)
+            problems = audit_docx(candidate, style, args.kind,
+                                  planned_figure_ids() if args.kind == "manuscript" else None,
+                                  figure_legend_cap())
+            if problems:
+                raise ValueError("DOCX audit failed: " + "; ".join(problems))
+            candidate.replace(args.output)
     except Exception as exc:  # noqa: BLE001
-        args.output.unlink(missing_ok=True)
         print(f"DOCX build failed: {exc}", file=sys.stderr)
         return 2
-    if problems:
-        args.output.unlink(missing_ok=True)
-        print("DOCX audit failed:\n  " + "\n  ".join(problems), file=sys.stderr)
-        return 2
+    record_build(project_root(), args.output, [*args.input, args.style_config, args.bibliography, args.csl])
     print(f"built and audited {args.kind} -> {args.output}")
     return 0
 

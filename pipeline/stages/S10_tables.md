@@ -46,6 +46,9 @@ write_table(
 .\.venv\Scripts\python.exe project/04_tables/code/build_tables.py
 .\.venv\Scripts\python.exe tools/wf.py check
 ```
+   The builder must support selecting an affected workbook (for example `--only Table2`).
+   A shared supplementary workbook is one rebuild unit; preserve the other sheets' values
+   and meaning. A change to one main table must not overwrite other main workbooks.
 5. Use the Codex spreadsheet capability to render and visually inspect every worksheet in
    every generated workbook. Check clipping, wrapping, column widths, row heights, title
    and header hierarchy, footnotes, units, decimal precision, missing-value symbols and
@@ -63,16 +66,18 @@ write_table(
 - (plus the xlsx files declared in the artifact plan)
 
 ## Hard rules
-- A table is a reader-facing object, not an analysis dump. No model diagnostics, no
-  console output, no paragraph-length cells. The gate rejects cells over 300 characters
+- A table is a reader-facing object, not an analysis dump. No console output or
+  paragraph-length cells. Clinically relevant discrimination, calibration, diagnostic
+  accuracy or sensitivity results remain when required by the study design; hide engineering
+  logs and redundant model-debugging output, not necessary scientific evidence.
+  The gate rejects cells over 300 characters
   and footnote blocks over 1500 characters.
 - Every numeric cell must trace to `03_analysis/results/*.json` (gate:
   `numbers_have_provenance source=tables`). Do not retype from the Results prose.
 - Titles are self-contained and short. Footnotes carry abbreviations, units and tests.
-- Keep a short abbreviation list in the table footnote initially. At S17, if the manuscript
-  has more than eight display-item abbreviations or a local list exceeds 50 words, move all definitions to the single
-  `Declarations and Statements > Abbreviations` list, remove repeated local blocks from the
-  table-building source, regenerate the affected workbooks, and visually recheck them.
+- Follow S07's abbreviation policy on the first build. Use the central glossary when planned,
+  retaining only the local decoding information needed to understand the table. S17 checks
+  consistency; regenerate only a table with an actual newly discovered defect.
 - Do not add a table that is not in the plan. If one is needed, loop to S07.
 - Structural checks alone are insufficient; the visual-review decision is mandatory.
 

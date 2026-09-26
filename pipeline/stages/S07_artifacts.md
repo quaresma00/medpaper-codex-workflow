@@ -18,6 +18,11 @@ first keep panels from filling up with explanatory text later.
    `Comparable papers surveyed`, `Figure/table counts observed`, `Chosen inventory and why`.
    Record the observed range (e.g. "4-6 main figures, 2-3 main tables, n=8 papers"), and
    justify your inventory against it. Fewer, better displays beat padding.
+   Counts alone are insufficient. Read the actual Methods/Results and at least one table
+   and figure from close, legally accessible medical comparators. In the same benchmark
+   note record their clinical ordering, labels, denominators, uncertainty and footnote/legend
+   conventions, and explain what is suitable for this study. Do not imitate visual decoration
+   or assume an abstract proves the full paper's display style. Record unavailable full text.
 2. **Plan.** Write `project/01_protocol/artifact_plan.json`. Every entry needs a
    `source_results` list pointing at the result JSONs it is built from - an artifact with
    no numeric source cannot be built:
@@ -52,6 +57,12 @@ first keep panels from filling up with explanatory text later.
    each**; every figure has a `width`, a `script` and an `archetype`.
    If the reporting guideline requires a flow diagram (STROBE/CONSORT/STARD/PRISMA),
    it is Figure 1.
+   Add `reader_contract` to every display: `population`, `comparison`, `measure`,
+   `denominator_and_units`, `interpretation_limit`. Use short factual sentences; explain
+   inapplicability rather than inserting a fictional comparison. This internal contract
+   guides captions and labels; never print JSON keys or workflow terminology in the figure.
+   Declare table `script` paths too, and additional project-specific file consumers in
+   top-level `dependencies: [{"file": "...", "source_files": ["..."]}]` when needed.
 
 3. **Declare each figure's archetype.** Pick it from `reference/archetypes.toml` and read
    that entry before planning the figure - it lists the elements that chart type must have,
@@ -74,9 +85,11 @@ first keep panels from filling up with explanatory text later.
 5. **Table captions.** Write `project/04_tables/table_captions.md`, one block per table,
    headed `Table N.` Each needs a title line plus the footnote content: abbreviation
    expansions, units, the test used, what a dagger/asterisk marks. Short abbreviation lists
-   may remain local at this stage. If more than eight different abbreviations accumulate
-   across figures and tables, or a local list exceeds 50 words, S17 will move the complete list into `Declarations and
-   Statements` and regenerate the affected tables without repeated abbreviation blocks.
+   may remain local. Decide the shared glossary here, before production, using
+   `artifact_plan.json` field `abbreviation_policy` (placement and definitions). If more than
+   eight different terms accumulate across displays, or one local list exceeds 50 words,
+   plan a central Declarations and Statements glossary. Preserve local units/symbol meanings
+   needed to read each display. S17 assembles and verifies the choice, not a planned table rebuild.
 
 6. Read `reference/efficient-quality.md` and create cheap semantic prototypes for every
    planned display under `01_protocol/prototypes/`. Open them and conduct the one-minute

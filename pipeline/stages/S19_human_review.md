@@ -59,7 +59,8 @@ further review is needed.
    The tool persists the open batch under `.wf/revisions/` without rewinding or building.
    After the user finishes the batch, run `tools/rework.py seal --why "<user's instruction>"`.
    Use `batch --sealed` when the user already asked to apply this complete request now;
-   do not demand a redundant confirmation. Sealing routes once to the earliest owner.
+   do not demand a redundant confirmation. Sealing activates owner rules in place at S19;
+   it does not reset the stage tail. Read the saved rebuild/check/reuse lists.
    If the context compacts, resume from `tools/rework.py status`; do
    not reinterpret the conversation or silently reduce the requested work.
 3. Update each earliest source of truth, then rebuild only its true dependants. Unchanged raw
@@ -71,7 +72,7 @@ further review is needed.
 4. Run `tools/manuscript/assemble.py --check`, then re-run manuscript structure, citation,
    number-provenance and artifact-reference checks. The S19 gate requires the canonical
    manuscript to match its component sources exactly.
-5. When the workflow returns to S19, compare every item against its acceptance criteria. Mark
+5. Still at S19, run `tools/rework.py check` and compare every item against its acceptance criteria. Mark
    the final changed source files and completed gates/inspections, then close the round:
 ```
 .\.venv\Scripts\python.exe tools/rework.py mark --item <RNNN-NN> --changed-file <path> --validated-by "<gate or inspection>" --summary "<resolution>"

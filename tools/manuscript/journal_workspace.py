@@ -12,12 +12,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from wfcore import paths  # noqa: E402
-from wfcore.journalworkspace import initialise, verify  # noqa: E402
+from wfcore.journalworkspace import initialise, verify, rebase  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="derive journal integration sources from the S19 freeze")
-    parser.add_argument("command", choices=["init", "verify"])
+    parser.add_argument("command", choices=["init", "verify", "rebase"])
+    parser.add_argument("--why", default="")
     parser.add_argument("--project", type=Path)
     parser.add_argument("--replace", action="store_true")
     parser.add_argument("--require-pristine", action="store_true")
@@ -27,6 +28,9 @@ def main() -> int:
         Path(raw).resolve() if raw else paths.project_dir().resolve()
     )
     try:
+        if args.command == "rebase":
+            print(f"rebound merged journal sources -> {rebase(project, args.why)}")
+            return 0
         if args.command == "init":
             path, payload, created = initialise(project, replace=args.replace)
             action = "created" if created else "reused"
@@ -48,4 +52,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

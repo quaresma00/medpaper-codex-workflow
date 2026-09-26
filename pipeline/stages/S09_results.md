@@ -11,8 +11,12 @@ result JSONs and then reconciled at S12 once the files exist.
 - `05_figures/legends.md`, `04_tables/table_captions.md` - so the prose does not repeat them
 
 ## Procedure
-1. Order the Results the way the artifact plan is ordered: cohort/flow, baseline
-   characteristics, primary analysis, secondary analyses, sensitivity analyses.
+1. Organize Results around the clinical question: who was studied, the principal outcome,
+   and clinically meaningful supporting findings. Cohort/flow, characteristics, primary,
+   secondary and sensitivity results are useful conventions, not mandatory headings.
+   Retain all prespecified outcomes, including null or unfavorable findings; place lengthy
+   technical checks in appropriate supplements, never suppress them to improve the story.
+   Do not use the order of scripts, model runs or pipeline stages as the narrative structure.
 2. Write `project/07_manuscript/results.md`. Every display item in the plan must be cited
    at least once, in order, as `(Figure 1)`, `(Table 2)`, `(Figure S1)`, `(Table S1)`.
    The gate rejects citations to items not in the plan, and items never cited.
@@ -23,6 +27,10 @@ result JSONs and then reconciled at S12 once the files exist.
    Those belong in the Discussion.
 5. Do not restate a table row by row. The prose carries the findings the reader must not
    miss; the table carries the rest.
+6. For each reported estimate confirm the source field AND population/comparison, endpoint,
+   unit, denominator, adjustment set and time window. Equal numeric values in a JSON pool
+   are not proof that a sentence refers to the right clinical result. Keep this mapping in
+   the existing analysis notes, not as cryptic provenance tags in the published prose.
 
 ## Outputs
 - `07_manuscript/results.md`
