@@ -1,5 +1,8 @@
 # S17 - Select the title and assemble the complete manuscript
 
+Bind numeric Abstract findings under `reference/numeric-claims.md`. The assembler carries
+matching Abstract/Results bindings to full-manuscript mappings without printing them in prose.
+
 ## Purpose
 Create the first complete paper before asking for author or affiliation details. The paper
 must be readable as one medical-journal manuscript and becomes the canonical scientific

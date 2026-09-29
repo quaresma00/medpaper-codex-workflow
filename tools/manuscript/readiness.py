@@ -11,10 +11,14 @@ from wfcore.readiness import freeze_writing, verify_writing, verify_displays, re
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["freeze", "verify", "displays", "review-inputs"])
+    parser.add_argument("command", choices=["freeze", "verify", "displays", "review-inputs", "facts"])
     parser.add_argument("--project", type=Path, default=Path("project"))
     args = parser.parse_args()
     try:
+        if args.command == "facts":
+            from wfcore.claims import facts
+            print(json.dumps(facts(args.project), indent=2, ensure_ascii=False))
+            return 0
         if args.command == "review-inputs":
             print(json.dumps({"reviewed_artifacts": reader_inputs(args.project)}, indent=2, ensure_ascii=False))
             return 0

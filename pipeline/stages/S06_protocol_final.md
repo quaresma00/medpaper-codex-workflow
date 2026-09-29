@@ -1,5 +1,8 @@
 # S06 - Final protocol + go/no-go #2
 
+Before freezing, follow `reference/numeric-claims.md` to add source-bound quantitative facts
+to the existing clinical-story file. Keep this provenance backstage; do not draft the paper.
+
 ## Purpose
 Reconcile what was planned with what was done, then re-judge publishability now that
 the effect size and the data's limits are known. This is the last cheap exit.

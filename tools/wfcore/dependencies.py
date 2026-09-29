@@ -5,7 +5,10 @@ import json
 from pathlib import Path
 
 
-def closure(project: Path, changed: list[str], *, change_type: str = "scientific") -> list[str]:
+def closure(project: Path, changed: list[str], *, change_type: str = "scientific",
+            baseline_documents: dict | None = None) -> list[str]:
+    if change_type not in {"scientific", "layout", "wording", "administrative"}:
+        raise ValueError("unknown change type")
     edges: dict[str, set[str]] = {}
 
     def link(source, output):
@@ -31,15 +34,32 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
                 link(source, output)
 
     plan = read("01_protocol/artifact_plan.json")
-    for group in ("main_figures", "supp_figures", "main_tables", "supp_tables"):
-        for entry in plan.get(group, []):
+    groups = ("main_figures", "supp_figures", "main_tables", "supp_tables")
+    before = (baseline_documents or {}).get("01_protocol/artifact_plan.json")
+    touched = None
+    if isinstance(before, dict) and before != plan:
+        # Prune only a real, locally observed entry-only diff. Missing/legacy snapshots,
+        # shared settings, dependency edits and reordered inventories widen conservatively.
+        other_before = {k: v for k, v in before.items() if k not in groups}
+        other_after = {k: v for k, v in plan.items() if k not in groups}
+        if other_before == other_after and all(
+                [e.get("id") for e in before.get(g, [])] == [e.get("id") for e in plan.get(g, [])]
+                for g in groups):
+            touched = {(g, index) for g in groups for index, e in enumerate(plan.get(g, []))
+                       if e != before[g][index]}
+    for group in groups:
+        entries = list(enumerate(plan.get(group, [])))
+        if touched is not None:
+            entries += [(i, e) for i, e in enumerate(before.get(group, [])) if (group, i) in touched]
+        for index, entry in entries:
             outputs = [entry.get(key) for key in ("file", "tiff", "pdf") if entry.get(key)]
             if "figures" in group:
                 for output in list(outputs):
                     stem = str(Path(output).with_suffix(""))
                     outputs.extend([stem + ".png", stem + ".pdf",
                                     (Path(stem).parent.parent / "qc" / (Path(stem).name + ".artist.json")).as_posix()])
-            for source in [*entry.get("source_results", []), entry.get("script"), "01_protocol/artifact_plan.json"]:
+            plan_source = ["01_protocol/artifact_plan.json"] if touched is None or (group, index) in touched else []
+            for source in [*entry.get("source_results", []), entry.get("script"), *plan_source]:
                 for output in outputs:
                     link(source, output)
     link("01_protocol/artifact_plan.json", "05_figures/legends.md")
@@ -74,6 +94,13 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
                 link(source, result.relative_to(project).as_posix())
     for rel in ("title", "abstract", "keywords", "methods", "results", "introduction", "discussion", "statements"):
         link(f"07_manuscript/{rel}.md", "07_manuscript/full_manuscript.md")
+        link(f"07_manuscript/{rel}.md", "07_manuscript/claim_bindings.json")
+    link("07_manuscript/supplementary_methods.md", "07_manuscript/claim_bindings.json")
+    for group in ("main_tables", "supp_tables"):
+        for entry in plan.get(group, []):
+            link(entry.get("file"), "07_manuscript/claim_bindings.json")
+    link("08_submission/integration/full_manuscript.md", "08_submission/integration/claim_bindings.json")
+    link("08_submission/integration/supplementary_methods.md", "08_submission/integration/claim_bindings.json")
     link("05_figures/legends.md", "07_manuscript/full_manuscript.md")
     link("05_figures/legends.md", "08_submission/integration/figure_legends.md")
     link("04_tables/table_captions.md", "08_submission/integration/table_captions.md")

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .packagefreeze import _safe_path, _sha256
 from .readiness import atomic_json
+from .evidence import renewable
 
 SCIENTIFIC_KINDS = {"study-design", "data", "analysis", "final-protocol"}
 LIFECYCLE_CHECKS = {
@@ -50,14 +51,16 @@ def snapshot(project: Path) -> dict[str, str]:
     return result
 
 
-def input_signature(project: Path, revision: dict) -> str:
+def input_signature(project: Path, revision: dict, files: dict | None = None) -> str:
     from . import paths
     from .state import State
     state = State(project).load()
     engine = {p.relative_to(paths.repo_root()).as_posix(): _sha256(p)
               for folder in ("tools", "pipeline") for p in (paths.repo_root() / folder).rglob("*")
               if p.is_file() and p.suffix in {".py", ".toml", ".md"}}
-    payload = {"files": snapshot(project), "engine": engine, "decisions": state.data.get("decisions", {}),
+    files = snapshot(project) if files is None else files
+    payload = {"files": {r: h for r, h in files.items() if not renewable(r)},
+               "engine": engine, "decisions": state.data.get("decisions", {}),
                "config": state.config(), "scope": revision.get("allowed_files", []),
                "checks": revision.get("checks", []), "stages": revision.get("validation_stages", [])}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -87,14 +90,14 @@ def guard_outputs(project: Path, outputs: list[Path]) -> None:
             raise ValueError(f"out-of-scope build: {rel}; declare its dependency before writing")
 
 
-def scope_problems(project: Path, revision: dict) -> list[str]:
-    before, now = revision.get("baseline", {}), snapshot(project)
+def scope_problems(project: Path, revision: dict, files: dict | None = None) -> list[str]:
+    before, now = revision.get("baseline", {}), snapshot(project) if files is None else files
     allowed = set(revision.get("allowed_files", []))
     changed = {rel for rel in set(before) | set(now) if before.get(rel) != now.get(rel)}
     # Only renewable source receipts/cache and backstage QC can be control maintenance.
     # Manuscripts, results, scripts, figures and tables are never exempt.
     def maintenance(rel):
-        if "/cache/" in rel or rel == "06_refs/verified.json" or rel.startswith("08_submission/evidence/"):
+        if renewable(rel):
             return True
         # A new journal may preserve the old integration/bundle, but only as byte-identical
         # new archive files. Existing archived attempts are never mutable control records.
@@ -113,7 +116,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         _safe_path(project, rel)
     rebuild = set()
     for item in revision["items"]:
-        rebuild.update(closure(project, item["affected_sources"], change_type=item["change_type"]))
+        rebuild.update(closure(project, item["affected_sources"], change_type=item["change_type"],
+                               baseline_documents=revision.get("baseline_documents")))
     journal_change = any(i["kind"] == "journal" for i in revision["items"])
     if journal_change:
         # Choosing a different journal legitimately affects its whole derived package,
@@ -204,11 +208,12 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
                      "reuse_files": sorted(set(revision.get("baseline", {})) - ((rebuild | controls) - REVIEW_OUTPUTS))})
 
 
-def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str]:
+def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str, dict]:
     from . import checks
     from .checks import Ctx, Result
     checks.load_all()
-    problems = scope_problems(project, revision)
+    files = snapshot(project)
+    problems = scope_problems(project, revision, files)
     results = [Result(not problems, "revision_scope_unchanged", "; ".join(problems[:10]) or "unaffected files preserved")]
     seen = set()
     for row in revision["checks"]:
@@ -226,7 +231,12 @@ def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str]
         if "severity" in spec and not result.ok:
             result.severity = spec["severity"]
         results.append(result)
-    return results, input_signature(project, revision)
+    # Checks may renew evidence, but must never alter authored sources while certifying them.
+    after = snapshot(project)
+    drift = {r for r in set(files) | set(after) if not renewable(r) and files.get(r) != after.get(r)}
+    if drift:
+        results.append(Result(False, "validation_source_drift", ", ".join(sorted(drift))))
+    return results, input_signature(project, revision, after), after
 
 
 def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> int:
@@ -234,11 +244,12 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
         raise ValueError("seal the feedback batch before checking")
     if revision.get("schema_version") != 2:
         raise ValueError("finish the legacy round through its recorded stage gates")
-    results, signature = validate(project, pipeline, state, revision)
+    results, signature, files = validate(project, pipeline, state, revision)
     revision["validation"] = {"input_signature": signature, "ok": not any(r.blocking for r in results),
                               "checked_at": datetime.now(timezone.utc).isoformat(),
-                              "artifact_hashes": {rel: _sha256(project / rel) for rel in revision["allowed_files"]
-                                                  if (project / rel).is_file()},
+                              "artifact_hashes": {rel: (h if not h.startswith("stat:") else _sha256(project / rel))
+                                                  for rel, h in files.items() if rel in revision["allowed_files"] and not renewable(rel)},
+                              "renewable_evidence": {r: h for r, h in files.items() if renewable(r)},
                               "results": [{"check": r.check, "ok": r.ok, "detail": r.detail,
                                            "severity": r.severity} for r in results]}
     atomic_json(path, revision)
@@ -247,6 +258,29 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
             print(f"[{result.label}] {result.check}: {result.detail}")
     print(f"Scoped checks: {sum(r.ok for r in results)}/{len(results)}; checkpoint remains {state.current}")
     return 0 if revision["validation"]["ok"] else 2
+
+
+def refresh_evidence(project: Path, pipeline, state, revision: dict) -> None:
+    """On close, changed evidence reruns its actual gates, not every manuscript check."""
+    from . import checks
+    from .checks import Ctx
+    current = {r: h for r, h in snapshot(project).items() if renewable(r)}
+    if current == revision.get("validation", {}).get("renewable_evidence"):
+        return
+    checks.load_all()
+    # Unknown consumers are conservative: replay all selected gates when their evidence
+    # dependency is not yet explicitly classified. Pure content gates are safely reusable.
+    from .gatecache import INPUTS
+    failures = []
+    for row in revision["checks"]:
+        spec = row["spec"]
+        if spec["check"] in INPUTS:
+            continue
+        result = checks.get(spec["check"])(Ctx(pipeline, state, project, pipeline.stage(row["stage"]), spec))
+        if result.blocking:
+            failures.append(f"{result.check}: {result.detail}")
+    if failures:
+        raise ValueError("renewed evidence is invalid: " + "; ".join(failures[:8]))
 
 
 def record_build(project: Path, output: Path, sources: list[Path]) -> None:

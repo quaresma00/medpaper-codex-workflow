@@ -68,7 +68,10 @@ skip a stage.
    pass independent live PubMed gates from S13 through the final audit. Never write the four reference-library files
    with an ad-hoc script; their integrity gates cannot be bypassed with `--force`.
 3. Every manuscript number must already exist in `project/03_analysis/results/*.json`,
-   produced by executed analysis code. Never calculate a result in prose.
+   produced by executed analysis code. Never calculate a result in prose. Read
+   `reference/numeric-claims.md` at S05/S06 and when writing or revising reported findings:
+   bind Results/Abstract claims and table cells to specific source facts; a matching number
+   elsewhere is insufficient. Keep these bindings backstage, outside submission uploads.
 4. Create only active-stage outputs. Scratch belongs in `project/temp/` and is removed before
    advancing. Raw user data are immutable.
 5. Deterministic checks do not replace visual QA. Open rendered figures, tables, DOCX, and PDF

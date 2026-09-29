@@ -172,6 +172,41 @@ def build_fixture(proj: Path) -> None:
         "(Table S1), and discrimination was similar (Table S2).\n",
         encoding="utf-8")
 
+    # Synthetic rendering fixture only. Narrow clinical-context fault injection lives in
+    # test_incremental_quality.py; no real study records are manufactured by this test.
+    from wfcore.readiness import atomic_json
+    from wfcore.xlsxlite import Workbook, numeric_cell_values
+    from wfcore.checks.numbers import NUM_RE, _scrub
+    numeric_facts, claim_rows = {}, []
+    def add_fixture_fact(key, label):
+        context = {"outcome": label, "population": "synthetic test cohort", "comparison": "synthetic groups",
+                   "model": "test fixture model", "timepoint": "test follow-up", "unit": "as labelled",
+                   "denominator": "synthetic eligible participants"}
+        res.setdefault("reported", {})[key] = {"context": context, "values": {
+            "cohort": {k: v for k, v in res.items() if k != "reported"}, "p_value": 0.00021, "p": 0.62}}
+        numeric_facts[key] = {"source": "03_analysis/results/primary.json", "pointer": "/reported/" + key,
+                              "context": context}
+    paragraphs = (proj / "07_manuscript/results.md").read_text(encoding="utf-8").split("\n\n")[1:]
+    for index, paragraph in enumerate(paragraphs):
+        if not paragraph.strip():
+            continue
+        key = "prose_" + str(index)
+        add_fixture_fact(key, "participants" if index == 0 else "outcome")
+        claim_rows.append({"path": "07_manuscript/results.md", "text": paragraph.strip(), "fact_ids": [key]})
+    for table in sorted((proj / "04_tables").rglob("*.xlsx")):
+        workbook = Workbook(table)
+        for sheet, cell, value in numeric_cell_values(table):
+            if not NUM_RE.search(_scrub(value)):
+                continue
+            key = "cell_" + str(len(numeric_facts))
+            label = next(c.value for c in workbook.sheet(sheet).cells if c.ref == "A1")
+            add_fixture_fact(key, label)
+            claim_rows.append({"path": table.relative_to(proj).as_posix(), "sheet": sheet, "cell": cell,
+                               "text": value, "label_cells": ["A1"], "fact_ids": [key]})
+    atomic_json(proj / "03_analysis/results/primary.json", res)
+    atomic_json(proj / "01_protocol/study_facts.json", {"numeric_facts": numeric_facts})
+    atomic_json(proj / "07_manuscript/claim_bindings.json", {"schema_version": 1, "claims": claim_rows})
+
 
 # ---------------------------------------------------------------------------
 def run_checks(proj: Path) -> None:
@@ -2274,6 +2309,10 @@ def main() -> int:
                                 capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("scoped revision behavioral regression suite", scoped.returncode == 0,
                (scoped.stdout + scoped.stderr)[-1800:].strip())
+        incremental = subprocess.run([sys.executable, str(ROOT / "tools/test_incremental_quality.py")],
+                                     capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("incremental quality behavioral regression suite", incremental.returncode == 0,
+               (incremental.stdout + incremental.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

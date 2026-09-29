@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.6.0"
+version = "1.7.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -312,7 +312,7 @@ check = "writing_ready"
 id = "S09_results"
 title = "Write Results (cites planned figures/tables)"
 card = "stages/S09_results.md"
-outputs = ["07_manuscript/results.md"]
+outputs = ["07_manuscript/results.md", "07_manuscript/claim_bindings.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]

@@ -1,5 +1,8 @@
 # S22 - Journal-specific, fact-preserving polish
 
+After wording changes update only affected `08_submission/integration/claim_bindings.json`
+entries under `reference/numeric-claims.md`; never alter frozen scientific facts to match prose.
+
 ## Purpose
 Give the journal-specific integration copy one language pass without changing a number,
 citekey, figure/table reference or scientific claim. The accepted scientific master remains
@@ -42,4 +45,3 @@ unchanged.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "journal polish complete; facts preserved; abstract/main/reference limits pass; read by eye"
 ```
-

@@ -269,6 +269,9 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
             "feedback_updates": [],
             "items": [],
             "baseline": scoped.snapshot(project),
+            "baseline_documents": {"01_protocol/artifact_plan.json":
+                json.loads((project / "01_protocol/artifact_plan.json").read_text(encoding="utf-8"))}
+                if (project / "01_protocol/artifact_plan.json").is_file() else {},
         }
     plan = _read_batch_plan(args.plan.resolve(), kinds, review_stage, pipe)
     if any(update.get("feedback_sha256") == plan["feedback_sha256"] for update in revision["feedback_updates"]):
@@ -351,7 +354,7 @@ def _seal_round(state: State, pipe, why: str) -> int:
     return 0
 
 
-def _cmd_status(state: State) -> int:
+def _cmd_status(state: State, full: bool = False) -> int:
     try:
         _, revision = _load_round(state)
     except ValueError:
@@ -361,10 +364,12 @@ def _cmd_status(state: State) -> int:
     print(f"earliest owner: {revision['earliest_stage']}; current stage: {state.current}")
     print(f"full builds: {revision.get('full_builds', 0)}; affected closure: {len(revision.get('rebuild_files', []))} files")
     for rel in revision.get("rebuild_files", []):
-        print(f"    change/rebuild: {rel}")
+        print(f"    affected/recheck (not automatic rewrite): {rel}")
     print(f"check only: {', '.join(revision.get('validation_stages', []))}")
     print(f"reuse/protect: {len(revision.get('reuse_files', []))} unchanged files")
-    for item in revision["items"]:
+    items = revision["items"] if full else [i for i in revision["items"] if i.get("status") != "done"]
+    print(f"completed items omitted: {len(revision['items']) - len(items)}; use status --full for history")
+    for item in items:
         print(f"  [{item['status']}] {item['id']} {item['kind']} -> {item['owning_stage']}")
         print(f"      {item['request']}")
         print(f"      sources: {', '.join(item['affected_sources'])}")
@@ -439,8 +444,11 @@ def _cmd_close(args, state: State) -> int:
             raise ValueError("scoped validation expired; rerun checks before closing")
         for item in revision["items"]:
             for receipt in item.get("changed_files", []):
-                if _sha256_file(state.dir.parent / receipt["path"]) != receipt["sha256"]:
+                if not scoped.renewable(receipt["path"]) and _sha256_file(state.dir.parent / receipt["path"]) != receipt["sha256"]:
                     raise ValueError("a marked file changed; mark its final version again before closing")
+        scoped.refresh_evidence(state.dir.parent, registry.load(state.config()), state, revision)
+        if checked.get("input_signature") != scoped.input_signature(state.dir.parent, revision):
+            raise ValueError("source changed while refreshing evidence; rerun scoped checks")
     revision.update({"status": "complete", "completed_at": _now(), "completion_summary": args.summary.strip()})
     _write_round(path, revision)
     state.data.pop("active_revision_round", None)
@@ -471,7 +479,8 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "refresh", "mark", "close", "check"])
+    parser.add_argument("--full", action="store_true", help="include completed feedback items")
     parser.add_argument("--sealed", action="store_true", help="user already asked to apply this complete batch now")
     parser.add_argument("--scope", choices=["full", "targeted"], default="targeted")
     parser.add_argument("--kind", choices=kinds)
@@ -492,6 +501,14 @@ def main() -> int:
         pipe = registry.load()
         state = State(project, pipe.layout.get("state_dir", ".wf")).load()
         if args.command == "status":
+            return _cmd_status(state, args.full)
+        if args.command == "refresh":
+            path, revision = _load_round(state)
+            if revision.get("schema_version") != 2 or revision.get("status") != "active":
+                raise ValueError("refresh requires an active sealed scoped revision")
+            scoped.plan_scope(project, pipe, revision)
+            revision.pop("validation", None)
+            _write_round(path, revision)
             return _cmd_status(state)
         if args.command == "seal":
             return _seal_round(state, pipe, args.why or "")

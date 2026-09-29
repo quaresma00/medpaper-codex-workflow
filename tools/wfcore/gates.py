@@ -7,9 +7,11 @@ from . import checks
 from .checks import Ctx, Result
 
 
-def run_stage(pipeline, state, project: Path, stage) -> list[Result]:
+def run_stage(pipeline, state, project: Path, stage, *, reuse: bool = False, record: bool = False) -> list[Result]:
     checks.load_all()
     results: list[Result] = []
+    from .gatecache import Receipts
+    receipts = Receipts(project, pipeline, state) if reuse or record else None
     if state.data.get("active_revision_round"):
         guard = checks.get("feedback_batch_sealed")
         result = guard(Ctx(pipeline, state, project, stage, {}))
@@ -29,12 +31,25 @@ def run_stage(pipeline, state, project: Path, stage) -> list[Result]:
             continue
         ctx = Ctx(pipeline=pipeline, state=state, project=project, stage=stage, spec=spec)
         try:
-            res = fn(ctx)
+            identity = receipts.identity(stage, spec) if receipts else None
+            res = receipts.get(identity) if receipts and reuse else None
+            if res is None:
+                res = fn(ctx)
+                # Pure checks must not change the very inputs they certify.
+                if receipts and identity and identity == receipts.identity(stage, spec):
+                    receipts.put(identity, res)
         except Exception as exc:  # noqa: BLE001 - a broken check must not brick the pipeline
             res = Result(False, name, f"check raised {type(exc).__name__}: {exc}")
         if "severity" in spec and not res.ok:
             res.severity = spec["severity"]
         results.append(res)
+        if res.blocking and name in {"outputs_exist", "writing_ready", "feedback_batch_sealed"}:
+            results.append(Result(False, "dependent_checks_pending", "Required inputs failed; dependent gates were not executed and cannot be forced."))
+            break  # Fix missing inputs before costly dependent checks; never mark them passed.
+    if receipts:
+        receipts.save()
+        state.data["check_reuse"] = {"stage": stage.id, "reused": receipts.reused,
+                                     "executed": len(results) - receipts.reused}
     return results
 
 

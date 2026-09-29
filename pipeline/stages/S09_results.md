@@ -1,5 +1,8 @@
 # S09 - Results
 
+Read `reference/numeric-claims.md`. Save exact short finding bindings alongside Results in
+`07_manuscript/claim_bindings.json`; source facts come from executed analysis, not the prose.
+
 ## Purpose
 Write the Results section against the approved artifact plan, before the artifacts are
 rendered. The plan fixes what each display contains, so the prose can be written from the

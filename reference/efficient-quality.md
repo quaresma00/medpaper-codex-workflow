@@ -22,6 +22,11 @@ These are concise internal facts, not a prematurely drafted abstract. The clinic
 be intelligible in three or four sentences. A passive report count is not an incidence rate;
 an association is not a causal effect. Missing clinical adjudication cannot be supplied by AI.
 
+For quantitative findings, also read `numeric-claims.md`: the same facts file holds precise
+source pointers and contexts before freeze. S09/S10/S17 bind reported prose/cells to those
+facts. `readiness.py facts` prints the resolved small catalog; do not reload entire result
+libraries for every wording edit. Numeric matching is not proof of clinical interpretation.
+
 After the existing convergence and GO decisions, run `tools/manuscript/readiness.py freeze`.
 Its hashes bind the contract, story, protocol, acquisition manifest, analysis code and results.
 `writing_ready` fails on later drift. Return to the scientific owner and refreeze after a real
@@ -99,11 +104,22 @@ tool (for example `package_review.py sync-evidence`), with no artificial human r
 Result JSONs may declare `source_files` plus their `script`/`built_by` producer. With legacy
 unmapped data inputs or analysis helpers, the closure conservatively includes all analysis
 results; do not infer that absent dependency metadata means no downstream effect. This list
-is a rebuild/recheck plan, not permission to overwrite user-edited or frozen files blindly.
+is an affected/recheck plan, not permission to overwrite user-edited or frozen files blindly.
 The engine now enforces output scope and protects unrelated files. Shared builders need a
 selective output option; otherwise editing one shared script conservatively affects its
-declared consumers. Field-level pruning is not supported: never infer independence from a
-missing JSON-field mapping. Use the saved `validation_stages` without navigating backwards.
+declared consumers. After a plan edit use `rework.py refresh`: an observed entry-only diff
+can preserve unrelated displays. Shared/global edits, added/removed/reordered entries and
+missing baseline snapshots remain conservative. General result-field pruning is not yet
+supported: never infer independence from missing metadata. Use the saved `validation_stages`
+without navigating backwards. Do not rewrite an unaffected paragraph just because its file
+is in the recheck closure. `status --full` restores completed items when genuinely needed.
+
+Pure local checks may reuse content-hashed receipts for up to 120 seconds on `wf advance`.
+Files, engine rules, relevant configuration and decisions must still match. Failed, unknown,
+live-source, acquisition, approval and freeze checks are never reused by this cache. Receipt
+hits do not extend their lifetime. An early missing-input failure leaves dependent gates
+pending and cannot be forced past. Renewable evidence is separate from authored-content
+signatures; changed evidence is revalidated against its real gates before a round closes.
 
 ## Medical reader-facing acceptance
 

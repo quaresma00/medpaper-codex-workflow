@@ -125,6 +125,8 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
     }
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    from .claims import copy_for_journal
+    copy_for_journal(project)
     return manifest_path, payload, True
 
 

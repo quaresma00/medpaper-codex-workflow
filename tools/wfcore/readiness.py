@@ -141,6 +141,9 @@ def reader_inputs(project: Path) -> dict[str, str]:
     plan = load(project, "01_protocol/artifact_plan.json")
     files = {"07_manuscript/full_manuscript.md", "01_protocol/artifact_plan.json",
              "05_figures/legends.md", "04_tables/table_captions.md"}
+    for rel in ("01_protocol/study_facts.json", "07_manuscript/claim_bindings.json"):
+        if (project / rel).is_file():
+            files.add(rel)
     optional = "07_manuscript/supplementary_methods.md"
     if (project / optional).is_file():
         files.add(optional)

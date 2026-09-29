@@ -1,5 +1,9 @@
 # S05 - Method scan + exploratory analysis (no publication figures)
 
+Read `reference/numeric-claims.md` before result exports. Export reportable findings with
+their actual clinical context and named values from executed code; never retrofit invented
+results to satisfy a writing gate.
+
 ## Purpose
 Find out what the data actually says, using methods the literature accepts for this
 design, and dump every number to disk so writing can never invent one.

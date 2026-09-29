@@ -9,9 +9,11 @@ from pathlib import Path
 from .reviewpackage import verify as verify_review_package
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 FREEZE_REL = "07_manuscript/scientific_master_freeze.json"
 CORE_FILES = (
+    "01_protocol/study_facts.json",
+    "07_manuscript/claim_bindings.json",
     "01_protocol/artifact_plan.json",
     "06_refs/library.json",
     "06_refs/refs.bib",
@@ -134,7 +136,7 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     except json.JSONDecodeError as exc:
         return False, [f"{FREEZE_REL} is invalid JSON: {exc}"], None
     problems: list[str] = []
-    if payload.get("schema_version") not in (1, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
+    if payload.get("schema_version") not in (1, 2, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
         problems.append("scientific freeze schema or hash algorithm is invalid")
     ok, review_problems, review = verify_review_package(project)
     if not ok or review is None:
@@ -152,6 +154,12 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     # Legacy receipts included a renewable verification file. Its identity is checked
     # separately by the non-overridable reference gates; refreshing it is not science rework.
     scientific_records = [item for item in recorded if item.get("path") != "06_refs/verified.json"]
+    if payload.get("schema_version") in (1, 2):
+        # Verify exactly what the legacy receipt covered; do not silently rewrite it or
+        # treat newly recognized backstage files as a change to the approved manuscript.
+        bound = {item.get("path") for item in scientific_records}
+        added_coverage = {"01_protocol/study_facts.json", "07_manuscript/claim_bindings.json"}
+        current = [item for item in current if item["path"] not in added_coverage or item["path"] in bound]
     if current != scientific_records:
         current_map = {item["path"]: item for item in current}
         recorded_map = {str(item.get("path", "")): item for item in scientific_records if isinstance(item, dict)}

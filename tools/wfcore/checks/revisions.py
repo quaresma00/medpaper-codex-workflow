@@ -8,6 +8,7 @@ from . import Ctx, Result, check
 from ..packagecontent import verify_baseline
 from ..journalworkspace import verify as verify_journal_workspace
 from ..reviewpackage import verify as verify_review_package
+from ..evidence import renewable
 from ..scientificfreeze import verify as verify_scientific_freeze
 
 
@@ -62,7 +63,8 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
             if not proof.get("ok") or not proof.get("input_signature") or not proof.get("results"):
                 problems.append(f"{path.name}: no actual scoped-check evidence")
             for rel, expected in proof.get("artifact_hashes", {}).items():
-                latest_receipts[rel] = (path.name, "scoped validation", expected)
+                if not renewable(rel):
+                    latest_receipts[rel] = (path.name, "scoped validation", expected)
         items = revision.get("items")
         if not isinstance(items, list) or not items:
             problems.append(f"{path.name}: no revision items")
@@ -85,7 +87,8 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
                 # A later completed revision may legitimately supersede the same source.
                 # Keep every old receipt as history, but compare the working tree only with
                 # the newest completed receipt for each path.
-                latest_receipts[str(rel)] = (path.name, str(item_id), str(expected))
+                if not renewable(str(rel)):
+                    latest_receipts[str(rel)] = (path.name, str(item_id), str(expected))
     for rel, (round_name, item_id, expected) in latest_receipts.items():
         source = ctx.project / rel
         if not source.is_file():

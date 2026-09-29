@@ -43,6 +43,8 @@ NON_OVERRIDABLE_GATES = {
     "portal_fields_current", "bundle_matches_freeze", "submission_audit_matches_freeze",
     "bundle_complete", "docx_bundle_ready", "package_content_matches_baseline",
     "reader_review_coverage",
+    "numbers_have_provenance", "numbers_cross_match",
+    "dependent_checks_pending",
 }
 
 
@@ -282,7 +284,7 @@ def cmd_check(args) -> int:
             print(f"revision check: {exc}")
             return 2
     stage = pipe.resolve(args.stage) if args.stage else pipe.stage(st.current)
-    results = gates.run_stage(pipe, st, proj, stage)
+    results = gates.run_stage(pipe, st, proj, stage, record=True)
     ok, blocking, warned = gates.summarize(results)
     st.data["last_check"] = {"stage": stage.id, "ok": ok,
                              "failures": [f"{r.check}: {r.detail}" for r in results if not r.ok]}
@@ -313,7 +315,7 @@ def cmd_advance(args) -> int:
         print("Close the active scoped revision before advancing; --force cannot bypass it.")
         return 2
     stage = pipe.stage(st.current)
-    results = gates.run_stage(pipe, st, proj, stage)
+    results = gates.run_stage(pipe, st, proj, stage, reuse=True)
     ok, blocking, _ = gates.summarize(results)
     non_overridable_failures = [r for r in results if r.blocking and
                                 r.check in NON_OVERRIDABLE_GATES]

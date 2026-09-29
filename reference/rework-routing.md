@@ -1,4 +1,4 @@
-# Scoped user revisions (v1.6)
+# Scoped user revisions (v1.7)
 
 All revisions remain inside the medpaper state machine. Reading or editing files directly is
 an implementation step, not permission to bypass the owning stage, source of truth or gates.
@@ -70,10 +70,17 @@ An explicit request to implement a complete set of feedback permits `batch --sea
 Sealing invalidates only decisions whose evidence can change and preserves unrelated approvals. If
 new feedback arrives before the round finishes, create another small plan containing only the
 new items and run `batch` again; it extends the scope without resetting stage completion.
-Identical feedback is deduplicated. `rebuild_files` identifies sources and actual dependants;
+Identical feedback is deduplicated. `rebuild_files` identifies affected sources and candidate dependants;
 `validation_stages` identifies rules to recheck in place; `reuse_files` identifies files to
 preserve. Owner rules do not authorize rerunning every subsequent stage. Read `reference/efficient-quality.md` for
 build scope, risk-proportionate QA and backstage control maintenance.
+
+The candidate closure does not mean every file must be rewritten. After changing only entries
+in `artifact_plan.json`, run `rework.py refresh` before rendering: observed entry differences
+can narrow the display outputs while preserving unchanged displays. Shared edits and missing
+baseline evidence remain conservative. This invalidates prior validation, not stage history.
+Do not manually trim check lists or assert independent fields without machine-bound evidence.
+`status` omits completed feedback items; `status --full` shows the complete saved round.
 
 After affected sources and true dependants have been rebuilt, still at S19 or S24, run
 the actual scoped checks and record final files and visual inspections for each item:
@@ -93,12 +100,15 @@ the actual scoped checks and record final files and visual inspections for each 
 `revision_rounds_closed` blocks S19/S24 approval and S25 audit when an item is pending, a
 changed source is missing, or its final hash drifted after the round was closed.
 Typed `validated-by` labels alone cannot close a round. The actual check is bound to current
-files, decisions, engine rules and project configuration. Drift or an age of 24 hours requires
+authored files, decisions, engine rules and project configuration. Drift or an age of 24 hours requires
 another check. `wf check` dispatches to it while the round is active; `wf advance` and `wf loop`
 cannot escape an active round. Builders reject outputs outside its scope; the final check
 also detects unrelated file changes by other scripts. This is an accidental-drift guard, not
 a security sandbox against a same-privilege agent. Large raw/cache files use file metadata
 for scope drift; independent data/reference provenance gates remain unchanged.
+Known renewable reference/guideline evidence is not permanently frozen by a closed round.
+If it changes before closure, rerun its applicable real evidence gates; do not force a whole
+manuscript revalidation solely because a fresh receipt has a different timestamp.
 
 Before changing an artifact after it has been presented for review, run:
 

@@ -102,9 +102,15 @@ def main() -> int:
         print("canonical manuscript matches its source sections")
         return 0
     from wfcore.revision import guard_outputs
-    guard_outputs(project, [output])
+    from wfcore.claims import assembled_bindings
+    from wfcore.readiness import atomic_json
+    claim_payload = assembled_bindings(project, expected)
+    claim_path = project / "07_manuscript/claim_bindings.json"
+    guard_outputs(project, [output] + ([claim_path] if claim_payload is not None else []))
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(expected, encoding="utf-8")
+    if claim_payload is not None:
+        atomic_json(claim_path, claim_payload)
     print(f"assembled canonical manuscript -> {output}")
     return 0
 

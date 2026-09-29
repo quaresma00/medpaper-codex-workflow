@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal
 
 from .. import xlsxlite
 from . import Ctx, Result, check
@@ -16,10 +17,7 @@ RESULTS_GLOB = "03_analysis/results/*.json"
 ALLOWLIST = "03_analysis/results/number_allowlist.tsv"
 
 # Numbers that are conventions rather than findings.
-CONVENTIONS = {
-    "95", "99", "90", "100", "0.05", "0.01", "0.001", "0.025", "1.96", "0.5",
-    "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "0",
-}
+CONVENTIONS = set()  # A small estimate or denominator is still a scientific finding.
 
 CITE_RE = re.compile(r"\[@[^\]]*\]")
 FENCE_RE = re.compile(r"```.*?```", re.S)
@@ -28,7 +26,8 @@ ARTIFACT_RE = re.compile(
     r"[A-Za-z]?\d+[A-Za-z]?(?:\s*[-,and]+\s*[A-Za-z]?\d+[A-Za-z]?)*",
     re.I,
 )
-NUM_RE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w])")
+NUM_RE = re.compile(r"(?<![\w.])([+\-−]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+\-]?\d+)?)(?![\w])")
+P_RE = re.compile(r"\b[Pp]\s*([<>=≤≥])\s*(0?\.\d+(?:[eE][+-]?\d+)?)\b")
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +54,7 @@ def _walk(obj, sink: set[str]) -> None:
 
 def _norm(v) -> str:
     try:
-        f = float(v)
+        f = float(str(v).replace("−", "-"))
     except (TypeError, ValueError):
         return str(v)
     if f == int(f) and abs(f) < 1e15:
@@ -101,14 +100,16 @@ def _matches(token: str, floats: set[float], strings: set[str]) -> bool:
     if token in strings:
         return True
     try:
-        val = float(token)
+        val = float(token.replace("−", "-"))
     except ValueError:
         return False
     if val in floats:
         return True
     # Tolerate rounding to the precision the author displayed.
-    dp = len(token.split(".")[1]) if "." in token else 0
+    dp = -Decimal(token.replace("−", "-")).as_tuple().exponent
     for f in floats:
+        if (f < 0) != (val < 0) and f != 0 and val != 0:
+            continue
         if round(f, dp) == val:
             return True
         if dp == 0 and abs(f - val) < 0.5 and f != 0:
@@ -121,14 +122,32 @@ def _scrub(text: str) -> str:
     text = CITE_RE.sub(" ", text)
     text = ARTIFACT_RE.sub(" ", text)
     text = re.sub(r"^\s*#{1,6}\s.*$", " ", text, flags=re.M)
-    text = re.sub(r"\bp\s*[<>=]\s*0?\.0+\d*\b", " ", text, flags=re.I)  # p<0.001 style
+    text = re.sub(r"\b(?:90|95|99)%\s*(?:CI|confidence interval)\b", "CI", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-\u2013]\s*(19|20)?\d{2}\b", " ", text)  # not scrubbed values
     return text
 
 
-def _offenders(text: str, floats, strings, allowed) -> list[tuple[int, str]]:
+def _offenders(text: str, floats, strings, allowed, p_values=None) -> list[tuple[int, str]]:
     bad: list[tuple[int, str]] = []
     for lineno, raw in enumerate(_scrub(text).splitlines(), start=1):
+        def pvalue(match):
+            op, token = match.groups()
+            threshold = float(token)
+            candidates = [f for f in (floats if p_values is None else p_values) if 0 <= f <= 1]
+            ok = (any(f < threshold for f in candidates) if op == "<" else
+                  any(f <= threshold for f in candidates) if op == "≤" else
+                  any(f > threshold for f in candidates) if op == ">" else
+                  any(f >= threshold for f in candidates) if op == "≥" else
+                  _matches(token, set(candidates), {_norm(p) for p in candidates}))
+            if token in allowed:
+                ok = True  # Explicit Methods constants; bound findings pass no allowlist.
+            if not ok:
+                bad.append((lineno, "P" + op + token))
+            return " "
+        raw = P_RE.sub(pvalue, raw)
+        # Formatted table cells use a threshold without the P label.
+        if re.fullmatch(r"\s*[<≤]\s*0?\.\d+\s*", raw):
+            raw = P_RE.sub(pvalue, "P" + raw.strip())
         for m in NUM_RE.finditer(raw):
             tok = m.group(1)
             if tok in allowed:
@@ -169,11 +188,10 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
             except Exception as exc:  # noqa: BLE001 - report, do not crash the gate
                 return Result(False, "numbers_have_provenance", f"cannot read {p.name}: {exc}")
             for sheet, ref, val in cells:
-                for m in NUM_RE.finditer(str(val)):
-                    tok = m.group(1)
-                    if tok in allowed or _matches(tok, floats, strings):
-                        continue
+                if _offenders(str(val), floats, strings, allowed):
                     offenders.append(f"{p.name}[{sheet}]!{ref}={val}")
+        from ..claims import validate_tables
+        offenders.extend(validate_tables(ctx.project, ctx.glob("04_tables/main/*.xlsx") + ctx.glob("04_tables/supplementary/*.xlsx")))
         if offenders:
             uniq = sorted(set(offenders))
             return Result(
@@ -200,7 +218,10 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
                 "Do not fix this by rounding differently. Re-run the analysis and dump the value.",
             ],
         )
-    return Result(True, "numbers_have_provenance", f"{rel}: every number traces to results JSON")
+    from ..claims import validate_prose
+    problems = validate_prose(ctx.project, rel, ctx.read(rel))
+    return Result(not problems, "numbers_have_provenance", "; ".join(problems[:8]) or
+                  f"{rel}: numeric source checks passed; clinical interpretation still requires scientific review")
 
 
 @check("numbers_cross_match")

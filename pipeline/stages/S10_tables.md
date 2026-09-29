@@ -1,5 +1,8 @@
 # S10 - Build the tables
 
+Follow `reference/numeric-claims.md`: the table builder records source-bound cell mappings in
+the existing `07_manuscript/claim_bindings.json`, preserving all existing prose bindings.
+
 ## Purpose
 Render the planned tables as three-line xlsx files a reader and a reviewer can use.
 Generated from result JSONs by code, never retyped.
