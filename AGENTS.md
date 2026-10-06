@@ -133,9 +133,12 @@ skip a stage.
     a read-only release containing actual uploads only. Evidence/caches/control refreshes do not
     require another author confirmation; upload changes do. S25 binds the independent verdict
     to upload identity and current guideline context. Never fabricate independent review.
-17. Use the installed Tavotto skill for user-facing Matplotlib figures, with Python beside PDF
-    and desktop handoff per the user's instructions. Internal diagnostics are exempt; a missing
-    embedded-canvas authorization does not block desktop preview.
+17. Read `reference/r-first.md`: processing may use Python; new medical statistical figures
+    default to R, and methods with a better-fitting established R implementation should use R.
+    Do not refit an approved model merely to plot it in R. Keep R source beside vector PDF;
+    use the managed R runner and inspect actual PNG/PDF. Preserve approved Python graphics
+    rather than converting solely to follow the new default. Tavotto is Matplotlib-only,
+    never for R graphs. Missing R packages are dependency work, not silent Python fallback.
 18. At S07 benchmark real medical content, record each display's reader contract and resolve
     abbreviation placement before production. S18 reviews actual rendered figures alongside
     prose/tables and records exact input hashes plus substantive comprehension findings.

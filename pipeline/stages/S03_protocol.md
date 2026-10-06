@@ -1,5 +1,9 @@
 # S03 - Protocol v1 + data acquisition plan
 
+Read `reference/r-first.md` when choosing implementation: processing may use Python; use
+R where its established package better fits the method. Record this in the existing protocol,
+without another approval stop or duplicate analysis.
+
 ## Purpose
 Commit to a design before seeing the data, so that later choices are visibly
 pre-specified rather than fitted to whatever happened to be significant.

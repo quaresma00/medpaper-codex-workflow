@@ -58,6 +58,9 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
                     stem = str(Path(output).with_suffix(""))
                     outputs.extend([stem + ".png", stem + ".pdf",
                                     (Path(stem).parent.parent / "qc" / (Path(stem).name + ".artist.json")).as_posix()])
+                if str(entry.get("script", "")).casefold().endswith(".r"):
+                    qc_stem = Path(entry.get("file", outputs[0])).stem
+                    outputs.extend([f"05_figures/qc/{qc_stem}.render.svg", f"05_figures/qc/{qc_stem}.rmeta.json"])
             plan_source = ["01_protocol/artifact_plan.json"] if touched is None or (group, index) in touched else []
             for source in [*entry.get("source_results", []), entry.get("script"), *plan_source]:
                 for output in outputs:

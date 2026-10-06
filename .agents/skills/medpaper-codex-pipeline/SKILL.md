@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -37,6 +37,9 @@ Unmapped dependencies remain conservative. Preserve unrelated edits and frozen s
   prose and table cells to actual source objects. Keep binding metadata out of the paper.
 - S06/S07, revisions and package production: `reference/efficient-quality.md`.
 - Methods: `reference/methods-structure.md`.
+- S03/S05 language choice and S07/S11 graphics: `reference/r-first.md`. New medical
+  statistical figures default to R; processing may use Python. Select mature implementations
+  deliberately, preserve approved results/legacy figures, and never refit merely to draw.
 - Other skills/plugins inside a stage: `reference/codex-integration.md`.
 
 ## Essential boundaries
@@ -51,8 +54,8 @@ Data/reference integrity, bound numeric findings, approvals and freezes cannot b
 Scientific facts and the reader's medical interpretation take priority over token savings.
 Keep manuscript-facing prose, tables and figures journal-native and comprehensible to people;
 technical provenance stays backstage. Preserve necessary analyses, uncertainty and limitations.
-Use approved low-cost prototypes before expensive output. Matplotlib publication figures use
-the installed Tavotto skill and the user's desktop-handoff preference; ImageGen may critique,
+Use approved low-cost prototypes before expensive output. R figures use the managed R renderer;
+Tavotto applies only to Matplotlib exceptions, not R output. ImageGen may critique,
 not regenerate scientific plots. Required rendered visual QA remains mandatory.
 
 S17 chooses an accurate title and assembles the paper before S21 author administration.

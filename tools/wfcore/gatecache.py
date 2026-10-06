@@ -45,7 +45,7 @@ class Receipts:
         self.engine = {p.relative_to(paths.repo_root()).as_posix(): _sha256(p)
                        for folder in ("tools", "pipeline")
                        for p in (paths.repo_root() / folder).rglob("*")
-                       if p.is_file() and p.suffix in {".py", ".toml", ".md"}}
+                       if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
 
     def identity(self, stage, spec):
         if spec.get("check") not in INPUTS:

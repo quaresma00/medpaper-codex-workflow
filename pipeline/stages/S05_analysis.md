@@ -4,6 +4,10 @@ Read `reference/numeric-claims.md` before result exports. Export reportable find
 their actual clinical context and named values from executed code; never retrofit invented
 results to satisfy a writing gate.
 
+Read `reference/r-first.md`: do not default every method to Python. R statistical producers
+write the same full-precision result JSON/provenance. Keep one producer per finding and
+separate S05 statistical computation from S11 display-only R rendering.
+
 ## Purpose
 Find out what the data actually says, using methods the literature accepts for this
 design, and dump every number to disk so writing can never invent one.

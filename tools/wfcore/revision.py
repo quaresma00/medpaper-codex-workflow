@@ -57,7 +57,7 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
     state = State(project).load()
     engine = {p.relative_to(paths.repo_root()).as_posix(): _sha256(p)
               for folder in ("tools", "pipeline") for p in (paths.repo_root() / folder).rglob("*")
-              if p.is_file() and p.suffix in {".py", ".toml", ".md"}}
+              if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
     files = snapshot(project) if files is None else files
     payload = {"files": {r: h for r, h in files.items() if not renewable(r)},
                "engine": engine, "decisions": state.data.get("decisions", {}),

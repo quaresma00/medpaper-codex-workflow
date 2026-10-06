@@ -543,7 +543,7 @@ def cmd_doctor(args) -> int:
     else:
         rows.append(("  science deps", "unknown", "cannot probe without a venv"))
 
-    for exe, why in (("pandoc", "reference rendering"), ("Rscript", "R analyses"), ("git", "versioning")):
+    for exe, why in (("pandoc", "reference rendering"), ("Rscript", "R-first medical graphics and selected analyses"), ("git", "versioning")):
         p = shutil.which(exe)
         rows.append((exe, "ok" if p else "absent", p or f"optional, used for {why}"))
 

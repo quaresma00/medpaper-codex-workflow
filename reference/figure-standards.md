@@ -1,7 +1,9 @@
 # Medical/SCI figure standards - synthesis
 
-Loaded on demand by S11. The numbers here are what `tools/figures/style.py` encodes and
-`tools/figures/qc.py` enforces, so change them here and there together.
+Loaded on demand by S11. New statistical graphics use R under `r-first.md`; the physical
+defaults are shared by `tools/figures/r_style.R`, the retained Matplotlib style, and common
+QC. Language-specific Matplotlib examples below apply only to documented Python exceptions,
+not a reason to replace R. The current target journal overrides unsourced defaults.
 
 Two kinds of source are mixed below and kept distinct on purpose:
 **publisher requirements** (binding, verify against your target journal) and

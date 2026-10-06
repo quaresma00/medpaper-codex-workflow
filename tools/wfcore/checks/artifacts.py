@@ -118,6 +118,15 @@ def artifact_plan_sane(ctx: Ctx) -> Result:
         if not e.get("file"):
             problems.append(f"{tag}: missing 'file'")
         if e["_group"].endswith("figures"):
+            renderer = e.get("renderer")
+            if renderer is not None:
+                if renderer not in {"R", "Python"}:
+                    problems.append(f"{tag}: renderer must be R or Python")
+                expected_suffix = ".r" if renderer == "R" else ".py"
+                if not str(e.get("script", "")).casefold().endswith(expected_suffix):
+                    problems.append(f"{tag}: script extension differs from declared renderer")
+                if renderer == "Python" and len(str(e.get("renderer_reason", "")).strip()) < 20:
+                    problems.append(f"{tag}: explain the concrete Python exception; R is the default")
             if e.get("width") not in ("single", "double", "1.5"):
                 problems.append(f"{tag}: width must be single | 1.5 | double")
             if not e.get("script"):
@@ -543,11 +552,21 @@ def figures_qc_pass(ctx: Ctx) -> Result:
         if f is None:
             problems.append(f"{eid}: no QC entry")
             continue
-        failed = [c.get("name") for c in f.get("checks", []) if not c.get("ok")]
+        failed = [c.get("name") for c in f.get("checks", []) if not c.get("ok") and c.get("severity", "fail") == "fail"]
         if failed:
             problems.append(f"{eid}: failing {', '.join(failed)}")
         if not f.get("visual_reviewed"):
             problems.append(f"{eid}: never visually reviewed (deterministic QC alone is not enough)")
+        if str(e.get("script", "")).casefold().endswith(".r"):
+            from ..packagefreeze import _sha256, _safe_path
+            _, png = _safe_path(ctx.project, e["file"])
+            if not png.is_file() or f.get("png_sha256") != _sha256(png):
+                problems.append(f"{eid}: R QC/visual review belongs to a different PNG")
+            # Recompute source/output identity checks without regenerating the figure.
+            from figures.qc import qc_figure, load_archetypes
+            actual = qc_figure(e, ctx.pipeline.targets, load_archetypes(), project=ctx.project)
+            if actual.get("engine") != "R" or not actual["ok"]:
+                problems.append(f"{eid}: current R output/source QC failed")
     if problems:
         return Result(
             False,

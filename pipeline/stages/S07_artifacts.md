@@ -1,5 +1,9 @@
 # S07 - Artifact inventory (benchmarked) + legends written first
 
+Read `reference/r-first.md`. Plan new figures with renderer="R" and co-located .R/PNG/PDF.
+Prototype in R with full data and the same semantic layout; retain approved legacy Python
+figures or record a concrete Python exception instead of silently defaulting to it.
+
 ## Purpose
 Decide exactly what the paper displays, benchmarked against what comparable papers
 actually display, and write every legend before anything is drawn. Legends written
@@ -33,7 +37,7 @@ first keep panels from filling up with explanatory text later.
      "content": "what the reader learns from it, in one sentence",
      "archetype": "flow_diagram",
      "panels": ["A", "B"], "width": "single|1.5|double",
-     "script": "05_figures/out/Figure1.py",
+     "renderer": "R", "script": "05_figures/out/Figure1.R",
      "file": "05_figures/out/Figure1.png",
      "pdf": "05_figures/out/Figure1.pdf",
      "source_results": ["03_analysis/results/dataset_summary.json"]}

@@ -2313,6 +2313,10 @@ def main() -> int:
                                      capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("incremental quality behavioral regression suite", incremental.returncode == 0,
                (incremental.stdout + incremental.stderr)[-1800:].strip())
+        r_figures = subprocess.run([sys.executable, str(ROOT / "tools/test_r_figures.py")],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("R figure renderer behavioral regression suite", r_figures.returncode == 0,
+               (r_figures.stdout + r_figures.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

@@ -71,7 +71,8 @@ forbids = []
 notes = """A KM curve without a number-at-risk table is incomplete, and censoring ticks are
 not optional. Report median survival with 95% CI, and the HR with its 95% CI and the
 log-rank p. Stop the curve where the risk set is too small to interpret.
-Use lifelines for the estimator - do not hand-roll a product-limit calculation."""
+Prefer R survival for new medical analyses; an already validated lifelines producer may
+remain the source. Do not hand-roll or refit the estimator merely to change graphics."""
 
 [archetype.longitudinal_trajectory]
 label = "Longitudinal trajectory or growth curve"

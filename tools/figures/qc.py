@@ -130,7 +130,8 @@ def grey_regions(rgb: np.ndarray, lo: int = 100, hi: int = 200,
 
 
 # ---------------------------------------------------------------------------
-def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None) -> dict:
+def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Path | None = None) -> dict:
+    project = project or project_root()
     fid = str(entry.get("id", "?"))
     checks: list[dict] = []
 
@@ -138,7 +139,7 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None) -> dict:
         checks.append({"name": name, "ok": bool(ok), "detail": detail, "severity": severity})
 
     png_rel = entry.get("file", "")
-    png = project_root() / png_rel if png_rel else None
+    png = project / png_rel if png_rel else None
     if not png or not png.exists():
         add("png_exists", False, f"{png_rel or '(no file in plan)'} not rendered")
         return {"id": fid, "png": png_rel, "checks": checks, "ok": False, "visual_reviewed": False}
@@ -193,16 +194,58 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None) -> dict:
         severity="warn")
 
     tiff_rel = entry.get("pdf") or entry.get("tiff", "")
-    tiff = project_root() / tiff_rel if tiff_rel else None
+    tiff = project / tiff_rel if tiff_rel else None
     add("publication_master", bool(tiff and tiff.exists()),
         f"{tiff_rel} ({tiff.stat().st_size // 1024} KB)" if tiff and tiff.exists()
         else f"{tiff_rel or '(none declared)'} missing - retain a vector PDF or existing TIFF master")
 
     archetype = entry.get("archetype")
     elements_found: dict = {}
-    sidecar = project_root() / "05_figures" / "qc" / f"{Path(png_rel).stem}.artist.json"
+    sidecar = project / "05_figures" / "qc" / f"{Path(png_rel).stem}.artist.json"
     if sidecar.exists():
         art = json.loads(sidecar.read_text(encoding="utf-8"))
+        if art.get("engine") == "R":
+            from wfcore.packagefreeze import _sha256, _safe_path
+            problems = []
+            for rel, expected in art.get("render_hashes", {}).items():
+                _, path = _safe_path(project, rel)
+                if not path.is_file() or _sha256(path) != expected:
+                    problems.append(f"render changed: {rel}")
+            if not art.get("render_hashes") or png_rel not in art["render_hashes"]:
+                problems.append("no bound PNG render receipt")
+            script = art.get("script", "")
+            if script != entry.get("script"):
+                problems.append("R plotting script differs from plan")
+            if script:
+                _, source = _safe_path(project, script)
+                if not source.is_file() or _sha256(source) != art.get("script_sha256"):
+                    problems.append("R script changed after render")
+            source_hashes = art.get("source_hashes", {})
+            if set(source_hashes) != set(entry.get("source_results", [])):
+                problems.append("R source-result identities differ from plan")
+            for rel, expected in source_hashes.items():
+                _, source = _safe_path(project, rel)
+                if not source.is_file() or _sha256(source) != expected:
+                    problems.append(f"result changed: {rel}")
+            add("r_render_provenance", not problems, "; ".join(problems) or "R script, result inputs and rendered outputs match")
+            mf, ml = art.get("min_font_pt"), art.get("min_line_pt")
+            add("min_font_size", mf is not None and mf >= float(tgt.get("figure_font_pt_min", 6)),
+                f"SVG measured minimum font {mf} pt")
+            add("min_line_width", ml is not None and ml >= float(tgt.get("figure_line_pt_min", .5)),
+                f"SVG measured minimum stroke {ml} pt")
+            add("r_text_canvas_bounds", not art.get("text_clipped_at_edge"),
+                f"{len(art.get('text_clipped_at_edge', []))} text boxes exceed canvas (conservative height estimate)")
+            add("r_text_box_collisions", not art.get("r_text_box_collisions"),
+                str(art.get("r_text_box_collisions", [])[:3]) or "no estimated text-box collisions")
+            add("r_visual_measurement_limits", False, "; ".join(art.get("measurement_limits", [])), severity="warn")
+            elements_found = art.get("elements", {})
+            if archetype and arch_reg:
+                checks.extend(_archetype_checks(archetype, elements_found, arch_reg))
+            blocking = [c for c in checks if not c["ok"] and c["severity"] == "fail"]
+            return {"id": fid, "png": png_rel, "engine": "R", "archetype": archetype,
+                    "width_class": width_class, "pixels": [w_px, h_px], "effective_dpi": round(eff_dpi, 1),
+                    "checks": checks, "ok": not blocking, "visual_reviewed": False,
+                    "png_sha256": _sha256(png)}
         font_min = float(tgt.get("figure_font_pt_min", 6.0))
         line_min = float(tgt.get("figure_line_pt_min", 0.5))
         mf, ml = art.get("min_font_pt"), art.get("min_line_pt")
@@ -248,7 +291,7 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None) -> dict:
     else:
         add("artist_audit_present", False,
             f"no sidecar at 05_figures/qc/{Path(png_rel).stem}.artist.json - "
-            "render through figures.style.save() so fonts, line widths, glyphs, tick "
+            "render R through render_r.py/medpaper_save(), or Matplotlib through figures.style.save(), so fonts, line widths, glyphs, tick "
             "collisions and archetype elements can be measured")
 
     blocking = [c for c in checks if not c["ok"] and c["severity"] == "fail"]
@@ -370,7 +413,9 @@ def main() -> int:
         res = qc_figure(e, tgt, arch_reg)
         # a re-render invalidates a previous visual review
         old = previous.get(res["id"])
-        if old and old.get("png_mtime") == _mtime(e.get("file", "")):
+        same_render = (old and old.get("png_sha256") == res.get("png_sha256")) if res.get("engine") == "R" else (
+            old and old.get("png_mtime") == _mtime(e.get("file", "")))
+        if same_render:
             res["visual_reviewed"] = old.get("visual_reviewed", False)
             res["review_rounds"] = old.get("review_rounds", 0)
         res["png_mtime"] = _mtime(e.get("file", ""))

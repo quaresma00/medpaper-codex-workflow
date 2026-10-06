@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TEXT_SUFFIXES = {".md", ".toml", ".yaml", ".yml", ".json", ".py", ".txt", ".ps1"}
+TEXT_SUFFIXES = {".md", ".toml", ".yaml", ".yml", ".json", ".py", ".txt", ".ps1", ".r"}
 EXCLUDED_DIRS = {".git", ".venv", "dist", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".log", ".tmp"}
 REQUIRED = {

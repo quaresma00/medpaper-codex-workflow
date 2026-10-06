@@ -73,6 +73,11 @@ when scientifically needed, not merely because they exist in code.
 
 ## Production and Tavotto
 
+Read `r-first.md`: new publication graphics default to R; processing may use Python.
+Choose method-specific engines before analysis, reuse approved results instead of duplicate
+fitting, and use the R runner's real provenance/QA plus visual inspection. Tavotto is
+Matplotlib-only, not a requirement to translate R graphics into Python.
+
 At S10/S11 reuse approved semantics. Prefer vector PDF plus a PNG preview; create TIFF only
 when the chosen journal requires it at S23. Use co-located literal filenames for each Matplotlib
 script and PDF under `05_figures/out/` (legacy separated scripts remain readable). Keep Python
@@ -83,7 +88,7 @@ handoff JSON: success requires `ok: true`, `parameterizable: true`, `launch: "de
 Call MCP health only when using MCP capabilities; lack of an authorized embedded canvas must
 not block desktop handoff. Report structured desktop failures and the recovery step. Never
 substitute a browser. Nonstructural visual changes stay in Tavotto overrides; data, axes and
-artists change in Python. Store journal-specific scripts/overrides/exports in integration,
+artists change in the producing language. Store journal-specific scripts/overrides/exports in integration,
 preserving the frozen scientific figures. Internal diagnostics do not require desktop handoff.
 
 ## Feedback and incremental work

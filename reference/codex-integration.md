@@ -11,6 +11,12 @@ it remains available for explicit use and as the workspace-local operating contr
 
 ## Literature and full text
 
+For processing/statistics/graphics, read `r-first.md`: Python may process data, mature R
+methods should be evaluated deliberately, and new publication graphs default to R. R
+graphics use the managed runner plus measured/visual QA, not Matplotlib conversion or Tavotto.
+Tavotto remains available for actual Matplotlib exceptions. Reuse approved numerical results;
+do not run a second model merely because another plotting language is used.
+
 PubMed records produced by `tools/pubmed/` are the authoritative metadata trail.
 Scholarly-search skills, deep-research tools, SciSpace, Consensus, or similar services may
 surface candidates, but their titles, identifiers, abstracts, and claims are discovery input
