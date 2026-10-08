@@ -44,8 +44,9 @@ def _walk(obj, sink: set[str]) -> None:
             sink.add(_norm(m.group(1)))
         return
     if isinstance(obj, dict):
-        for v in obj.values():
-            _walk(v, sink)
+        for key, v in obj.items():
+            if key != "environment":  # Versions, seeds and file hashes are not scientific findings.
+                _walk(v, sink)
         return
     if isinstance(obj, (list, tuple)):
         for v in obj:

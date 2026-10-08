@@ -34,6 +34,12 @@ R library or recreate an environment for a label change. With --vanilla explicit
 
 ## Plan, prototype and production
 
+For routine forest/ROC/calibration plots, source `tools/figures/r_recipes.R` after the
+shared theme. These consume approved numeric coordinates, never refit/drop observations.
+Use `medpaper_forest`, `medpaper_roc`, or `medpaper_calibration` only when the archetype
+fits; add the study's required statistics, labels, uncertainty and layout before export.
+Missing elements still fail ordinary figure QC. Do not use a recipe as a waiver.
+
 New S07 entries declare renderer="R", a literal .R script beside PNG/PDF under 05_figures/out,
 width, source_results and the existing archetype/reader contract. Python exceptions declare
 renderer="Python" plus renderer_reason. Unmarked legacy plans remain readable.

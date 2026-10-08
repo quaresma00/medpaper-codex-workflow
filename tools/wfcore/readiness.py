@@ -42,6 +42,10 @@ def _populated(value) -> bool:
 
 
 def writing_sources(project: Path) -> dict[str, str]:
+    from analysis.reproduce import verify
+    defects = verify(project)
+    if defects:
+        raise ValueError("Analysis replay evidence: " + "; ".join(defects[:5]))
     contract, facts = load(project, CONTRACT), load(project, FACTS)
     for rel, doc, keys in ((CONTRACT, contract, CONTRACT_KEYS), (FACTS, facts, STORY_KEYS)):
         missing = [key for key in keys if not _populated(doc.get(key))]

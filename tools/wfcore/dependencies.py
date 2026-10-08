@@ -27,9 +27,16 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
     # Legacy results may not declare precise data inputs. Missing provenance must widen
     # scientific revalidation, never incorrectly certify that no consumers changed.
     for source in changed:
-        if (source.startswith("02_data/") or source in {
+        if source.startswith("02_data/"):
+            for output in results:
+                info = read(output.relative_to(project).as_posix())
+                environment = info.get("environment", {}) if isinstance(info, dict) else {}
+                if not environment.get("inputs") or environment.get("writer") != "medpaper-results-v1":
+                    for destination in [*analysis_code, output.relative_to(project).as_posix()]:
+                        link(source, destination)
+        elif source in {
                 "01_protocol/protocol_v1.md", "01_protocol/protocol_final.md",
-                "01_protocol/analysis_contract.json"}):
+                "01_protocol/analysis_contract.json"}:
             for output in [*analysis_code, *(p.relative_to(project).as_posix() for p in results)]:
                 link(source, output)
 
@@ -83,6 +90,14 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
         info = read(rel)
         if not isinstance(info, dict):
             continue
+        environment = info.get("environment", {})
+        if isinstance(environment, dict):
+            link(environment.get("script"), rel)
+            if environment.get("script"):
+                producer_scripts.add(environment["script"])
+            for source in environment.get("inputs", {}):
+                link(source, rel)
+                link(source, environment.get("script"))
         for key in ("script", "built_by"):
             link(info.get(key), rel)
             if isinstance(info.get(key), str):

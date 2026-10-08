@@ -43,7 +43,7 @@ class Receipts:
         self.reused = 0
         # Once per invocation; changes to any implementation invalidate old receipts.
         self.engine = {p.relative_to(paths.repo_root()).as_posix(): _sha256(p)
-                       for folder in ("tools", "pipeline")
+                       for folder in ("tools", "pipeline", "reference")
                        for p in (paths.repo_root() / folder).rglob("*")
                        if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
 

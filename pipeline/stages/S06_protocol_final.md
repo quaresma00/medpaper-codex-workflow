@@ -1,5 +1,9 @@
 # S06 - Final protocol + go/no-go #2
 
+Follow `reference/analysis-execution.md` for converged outputs. Writing readiness verifies
+current receipted results against retained real replay evidence without rerunning models.
+If sources changed, repair/replay their producers and true dependents; do not fake a pass.
+
 Before freezing, follow `reference/numeric-claims.md` to add source-bound quantitative facts
 to the existing clinical-story file. Keep this provenance backstage; do not draft the paper.
 

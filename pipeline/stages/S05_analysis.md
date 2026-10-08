@@ -1,5 +1,10 @@
 # S05 - Method scan + exploratory analysis (no publication figures)
 
+Read `reference/analysis-execution.md`. Export from the actual producer using the shared
+Python/R writer, with every complete input/config/helper declared. Execute via the managed
+runner, then replay only converged reportable outputs. Do not repeat all analyses for a
+wording/formatting revision or create hand-written execution/verification metadata.
+
 Read `reference/numeric-claims.md` before result exports. Export reportable findings with
 their actual clinical context and named values from executed code; never retrofit invented
 results to satisfy a writing gate.

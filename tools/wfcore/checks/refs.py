@@ -478,9 +478,11 @@ def deepread_complete(ctx: Ctx) -> Result:
         problems.append(f"{len(sel)} paper(s) selected, target ~{want}")
 
     lib_keys = set()
+    lib_entries = {}
     if ctx.p(LIB).exists():
         try:
-            lib_keys = {e.get("citekey") for e in ctx.read_json(LIB).get("entries", [])}
+            lib_entries = {e.get("citekey"): e for e in ctx.read_json(LIB).get("entries", [])}
+            lib_keys = set(lib_entries)
         except Exception:  # noqa: BLE001
             pass
 
@@ -520,6 +522,9 @@ def deepread_complete(ctx: Ctx) -> Result:
                 digest = _file_sha256(local)
                 if digest != record.get("sha256"):
                     problems.append(f"{ck}: registered full text changed after acquisition")
+                if ck in lib_entries:
+                    from pubmed.identity import errors
+                    problems.extend(f"{ck}: {error}" for error in errors(lib_entries[ck], local, record))
         notes = item.get("notes")
         if not notes:
             problems.append(f"{ck}: no notes file")

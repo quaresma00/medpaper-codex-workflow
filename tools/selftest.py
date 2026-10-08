@@ -1308,8 +1308,10 @@ def run_fulltext_registration(proj: Path) -> None:
     selected = []
     registrations_ok = True
     for i, entry in enumerate(entries, 1):
-        source = proj / "temp" / f"fixture{i}.pdf"
-        source.write_bytes(b"%PDF-1.4\n" + bytes([64 + i]) * 1800)
+        source = proj / "temp" / f"fixture{i}.xml"
+        source.write_text(f'<article><front><article-meta><article-id pub-id-type="doi">{entry["doi"]}</article-id>'
+                          f'<title-group><article-title>{entry["title"]}</article-title></title-group></article-meta></front>'
+                          '<body><p>' + 'Synthetic test full text. ' * 100 + '</p></body></article>',encoding="utf-8")
         p = subprocess.run(
             [sys.executable, str(tool), "register", "--citekey", entry["citekey"],
              "--file", str(source), "--access", "oa",
@@ -1325,7 +1327,7 @@ def run_fulltext_registration(proj: Path) -> None:
         selected.append({
             "citekey": entry["citekey"], "pmid": entry["pmid"],
             "reason": "Needed to benchmark the primary finding against a comparable design.",
-            "access": "oa", "fulltext": f'06_refs/fulltext/{entry["citekey"]}.pdf',
+            "access": "oa", "fulltext": f'06_refs/fulltext/{entry["citekey"]}.xml',
             "notes": f'06_refs/deepread/{entry["citekey"]}.md',
         })
     record("four legal local full texts register", registrations_ok)
@@ -1354,13 +1356,14 @@ def run_fulltext_registration(proj: Path) -> None:
     outcome = check_deepread()
     record("registered local full texts satisfy deep-read gate", outcome.ok, outcome.detail)
 
-    changed = refs / "fulltext/fixture1.pdf"
+    changed = refs / "fulltext/fixture1.xml"
     changed.write_bytes(changed.read_bytes() + b"changed")
     outcome = check_deepread()
     record("post-registration file mutation is rejected", not outcome.ok, outcome.detail[:100])
 
-    replacement = proj / "temp/replacement.pdf"
-    replacement.write_bytes(b"%PDF-1.4\n" + b"Z" * 1800)
+    replacement = proj / "temp/replacement.xml"
+    replacement.write_text('<article><front><article-meta><article-id pub-id-type="doi">10.0000/fixture.2</article-id>'
+                           '</article-meta></front><body><p>' + 'Different replacement text. ' * 100 + '</p></body></article>',encoding="utf-8")
     p = subprocess.run(
         [sys.executable, str(tool), "register", "--citekey", "fixture2",
          "--file", str(replacement), "--access", "oa",
@@ -1370,7 +1373,7 @@ def run_fulltext_registration(proj: Path) -> None:
            p.returncode != 0 and "already exists" in ((p.stdout or "") + (p.stderr or "")))
 
     shutil.rmtree(refs, ignore_errors=True)
-    for source in (proj / "temp").glob("fixture*.pdf"):
+    for source in (proj / "temp").glob("fixture*.xml"):
         source.unlink(missing_ok=True)
     replacement.unlink(missing_ok=True)
 
@@ -2317,6 +2320,10 @@ def main() -> int:
                                    capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("R figure renderer behavioral regression suite", r_figures.returncode == 0,
                (r_figures.stdout + r_figures.stderr)[-1800:].strip())
+        transfer = subprocess.run([sys.executable, str(ROOT / "tools/test_kiro_adoption.py")],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("cross-workflow adoption regression suite", transfer.returncode == 0,
+               (transfer.stdout + transfer.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

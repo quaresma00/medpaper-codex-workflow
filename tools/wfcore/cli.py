@@ -147,6 +147,8 @@ def cmd_init(args) -> int:
     (proj / pipe.layout.get("temp_dir", "temp") / ".gitkeep").touch()
 
     st.create(pipe.meta.get("name", "pipeline"), pipe.meta.get("version", "0"), pipe.first().id)
+    st.data["analysis_receipts_required"] = True
+    st.save()  # Existing projects are not silently rewritten or labelled reproduced.
     print(f"initialised {pipe.meta.get('name')} {pipe.meta.get('version')} at {paths.rel(proj)}")
     print(f"current stage: {pipe.first().id}")
     print("\nnext:  .venv/Scripts/python.exe tools/wf.py status")

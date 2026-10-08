@@ -54,7 +54,8 @@ def render(project, figure_id, timeout=180):
         destinations[".tiff"] = _safe_path(project, entry["tiff"])[1]
     guard_outputs(project, list(destinations.values()) + [sidecar])
     helper = ROOT / "tools/figures/r_style.R"
-    before = {str(p): _sha256(p) for p in [script, helper, plan_path, *sources.values()]}
+    recipes = ROOT / "tools/figures/r_recipes.R"
+    before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values()]}
     (project / "temp").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="r-figure-", dir=project / "temp") as temporary:
         stem = Path(temporary) / png.stem
@@ -88,7 +89,7 @@ def render(project, figure_id, timeout=180):
         report["render_hashes"] = {p.relative_to(project).as_posix(): _sha256(p) for p in destinations.values()}
         atomic_json(sidecar, report)
         for output in [*destinations.values(), sidecar]:
-            record_build(project, output, [script, helper, *sources.values()])
+            record_build(project, output, [script, helper, recipes, *sources.values()])
     return {"figure": figure_id, "engine": "R", "png": str(png), "pdf": str(pdf), "audit": str(sidecar)}
 
 

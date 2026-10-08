@@ -1,5 +1,11 @@
 # S15 - Deep-read the papers that carry the Discussion
 
+Registration also checks the acquired article's own identity. Do not accept a DOI found
+in a bibliography as proof. For PDF/title-only cases, inspect the actual first page and
+get explicit reader confirmation; `fulltext.py confirm --citekey KEY --confirmed-by NAME
+--identity-note "concrete title/authors/identifier evidence"` records that confirmation,
+not an automatic AI verdict. Wrong identities block; never invent user confirmation.
+
 ## Purpose
 Abstracts are enough to frame the Introduction. They are not enough to compare methods and
 effect sizes with prior work. Fetch and read ~5 full texts properly.

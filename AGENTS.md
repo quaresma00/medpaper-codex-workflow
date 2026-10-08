@@ -22,6 +22,13 @@ skip a stage.
 
 ## Orchestration and capability routing
 
+At S05/S06 and scientific result revisions, read `reference/analysis-execution.md`.
+New/revised producers must export through the executed Python/R writer and replay their
+actual results before writing readiness. Never backfill receipts or weaken a failed comparison.
+Legacy outputs are not retroactively called reproduced; formatting changes do not refit models.
+For acquired full text, article identity must come from its own metadata or explicit reader
+confirmation of the exact registered file; an identifier in its references is insufficient.
+
 - `medpaper-codex-pipeline` is the sole workflow orchestrator in this repository. A different
   workflow skill must not create a competing project layout, manuscript, reference library,
   analysis plan, figure set, or submission package.
