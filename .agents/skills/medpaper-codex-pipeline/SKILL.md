@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.9.0"
+  version: "1.9.1"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -43,6 +43,11 @@ Unmapped dependencies remain conservative. Preserve unrelated edits and frozen s
 - Other skills/plugins inside a stage: `reference/codex-integration.md`.
 
 ## Essential boundaries
+
+Do not default ordinary database-mining/retrospective studies to public registration or
+preselected reporting checklists. Follow AGENTS.md: applicable registration exceptions are
+study-specific; reporting forms are prepared only when the selected journal explicitly
+requires them after S20. Do not create extra paperwork or confirmation stops.
 
 Acquire the entire protocol-defined data universe; no unauthorized sampling, truncation,
 first-N retrieval or page caps for speed. Never fabricate references, source records,

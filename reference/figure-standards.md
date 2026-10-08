@@ -205,7 +205,7 @@ Content was rephrased for compliance with licensing restrictions.
 **In the panel** (structural, needed to read the plot): axis titles and units, tick labels,
 panel letters, group and category labels, legend entries, significance markers, key data
 values (n, HR with CI, AUC, r), and guideline-mandated content such as Kaplan-Meier risk
-tables, CONSORT/PRISMA/STARD box text, scale bars and axis-break marks.
+tables, participant/study-selection box text, scale bars and axis-break marks.
 
 **In the legend** (only what decodes the figure): a concise descriptive title, panel
 descriptions, essential statistical/error-bar/threshold definitions, what a reference line

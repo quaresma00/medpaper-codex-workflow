@@ -86,7 +86,7 @@ notes = "Mark treatment start with an arrow. Give n at each timepoint if it chan
 # Domain 3: clinical trials and evidence synthesis
 # ---------------------------------------------------------------------------
 [archetype.flow_diagram]
-label = "CONSORT / PRISMA / STROBE flow diagram"
+label = "Participant or study-selection flow diagram"
 domain = "Trials and evidence"
 use_for = "RCTs, meta-analyses, cohort assembly"
 requires = ["box_nodes", "figure_statistics"]

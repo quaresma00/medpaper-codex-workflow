@@ -1,7 +1,7 @@
 # Methods architecture for medical manuscripts
 
 This guide controls structure and scope; it is not a mandatory template. Adapt headings to
-the study design, reporting guideline, target journal, and what was actually done. The aim is
+the study design, medical readers' needs, target journal, and what was actually done. The aim is
 a compact main Methods section that lets a medical reader judge validity and interpret the
 Results, with reproducibility detail moved to a supplement only when it is genuinely long.
 
@@ -23,8 +23,9 @@ subsections. Merge adjacent topics when each would otherwise be only a short par
 
 `Statistical analysis` should normally be the last subsection of a quantitative paper.
 Use `Data analysis` for qualitative studies and `Evidence synthesis` (or the journal's
-equivalent) for systematic reviews. A reporting checklist is a completeness audit, not an
-instruction to turn every item into a heading.
+equivalent) for systematic reviews. Do not preselect or generate reporting checklists while
+drafting. Only a selected journal's explicit requirement activates a later checklist, and
+that form is not an instruction to turn every item into a main-Methods heading.
 
 Do not automatically append standalone `Sensitivity analyses`, `Subgroup analyses`,
 `Missing data`, `Software`, or `Ethics` subsections after the analysis subsection. State these
@@ -89,7 +90,7 @@ different medical study designs (checked 2026-09-04):
 - A qualitative study uses design/setting, participants/recruitment, data collection, and data
   analysis/management: [Davis et al., *PLOS ONE*](https://pmc.ncbi.nlm.nih.gov/articles/PMC10246844/).
 - A systematic review reports sources/search, eligibility, selection/extraction, risk of bias
-  and synthesis without manufacturing a subsection for every checklist item: [Wynants et al.,
+  and synthesis without manufacturing a subsection for every administrative item: [Wynants et al.,
   *BMJ*](https://pmc.ncbi.nlm.nih.gov/articles/PMC7222643/).
 - Prediction-model guidance shows why design-specific implementation detail can become long
   enough for a supplement while primary choices remain visible in the main Methods:
@@ -98,4 +99,3 @@ different medical study designs (checked 2026-09-04):
 The recurring pattern is a reader-facing sequence ending in the analysis approach, while the
 number and names of earlier subsections change with design. That pattern—not a rigid list—is
 the workflow default.
-

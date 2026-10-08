@@ -1,5 +1,10 @@
 # S18 - Independent publication-readiness review
 
+Give the reviewer the registration/reporting boundary from AGENTS.md: no default public
+registration or prefilled reporting checklist for ordinary mining/retrospective studies.
+Judge actual methodological completeness and validity, not missing nonrequired paperwork;
+selected-journal reporting forms are handled later. Never invent a registration or method.
+
 ## Purpose
 Test the frozen complete manuscript, supplementary Methods, every table and rendered figure before the user
 edits them. This is an independent scientific/editorial audit, not another writing pass.

@@ -12,8 +12,10 @@ only when reproducibility requires detail that would obscure the main narrative.
 - `reference/methods-structure.md` (structure and main-versus-supplement boundary)
 
 ## Procedure
-1. Read `reference/methods-structure.md`, then re-read the protocol and the study's reporting
-   guideline. The guide supplies a flexible architecture, not a mandatory heading template.
+1. Read `reference/methods-structure.md`, then re-read the protocol and actual executed
+   methods. The guide supplies a flexible architecture, not a mandatory heading template.
+   Do not choose, cite or fill a reporting checklist here; any explicitly requested journal
+   form is handled after S20 in the submission integration copy.
    The Methods describes what was actually done, in the order a medical reader needs it.
 2. Before drafting, choose and record a compact heading map appropriate to this design. For
    an ordinary original clinical study, prefer about four to seven substantive subsections:
@@ -38,13 +40,13 @@ only when reproducibility requires detail that would obscure the main narrative.
    `04_tables/supplementary/` with the three-line table writer, and referenced from the prose.
    Do not use `---`, `***` or `___` as visual separators; use ordinary paragraph spacing.
 6. Cite methodological choices with pandoc markers `[@key]`—the cutoff you adopted, the
-   scoring system, the model, the guideline itself. Keys must come from records already
+   scoring system and model. Keys must come from records already
    retrieved this session.
 7. Numbers—study period, follow-up, n screened/excluded/analysed, software versions—must
    already exist in `03_analysis/results/*.json`. If a number you need is not there, go back
    and dump it from code rather than typing it.
-8. Do not describe an analysis you did not run, and do not omit one you did. A reporting
-   checklist is a completeness audit, not a reason to inflate the prose.
+8. Do not describe an analysis you did not run, and do not omit reportable methods you did.
+   Explain scientifically necessary methods, not checklist paperwork or an invented registration.
 
 ## Outputs
 - `07_manuscript/methods.md`
@@ -66,4 +68,3 @@ only when reproducibility requires detail that would obscure the main narrative.
 .\.venv\Scripts\python.exe tools\wf.py check
 .\.venv\Scripts\python.exe tools\wf.py advance --note "methods drafted; heading map: <...>; supplementary Methods: <not needed/path and why>; citations used: <n>"
 ```
-

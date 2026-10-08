@@ -79,6 +79,10 @@ journal-guideline audit.
    `submission_files_visually_confirmed YES`, then clean temporary/orphaned files.
 
 ## Outputs
+- A journal-requested reporting checklist only if explicitly required in the sourced upload
+  list; complete that specific current form from actual integration content, with truthful
+  locations/inapplicability. Otherwise create no reporting checklist. This is separate from
+  the small internal SUBMISSION_CHECKLIST.md used to hand off the actual upload files.
 - `08_submission/cover_letter.md`
 - `08_submission/evidence/SUBMISSION_CHECKLIST.md`
 - `08_submission/portal_fields.json`

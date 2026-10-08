@@ -22,6 +22,26 @@ skip a stage.
 
 ## Orchestration and capability routing
 
+### Registration and reporting paperwork: only when applicable
+
+Ordinary database mining, secondary analyses and retrospective institutional clinical-data
+studies do not require public study registration by default. A local analysis plan is not
+public preregistration. Do not request an OSF account, deposit, registration number or
+registration file, and do not block these studies on one. Ethics/data-access requirements
+remain separate. Do not publish anything externally without the user's explicit instruction.
+
+Only for a systematic review/meta-analysis or a genuine prospective interventional trial,
+check applicable current registration requirements/timing at S03 and state their actual
+basis in the existing protocol. A recommendation is not a universal mandate; do not invent
+registration or backdate a completed analysis. Do not ask routine data-mining users about it.
+
+Do not select, download, map or generate named reporting checklists before journal selection.
+At S20 inspect only the selected journal's explicit current requirements. If it requests a
+reporting checklist, prepare that requested form in the journal-specific integration/package
+at S23 and audit it at S25; otherwise omit it entirely. No fixed guideline catalogue or
+early mandatory reporting heading. Preserve scientific methods, transparency and ethics.
+The internal upload-completeness checklist is not a research-reporting checklist.
+
 At S05/S06 and scientific result revisions, read `reference/analysis-execution.md`.
 New/revised producers must export through the executed Python/R writer and replay their
 actual results before writing readiness. Never backfill receipts or weaken a failed comparison.

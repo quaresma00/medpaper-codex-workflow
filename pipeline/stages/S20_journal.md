@@ -26,6 +26,11 @@ then freeze its actual author instructions and Word-format rules.
 6. Write `guidelines_extract.md` with sourced sections for word limits, abstract, keywords,
    references, figures and legends, tables, supplements, statements, cover letter, required
    upload items and formatting.
+   Check whether this selected journal explicitly requires a reporting checklist. Only if
+   it does, record the current official form/link, relevant article type and exact upload
+   requirement here and in submission_requirements.json. Do not attach a generic catalogue,
+   generate every possible checklist, or turn a recommendation into a mandatory upload.
+   Do not add an OSF registration requirement to an ordinary mining/retrospective study.
    Record the journal's abbreviation-placement rule. Set `abbreviation_placement` in
    `target_journal.json` to `central` by default. Use `local_required` only when the official
    guide explicitly requires definitions within every table/figure, and put the exact guide
@@ -68,6 +73,9 @@ Before leaving S20, write `08_submission/submission_requirements.json` as descri
 `reference/efficient-quality.md`: exact required upload roles, article type, blinding rules,
 and sourced main/abstract word-count scopes and limits. Do not produce submission files
 until the user has confirmed the journal and administrative facts are available.
+An explicitly required reporting form is prepared at S23 using integration sources. If it
+exposes a real scientific omission, use the existing scoped correction/reapproval route;
+never invent a performed method or silently change the frozen scientific master.
 
 ## Outputs
 - `08_submission/journal_shortlist.md`

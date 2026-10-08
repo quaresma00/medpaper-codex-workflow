@@ -5,22 +5,28 @@ R where its established package better fits the method. Record this in the exist
 without another approval stop or duplicate analysis.
 
 ## Purpose
-Commit to a design before seeing the data, so that later choices are visibly
-pre-specified rather than fitted to whatever happened to be significant.
+Document the research question, analysis intentions and complete acquisition plan locally.
+Distinguish genuinely prospective plans from exploratory or already-inspected-data choices;
+a local protocol does not imply public preregistration.
 
 ## Procedure
-1. Pick the reporting guideline that governs this design (STROBE, CONSORT, STARD,
-   TRIPOD+AI, PRISMA, CARE...). State it explicitly; it dictates what the Methods must
-   contain and what the artifact plan must include (e.g. a flow diagram).
+1. Fix the actual study design and analysis scope, not a reporting-checklist label.
+   Ordinary data mining, secondary analysis and retrospective centre data need no default
+   public registration, platform search, registration number or registration deliverable.
+   For a systematic review/meta-analysis or actual prospective interventional trial only,
+   check applicable registration requirements and timing from current primary sources.
+   Distinguish required from recommended and record the real situation briefly in this
+   protocol. Do not register externally, invent a registration or backdate completed work.
 2. Write `project/01_protocol/protocol_v1.md` with exactly these headings:
    `Objective`, `Design`, `Population and eligibility`, `Variables`,
-   `Statistical analysis plan`, `Sample size / power`, `Reporting guideline`, `Ethics`.
+   `Statistical analysis plan`, `Sample size / power`, `Ethics`.
    - `Variables`: for every exposure, outcome and covariate give the operational
      definition, the source field, the unit, and the handling of missing values.
      If a cutoff is used, say where the cutoff comes from (cite it).
    - `Statistical analysis plan`: name the primary model, the primary estimand, how
      confounders were chosen, how missing data is handled, what sensitivity analyses
-     will run, and what constitutes the primary result. Pre-specify it now.
+     will run, and what constitutes the primary result. State what was planned versus
+     decided after inspecting data; do not call a retrospective plan preregistered.
    - `Sample size / power`: if the dataset is fixed, state the precision it affords
      rather than pretending to a prospective calculation.
 3. Write `project/02_data/acquisition_plan.md` with exactly these headings:
@@ -54,8 +60,9 @@ pre-specified rather than fitted to whatever happened to be significant.
 - `02_data/acquisition_plan.md`
 
 ## Hard rules
-- Do not look at the data before the analysis plan is written down. If data was already
-  inspected, say so in the protocol under `Deviations` at S06 rather than hiding it.
+- Record analysis intentions before the reportable analyses. If data was already inspected,
+  describe that honestly in the protocol and the S06 deviations, rather than demanding a
+  retrospective registration or pretending the decisions were prospective.
 - The acquisition target is the entire protocol-defined universe. A small schema/connectivity
   pilot may be planned, but it is never an analysis dataset and must be followed by full
   acquisition before S04 can close.
@@ -67,5 +74,5 @@ pre-specified rather than fitted to whatever happened to be significant.
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "protocol v1 fixed; guideline=<x>; primary model=<y>; data route=<z>"
+.\.venv\Scripts\python.exe tools/wf.py advance --note "local analysis plan fixed; primary model=<y>; data route=<z>"
 ```

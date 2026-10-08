@@ -25,7 +25,6 @@ later stage argues against the same target instead of a remembered paraphrase.
   "covariates_proposed": [],
   "claimed_novelty": "one sentence: what is not yet known that this would establish",
   "data_source_candidates": [{"name": "", "access": "public | licensed | institutional | to-be-collected", "why": ""}],
-  "reporting_guideline_candidate": "STROBE | CONSORT | STARD | TRIPOD+AI | PRISMA | CARE | ...",
   "open_questions": ["every ambiguity you had to leave unresolved"]
 }
 ```
@@ -39,7 +38,9 @@ later stage argues against the same target instead of a remembered paraphrase.
 ## Limitations
 ## Surprises / must-not-forget
 ```
-5. If `open_questions` contains anything that would change the design, ask the user now.
+5. If there are no genuinely unresolved material questions, use `open_questions: []`;
+   do not invent registration/checklist questions to populate the list. If `open_questions`
+   contains anything that would change the design, ask the user now.
    Do not proceed on assumptions about population, exposure definition, or outcome timing.
 
 ## Outputs
@@ -47,6 +48,9 @@ later stage argues against the same target instead of a remembered paraphrase.
 - `03_analysis/notes.md`
 
 ## Hard rules
+- Do not ask routine database-mining/retrospective users to register a study or choose a
+  reporting checklist. Do not create candidate-guideline or checklist fields. Follow the
+  applicability boundary in AGENTS.md; journal reporting paperwork starts only at S20.
 - No literature search yet. That is S02, and it must be recorded through the PubMed client.
 - Do not write any manuscript prose in this stage.
 

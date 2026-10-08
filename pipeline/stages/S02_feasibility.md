@@ -1,5 +1,9 @@
 # S02 - Feasibility: real literature scan + go/no-go #1
 
+Do not mark an ordinary mining/retrospective study unpublishable merely because it lacks
+public registration or a prefilled reporting checklist. Judge validity, novelty and fit;
+checklist paperwork is deferred until a selected journal explicitly requests it.
+
 ## Purpose
 Decide whether this idea can be published at all, using retrieved literature rather
 than impressions. A wrong GO here wastes the entire pipeline.

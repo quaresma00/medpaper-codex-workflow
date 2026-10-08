@@ -59,8 +59,10 @@ first keep panels from filling up with explanatory text later.
    Structural requirements the gate enforces: sequential numbering with no gaps; each
    main table in its own xlsx; **all supplementary tables in a single xlsx, one sheet
    each**; every figure has a `width`, a `script` and an `archetype`.
-   If the reporting guideline requires a flow diagram (STROBE/CONSORT/STARD/PRISMA),
-   it is Figure 1.
+   Include a participant/study-selection flow diagram only when it materially helps readers
+   understand inclusion/exclusion and denominators; do not create one because a preselected
+   checklist says so. Number it in the actual scientific narrative, not automatically Figure 1.
+   Specific journal reporting/display requirements are handled later in the integration copy.
    Add `reader_contract` to every display: `population`, `comparison`, `measure`,
    `denominator_and_units`, `interpretation_limit`. Use short factual sentences; explain
    inapplicability rather than inserting a fictional comparison. This internal contract

@@ -156,7 +156,9 @@ def json_keys(ctx: Ctx) -> Result:
         return Result(False, "json_keys", f"{rel} must be a JSON object")
     required = ctx.spec.get("keys", [])
     missing = [k for k in required if k not in data]
-    blank = [k for k in required if k in data and data[k] in (None, "", [], {})]
+    empty_lists_allowed = set(ctx.spec.get("empty_lists_allowed", []))
+    blank = [k for k in required if k in data and data[k] in (None, "", [], {})
+             and not (k in empty_lists_allowed and data[k] == [])]
     if missing or blank:
         bits = []
         if missing:

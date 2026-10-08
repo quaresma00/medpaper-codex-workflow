@@ -2324,6 +2324,10 @@ def main() -> int:
                                   capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("cross-workflow adoption regression suite", transfer.returncode == 0,
                (transfer.stdout + transfer.stderr)[-1800:].strip())
+        reporting = subprocess.run([sys.executable, str(ROOT / "tools/test_reporting_deferral.py")],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("registration/reporting deferral regression suite", reporting.returncode == 0,
+               (reporting.stdout + reporting.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

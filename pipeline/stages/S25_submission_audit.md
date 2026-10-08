@@ -1,5 +1,9 @@
 # S25 - Independent reader, editor and compliance audit of the confirmed package
 
+Audit a reporting checklist only if the chosen journal explicitly requires that form.
+Do not introduce a new generic catalogue or an OSF-registration demand for an ordinary
+mining/retrospective study. Actual study-specific mandatory requirements still apply.
+
 ## Purpose
 Give the exact package approved by the user one final fresh reading immediately before
 submission. The same independent reviewer must judge it from three complementary positions:

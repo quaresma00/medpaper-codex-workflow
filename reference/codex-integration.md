@@ -137,11 +137,13 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
 
 ## Analytical and review helpers
 
-Reporting-guideline, study-design, sample-size, de-identification, codebook, statistical, and
+Study-design, sample-size, de-identification, codebook, statistical, and
 peer-review skills may provide advice or code during the matching stage. Their work is valid
 only when it is reproducible, stored under the stage's declared paths, and accepted by the
 pipeline gate. A helper must not start a separate project, write several manuscript sections
 at once, or create a second reference library or submission manifest.
+Reporting-form helpers are used only after S20 when the selected journal explicitly requests
+that form; do not invoke them during intake, research planning or scientific writing.
 
 ## Plugins
 
