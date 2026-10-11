@@ -75,10 +75,11 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
                 problems.append(f"{path.name}/{item_id}: not completed and validated")
                 continue
             changed = item.get("changed_files")
-            if not isinstance(changed, list) or not changed:
+            inspected = item.get("checked_files", [])
+            if not isinstance(changed, list) or not (changed or inspected):
                 problems.append(f"{path.name}/{item_id}: no changed-file proof")
                 continue
-            for receipt in changed:
+            for receipt in [*changed,*inspected]:
                 rel = receipt.get("path") if isinstance(receipt, dict) else None
                 expected = receipt.get("sha256") if isinstance(receipt, dict) else None
                 if not rel or not expected:

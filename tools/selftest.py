@@ -1647,7 +1647,7 @@ def run_manuscript_docx(proj: Path) -> None:
 
     outcome = gate("abbreviations_centralized", "S21_authors")
     record("short display abbreviation lists may remain local", outcome.ok, outcome.detail)
-    captions = proj / "04_tables/table_captions.md"
+    captions = proj / "08_submission/integration/table_captions.md"
     captions_good = captions.read_text(encoding="utf-8")
     captions.write_text(captions_good +
                         "\nAbbreviations: BMI, body mass index; eGFR, estimated glomerular "
@@ -2189,20 +2189,28 @@ def run_polish(proj: Path) -> None:
     record("restoring the text clears diff", polish("diff").returncode == 0)
 
     section("polish: journal limits")
+    disc.write_text("# Abstract\n\nA retrospective test abstract.\n\n# Introduction\n\nClinical context.\n\n"
+                    "# Methods\n\nRetrospective test methods.\n\n# Results\n\nTest findings.\n\n"+CLEAN,encoding="utf-8")
+    requirements={"article_type":"Original research","word_count":{"include_sections":["Introduction","Methods","Results","Discussion"],
+                   "limit":3500,"abstract_limit":250,"reference_limit":50,"source":"https://journal.example/original-research"}}
+    rules_path=proj/"08_submission/submission_requirements.json"
+    rules_path.write_text(json.dumps(requirements),encoding="utf-8")
     (proj / "08_submission").mkdir(parents=True, exist_ok=True)
     gx = proj / "08_submission/guidelines_extract.md"
     gx.write_text("# Guidelines\n\n## Word limits\nAbstract: 250 words. Main text: 3500 words "
                   "excluding references. References: maximum 50.\n", encoding="utf-8")
     polish("lint")
     r = gate("journal_limits_met")
-    record("journal_limits_met parses the quoted caps and passes", r.ok, r.detail[:110])
+    record("journal_limits_met uses structured article-specific caps and passes", r.ok, r.detail[:110])
     gx.write_text("# Guidelines\n\n## Word limits\nAbstract: 250 words. Main text: 100 words "
                   "excluding references. References: maximum 50.\n", encoding="utf-8")
+    requirements["word_count"]["limit"]=100;rules_path.write_text(json.dumps(requirements),encoding="utf-8")
     r = gate("journal_limits_met")
     record("journal_limits_met rejects an over-limit manuscript", not r.ok, r.detail[:110])
     gx.write_text("# Guidelines\n\n## Word limits\nSee the website.\n", encoding="utf-8")
+    requirements["word_count"]["source"]="";rules_path.write_text(json.dumps(requirements),encoding="utf-8")
     r = gate("journal_limits_met")
-    record("journal_limits_met rejects unquoted limits", not r.ok, r.detail[:110])
+    record("journal_limits_met rejects unsourced structured limits", not r.ok, r.detail[:110])
 
     section("polish: allowlist escape hatch")
     disc.write_text(CLEAN + "\nThe guideline states that screening plays a crucial role.\n",
@@ -2216,6 +2224,7 @@ def run_polish(proj: Path) -> None:
 
     for f in (disc, gx, integration / "polish_allowlist.tsv"):
         f.unlink(missing_ok=True)
+    rules_path.unlink(missing_ok=True)
     shutil.rmtree(integration / "prepolish", ignore_errors=True)
     (integration / "polish_report.json").unlink(missing_ok=True)
 
@@ -2328,6 +2337,10 @@ def main() -> int:
                                    capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("registration/reporting deferral regression suite", reporting.returncode == 0,
                (reporting.stdout + reporting.stderr)[-1800:].strip())
+        aligned = subprocess.run([sys.executable, str(ROOT / "tools/test_source_aligned.py")],
+                                 capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("source aligned validation regression suite",aligned.returncode==0,
+               (aligned.stdout+aligned.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

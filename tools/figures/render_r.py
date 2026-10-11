@@ -25,15 +25,18 @@ def render(project, figure_id, timeout=180):
     project = project.resolve()
     guard_build(project)
     state = State(project).load()
-    if state.current != "S11_figures" and not permits(project, "S11_figures"):
+    journal_mode=state.current in {"S23_package","S24_package_human_review"} or permits(project,"S23_package")
+    if state.current != "S11_figures" and not permits(project, "S11_figures") and not journal_mode:
         raise ValueError("Publication R figures run at S11 or an explicitly scoped S11 revision")
-    plan_path = project / "01_protocol/artifact_plan.json"
+    plan_path = project / ("08_submission/integration/artifact_plan.json" if journal_mode else "01_protocol/artifact_plan.json")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     matches = [e for g in ("main_figures", "supp_figures") for e in plan.get(g, []) if e.get("id") == figure_id]
     if len(matches) != 1:
         raise ValueError("Figure must occur exactly once in the artifact plan")
     entry = matches[0]
     script_rel, script = _safe_path(project, entry["script"])
+    if journal_mode and not script_rel.startswith("08_submission/integration/"):
+        raise ValueError("Journal rendering needs a derived R script; never redraw the frozen scientific original")
     if script.suffix.casefold() != ".r" or not script.is_file():
         raise ValueError("The declared R plotting script is missing or has no .R extension")
     sources = {r: _safe_path(project, r)[1] for r in entry.get("source_results", [])}
@@ -46,12 +49,14 @@ def render(project, figure_id, timeout=180):
     pdf_rel, pdf = _safe_path(project, entry.get("pdf", ""))
     if png.suffix.lower() != ".png" or pdf.suffix.lower() != ".pdf":
         raise ValueError("R publication entries must declare PNG and vector PDF")
-    qc = project / "05_figures/qc"
+    qc = project / ("08_submission/integration/figure_qc" if journal_mode else "05_figures/qc")
     extra = {".svg": qc / (png.stem + ".render.svg"), ".rmeta.json": qc / (png.stem + ".rmeta.json")}
     sidecar = qc / (png.stem + ".artist.json")
     destinations = {".png": png, ".pdf": pdf, **extra}
     if entry.get("tiff"):
         destinations[".tiff"] = _safe_path(project, entry["tiff"])[1]
+    if journal_mode and any(not p.relative_to(project).as_posix().startswith("08_submission/") for p in destinations.values()):
+        raise ValueError("Journal rendering may not overwrite frozen scientific figures")
     guard_outputs(project, list(destinations.values()) + [sidecar])
     helper = ROOT / "tools/figures/r_style.R"
     recipes = ROOT / "tools/figures/r_recipes.R"
@@ -67,9 +72,9 @@ def render(project, figure_id, timeout=180):
         expression = ("a <- file.path(Sys.getenv('MEDPAPER_ROOT'), 'renv/activate.R'); "
                       "if(file.exists(a)) source(a); options(warn=2); "
                       "sys.source(Sys.getenv('MEDPAPER_FIGURE_SCRIPT'), envir=.GlobalEnv)")
-        process = subprocess.run([rscript, "--vanilla", "--encoding=UTF-8", "-e", expression],
-                                 cwd=ROOT, env=env, capture_output=True, text=True,
-                                 encoding="utf-8", errors="replace", timeout=timeout)
+        from wfcore.execution import run_logged
+        process = run_logged([rscript,"--vanilla","--encoding=UTF-8","-e",expression],
+                             project=project,cwd=ROOT,env=env,timeout=timeout)
         if process.returncode:
             raise ValueError("R render failed; prior output preserved: " + (process.stderr or process.stdout)[-2400:])
         if any(not Path(str(stem) + suffix).is_file() for suffix in destinations):

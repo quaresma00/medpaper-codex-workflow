@@ -1,5 +1,12 @@
 # S23 - Build and visually verify the submission package
 
+Read `reference/source-aligned-validation.md`. Declare each real composed `build_entrypoint`
+and all `source_files`; managed builders supply actual receipts. Freeze sources, build,
+repair necessary layout, run `build_docx.py finalize`, render the resulting final bytes, then
+bind the content baseline/portal fields. Never capture a new baseline after a failed build.
+For separate main/supplementary legend uploads declare `legend_scope` and use that scope
+in both builder and manifest audit. Office lock files, previews and evidence are not uploads.
+
 ## Purpose
 Produce the exact files required by the chosen journal. All uploadable prose is delivered
 as Word, with deterministic typography and no residual Pandoc/Word theme defects. This stage

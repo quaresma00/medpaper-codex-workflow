@@ -36,14 +36,21 @@ def docx_sections(path: Path, aliases: dict | None = None) -> tuple[str, dict[st
     headings.update(ALIASES)
     headings.update(aliases or {})
     section, title, collected, all_text = "front", "", {}, []
+    explicit = any((n.get(W+"name","").startswith("medpaper_section_") for n in root.iter(W+"bookmarkStart")))
+    styled = any(n.get(W+"val","") in {"Heading1","SectionHeading"} for n in root.iter(W+"pStyle"))
     for paragraph in root.iter(W + "p"):
         text = "".join(node.text or "" for node in paragraph.iter(W + "t")).strip()
         if not text:
             continue
         all_text.append(text)
         normalized = re.sub(r"^\d+(?:\.\d+)*[. ]*", "", text).strip().rstrip(":").casefold()
-        if normalized in headings and not (
-                section == "Abstract" and headings[normalized] not in ("Keywords", "Introduction")):
+        markers = [n.get(W+"name","") for n in paragraph.iter(W+"bookmarkStart")]
+        pstyle = paragraph.find(W+"pPr/"+W+"pStyle")
+        style_id = pstyle.get(W+"val","") if pstyle is not None else ""
+        structural = (any(n.startswith("medpaper_section_") for n in markers) if explicit else
+                      style_id in {"Heading1","SectionHeading"} if styled else True)
+        if structural and normalized in headings and (explicit or section!="Abstract" or
+                headings[normalized] in ("Keywords","Introduction")):
             section = headings[normalized]
             collected.setdefault(section, [])
             continue
@@ -58,7 +65,8 @@ def docx_sections(path: Path, aliases: dict | None = None) -> tuple[str, dict[st
 
 
 def build_portal(project: Path) -> dict:
-    requirements = load(project, REQUIREMENTS)
+    from .journalrules import limits,compare
+    requirements,rules = limits(project)
     manifest = load(project, MANIFEST)
     manuscripts = [row for row in manifest.get("items", []) if row.get("role") == "manuscript"]
     if len(manuscripts) != 1:
@@ -79,10 +87,9 @@ def build_portal(project: Path) -> dict:
     counts = {name: word_count(text) for name, text in sections.items()}
     main_words = sum(counts[name] for name in include)
     abstract_words = counts.get("Abstract", 0)
-    for label, count, limit in (("main", main_words, rule.get("limit")),
-                                ("abstract", abstract_words, rule.get("abstract_limit"))):
-        if limit is not None and count > int(limit):
-            raise ValueError(f"final DOCX {label} words {count} exceed journal limit {limit}")
+    errors = compare({"main":main_words,"abstract":abstract_words},rules)
+    if errors:
+        raise ValueError("final DOCX: "+"; ".join(errors))
     facts = load(project, AUTHOR_FACTS)
     required_admin = ("authors", "affiliations", "corresponding", "funding", "conflicts",
                       "ethics_approval", "data_availability")
@@ -95,7 +102,7 @@ def build_portal(project: Path) -> dict:
         "title": title, "abstract": sections["Abstract"],
         "keywords": [part.strip() for part in re.split(r"[,;\n]", sections.get("Keywords", "")) if part.strip()],
         "article_type": requirements.get("article_type"),
-        "word_counts": {"method": "final DOCX visible-text Unicode words; hyphenated words count as one; section headings excluded",
+        "word_counts": {"method": "final DOCX visible-text Unicode words; hyphenated words count as one; main section headings excluded; structured abstract subheading text included",
                         "main": main_words, "abstract": abstract_words, "all_visible": word_count(full_text),
                         "sections": counts, "included_sections": include, "rule_source": rule["source"]},
         "administrative_facts": {key: facts[key] for key in required_admin},

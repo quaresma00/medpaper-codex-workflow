@@ -624,6 +624,7 @@ def bundle_complete(ctx: Ctx) -> Result:
         p.relative_to(ctx.project).as_posix()
         for p in (ctx.project / "08_submission/bundle").rglob("*")
         if p.is_file() and p.name not in {"manifest.json", ".gitkeep", "SUBMISSION_CHECKLIST.md"}
+        and not p.name.startswith("~$")  # Office locks are not uploads; manifest items still require real files.
     }
     stray = sorted(on_disk - listed)
     if stray:

@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.9.1"
+  version: "1.10.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -27,6 +27,10 @@ execute owner rules in place, and run actual `rework.py check` before marking/cl
 Resume with compact `rework.py status`; `--full` retrieves completed items.
 An affected file list is a recheck scope, not an instruction to rewrite everything.
 After an artifact-plan edit, `rework.py refresh` can narrow observed entry-only changes.
+Use `rework.py depend --input ... --output ... --why ...` for a newly found consumer,
+without rewriting feedback. Mark inspected unchanged sources with `--checked-file`.
+Read `reference/source-aligned-validation.md` for composed builds, journal reorganisation,
+versioned snapshots and final Word cleanup. Unchanged check receipts are reused, not relabelled.
 Unmapped dependencies remain conservative. Preserve unrelated edits and frozen sources.
 
 ## Read the relevant reference, not every reference

@@ -1,5 +1,13 @@
 # S20 - Select the most realistic current SCIE journal
 
+Keep article-specific rules in submission_requirements.json. `word_count.limit` and
+`abstract_limit` are nullable; do not scrape caps with a broad regex across guide prose.
+Optional `limits` rows for `main`, `abstract`, `references` have `status` (required, allowed,
+recommended, unspecified), `value`, `source` and article_type. Unspecified means null;
+recommendations are not hard limits. Do not borrow another article type's numeric caps.
+Main/supplementary legend inventories and an explicitly required reference-number separator
+are presentation rules, stored in the journal plan/manifest/style, not edits to the master.
+
 ## Purpose
 Choose a legitimate current SCIE venue that maximises realistic acceptance probability,
 then freeze its actual author instructions and Word-format rules.

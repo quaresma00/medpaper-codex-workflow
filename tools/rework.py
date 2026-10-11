@@ -391,8 +391,9 @@ def _cmd_mark(args, project: Path, state: State) -> int:
         raise ValueError(f"unknown item {args.item}")
     if len(args.summary.strip()) < 30:
         raise ValueError("mark summary must state what changed in at least 30 characters")
-    if not args.changed_file:
-        raise ValueError("mark requires at least one --changed-file")
+    checked_files = []
+    if not args.changed_file and not getattr(args,"checked_file",[]):
+        raise ValueError("mark needs --changed-file or --checked-file evidence")
     if not args.validated_by:
         raise ValueError("mark requires at least one --validated-by check or inspection")
     changed = []
@@ -405,7 +406,19 @@ def _cmd_mark(args, project: Path, state: State) -> int:
             raise ValueError(f"changed file does not exist: {rel}")
         normalized = Path(rel).as_posix()
         changed_names.add(normalized)
-        changed.append({"path": normalized, "sha256": _sha256_file(source)})
+        proof = {"path":normalized,"sha256":_sha256_file(source)}
+        if revision.get("baseline",{}).get(normalized,"").casefold() == proof["sha256"].casefold():
+            checked_files.append(proof)
+        else:
+            changed.append(proof)
+    for rel in getattr(args,"checked_file",[]):
+        normalized, source = scoped._safe_path(project,rel)
+        if not source.is_file() or normalized not in revision.get("baseline",{}):
+            raise ValueError("checked-only source must exist in the round's baseline")
+        digest = _sha256_file(source)
+        if revision["baseline"][normalized].casefold() != digest.casefold():
+            raise ValueError("checked-only source changed; use --changed-file")
+        checked_files.append({"path":normalized,"sha256":digest}); changed_names.add(normalized)
     required_sources = {Path(rel).as_posix() for rel in item.get("affected_sources", [])}
     missing_sources = sorted(required_sources - changed_names)
     if missing_sources:
@@ -413,7 +426,7 @@ def _cmd_mark(args, project: Path, state: State) -> int:
             "mark must hash every declared affected source; missing: " + ", ".join(missing_sources)
         )
     item.update({
-        "status": "done", "resolution": args.summary.strip(), "changed_files": changed,
+        "status": "done", "resolution": args.summary.strip(), "changed_files": changed, "checked_files":checked_files,
         "validated_by": args.validated_by, "completed_at": _now(),
     })
     revision["updated_at"] = _now()
@@ -443,7 +456,7 @@ def _cmd_close(args, state: State) -> int:
         if not 0 <= (datetime.now(timezone.utc) - checked_at).total_seconds() < 86400:
             raise ValueError("scoped validation expired; rerun checks before closing")
         for item in revision["items"]:
-            for receipt in item.get("changed_files", []):
+            for receipt in [*item.get("changed_files", []),*item.get("checked_files", [])]:
                 if not scoped.renewable(receipt["path"]) and _sha256_file(state.dir.parent / receipt["path"]) != receipt["sha256"]:
                     raise ValueError("a marked file changed; mark its final version again before closing")
         scoped.refresh_evidence(state.dir.parent, registry.load(state.config()), state, revision)
@@ -479,7 +492,10 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "refresh", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("--input", help="known affected input for a discovered dependency")
+    parser.add_argument("--output", help="newly discovered project-relative consumer")
+    parser.add_argument("--checked-file",action="append",default=[],help="inspected but unchanged source")
     parser.add_argument("--full", action="store_true", help="include completed feedback items")
     parser.add_argument("--sealed", action="store_true", help="user already asked to apply this complete batch now")
     parser.add_argument("--scope", choices=["full", "targeted"], default="targeted")
@@ -502,6 +518,13 @@ def main() -> int:
         state = State(project, pipe.layout.get("state_dir", ".wf")).load()
         if args.command == "status":
             return _cmd_status(state, args.full)
+        if args.command == "depend":
+            if not args.input or not args.output or not args.why:
+                raise ValueError("depend requires --input, --output and --why")
+            path, revision = _load_round(state)
+            scoped.add_dependency(project,pipe,path,revision,args.input,args.output,args.why)
+            print("Discovered dependency added; feedback/history preserved, validation invalidated")
+            return 0
         if args.command == "refresh":
             path, revision = _load_round(state)
             if revision.get("schema_version") != 2 or revision.get("status") != "active":

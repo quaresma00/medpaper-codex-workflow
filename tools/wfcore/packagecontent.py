@@ -95,13 +95,24 @@ def build_baseline(project: Path) -> dict:
         if not path.is_file():
             raise ValueError(f"manifest DOCX missing: {rel}")
         role = str(item.get("role", "")).strip().casefold()
-        source_raw = str(item.get("source") or DEFAULT_SOURCES.get(role, "")).strip()
+        from .buildproof import load as build_receipts, content_digest, inputs_current
+        receipt = build_receipts(project).get(rel, {})
+        source_raw = str(item.get("source") or item.get("build_entrypoint") or
+                         next(iter(receipt.get("entrypoints", [])), "") or DEFAULT_SOURCES.get(role, "")).strip()
         record = {
             "path": rel,
             "role": role,
             "binary_sha256": _sha256_file(path),
             "visible_text_sha256": _sha256_bytes(visible_text(path).encode("utf-8")),
+            "content_sha256": content_digest(path),
         }
+        if receipt:
+            if not inputs_current(receipt) or content_digest(path) != receipt.get("content_sha256"):
+                raise ValueError(f"{rel}: actual builder inputs/content changed; rebuild, do not bless manual text edits")
+            record["build"] = receipt
+        upstream = {r: _sha256_file(_safe_path(project,r)[1]) for r in item.get("source_files", [])}
+        if upstream:
+            record["upstream_sha256"] = upstream
         if source_raw:
             source_rel, source_path = _safe_path(project, source_raw)
             if not source_path.is_file():
@@ -127,7 +138,8 @@ def write_baseline(project: Path, *, replace: bool = False) -> Path:
         raise ValueError(f"{BASELINE_REL} already exists; rebuild at S23 and use --replace")
     payload = build_baseline(project)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    from .readiness import atomic_json
+    atomic_json(output, payload)
     return output
 
 
@@ -181,12 +193,25 @@ def verify_baseline(project: Path) -> tuple[bool, list[str], int]:
         except (OSError, ValueError) as exc:
             problems.append(f"{rel}: {exc}")
             continue
-        if current_text != item.get("visible_text_sha256"):
+        from .buildproof import content_digest
+        text_changed = (content_digest(path) != item["content_sha256"] if item.get("content_sha256")
+                        else current_text != item.get("visible_text_sha256"))
+        if text_changed:
             problems.append(
                 f"{rel}: visible Word text changed after S23; route to the owning source stage and rebuild"
             )
         elif current_binary != item.get("binary_sha256"):
             formatting_only += 1
+        for source, expected in item.get("upstream_sha256", {}).items():
+            try:
+                if _sha256_file(_safe_path(project,source)[1]) != expected:
+                    problems.append(f"{rel}: upstream {source} changed; rebuild its actual consumer")
+            except (OSError,ValueError) as exc:
+                problems.append(f"{rel}: upstream missing/invalid: {exc}")
+        if item.get("build"):
+            from .buildproof import inputs_current
+            if not inputs_current(item["build"]):
+                problems.append(f"{rel}: actual direct/upstream build inputs drifted")
         source_raw = str(item.get("source", "")).strip()
         if source_raw:
             try:
@@ -205,4 +230,3 @@ def verify_baseline(project: Path) -> tuple[bool, list[str], int]:
     if formatting_only:
         detail += f"; {formatting_only} binary change(s) are formatting-only"
     return True, [detail], len(records)
-

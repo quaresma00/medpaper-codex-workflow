@@ -1,5 +1,11 @@
 # Quality-preserving execution
 
+For composed sources, journal display migration, inspected-only files and final Word repair,
+read `source-aligned-validation.md`. A full round proof may be reused unchanged for 24 hours;
+that is distinct from the 120-second pure-check cache. Cosmetic changes retain scientific
+freezes and do not rehash the whole raw population; changed scientific inputs still require
+their original integrity checks. Final portal counts use typed article-specific requirements.
+
 Use this at S06/S07, when collecting feedback, and when producing a journal package.
 Keep the 25 stages. A checkpoint does not authorize reducing scope or ending an unblocked task.
 

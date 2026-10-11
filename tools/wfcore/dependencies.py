@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def closure(project: Path, changed: list[str], *, change_type: str = "scientific",
-            baseline_documents: dict | None = None) -> list[str]:
+            baseline_documents: dict | None = None, extra_edges: list | None = None) -> list[str]:
     if change_type not in {"scientific", "layout", "wording", "administrative"}:
         raise ValueError("unknown change type")
     edges: dict[str, set[str]] = {}
@@ -130,6 +130,9 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
     link("00_input/author_info.json", "08_submission/cover_letter.md")
     link("08_submission/integration/statements.md", "08_submission/integration/full_manuscript.md")
     link("08_submission/integration/figure_legends.md", "08_submission/integration/full_manuscript.md")
+    for item in read("08_submission/bundle/manifest.json").get("items",[]):
+        link("08_submission/integration/artifact_plan.json",item.get("file"))
+        link("08_submission/integration/presentation_map.json",item.get("file"))
     link("06_refs/library.json", "06_refs/refs.bib")
     link("06_refs/library.json", "06_refs/refs.ris")
     link("06_refs/library.json", "06_refs/verified.json")
@@ -144,6 +147,8 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
     }
     for item in read("08_submission/bundle/manifest.json").get("items", []):
         sources = item.get("source_files", role_sources.get(item.get("role"), []))
+        sources = [*sources, *([item["source"]] if item.get("source") else []),
+                   *([item["build_entrypoint"]] if item.get("build_entrypoint") else [])]
         for source in sources:
             link(source, item.get("file"))
         if str(item.get("file", "")).endswith(".docx"):
@@ -154,6 +159,22 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
                    "08_submission/bundle/manifest.json"):
         link(source, "08_submission/portal_fields.json")
     # Explicit additional consumers cover shared supplements and project-specific builders.
+    from .buildproof import load as build_receipts, project_inputs
+    for output, receipt in build_receipts(project).items():
+        for source in project_inputs(project, receipt):
+            link(source, output)
+    journal_plan=read("08_submission/integration/artifact_plan.json")
+    for group in groups:
+        for entry in journal_plan.get(group,[]):
+            outputs=[entry[k] for k in ("file","pdf","tiff") if entry.get(k)]
+            if "figures" in group and entry.get("file"):
+                stem=Path(entry["file"]).stem
+                outputs += [f"08_submission/integration/figure_qc/{stem}{suffix}" for suffix in
+                            (".artist.json",".render.svg",".rmeta.json")]
+            for source in [entry.get("script"),*entry.get("source_results",[]),"08_submission/integration/artifact_plan.json"]:
+                for output in outputs:link(source,output)
+    for row in extra_edges or []:
+        link(row["input"], row["output"])
     # This augments safe defaults; missing metadata never narrows scientific dependencies.
     for entry in plan.get("dependencies", []):
         for source in entry.get("source_files", []):

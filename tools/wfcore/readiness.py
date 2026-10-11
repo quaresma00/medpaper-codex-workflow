@@ -41,9 +41,9 @@ def _populated(value) -> bool:
     return True
 
 
-def writing_sources(project: Path) -> dict[str, str]:
+def writing_sources(project: Path, *, validate_analysis: bool = True) -> dict[str, str]:
     from analysis.reproduce import verify
-    defects = verify(project)
+    defects = verify(project) if validate_analysis else []
     if defects:
         raise ValueError("Analysis replay evidence: " + "; ".join(defects[:5]))
     contract, facts = load(project, CONTRACT), load(project, FACTS)
@@ -89,10 +89,10 @@ def freeze_writing(project: Path) -> dict:
     return payload
 
 
-def verify_writing(project: Path) -> list[str]:
+def verify_writing(project: Path, *, validate_analysis: bool = True) -> list[str]:
     try:
         frozen = load(project, FREEZE)
-        current = writing_sources(project)
+        current = writing_sources(project,validate_analysis=validate_analysis)
         if frozen.get("schema_version") != 1 or frozen.get("files") != current:
             return ["analysis, protocol or clinical story changed after S06; return to its owner and refreeze"]
     except (OSError, ValueError, TypeError) as exc:

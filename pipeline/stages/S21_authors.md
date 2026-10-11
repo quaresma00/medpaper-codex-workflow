@@ -1,5 +1,9 @@
 # S21 - Collect authors and administrative statements
 
+Declaration names/order follow the chosen journal's explicit requirements; where silent,
+use the relevant medical convention and already-read comparator papers, not a universal
+engineering template. Do not invent administrative facts or unrequested disclosures.
+
 ## Purpose
 Collect user-owned authorship and compliance facts only after the scientific manuscript has
 been assembled, independently reviewed, user-reviewed and matched to a journal.

@@ -52,17 +52,23 @@ def project_root() -> Path:
     return Path(raw).resolve() if raw else ROOT / "project"
 
 
-def planned_figure_ids(project: Path | None = None) -> list[str] | None:
+def planned_figure_ids(project: Path | None = None, scope: str = "all") -> list[str] | None:
     """Return every planned main/supplementary figure id, or None if the plan is unusable."""
     path = (project or project_root()) / "01_protocol/artifact_plan.json"
+    journal = (project or project_root()) / "08_submission/integration/artifact_plan.json"
+    if journal.is_file():
+        path = journal
     if not path.is_file():
         return None
     try:
         plan = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
+    groups={"all":("main_figures","supp_figures"),"main":("main_figures",),"supp":("supp_figures",)}
+    if scope not in groups:
+        raise ValueError("Legend scope must be main, supp or all")
     return [str(item.get("id", "")).strip()
-            for group in ("main_figures", "supp_figures")
+            for group in groups[scope]
             for item in plan.get(group, []) if str(item.get("id", "")).strip()]
 
 
@@ -240,6 +246,12 @@ def _set_run(run, font: str, size: float) -> None:
 
 def normalize_docx(path: Path, style: dict, kind: str) -> None:
     doc = Document(path)
+    # A Word save must not silently recompress scientific figure media.
+    setting = doc.settings.element.find(qn("w:doNotAutoCompressPictures"))
+    if setting is None:
+        setting = OxmlElement("w:doNotAutoCompressPictures")
+        doc.settings.element.append(setting)
+    setting.set(qn("w:val"), "1")
     font = str(style["font_family"])
     body_pt = float(style["body_font_pt"])
     title_pt = float(style["title_font_pt"])
@@ -288,10 +300,20 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
             p.style = section_style
             size = h1_pt
             _remove_heading_metadata(p)
+            # Invisible identity, not Word outline hierarchy. Survives normal Word saves.
+            bookmark = OxmlElement("w:bookmarkStart")
+            bookmark.set(qn("w:id"),str(10000+nonempty_seen))
+            slug = re.sub(r"[^a-z0-9]+","_",text.casefold()).strip("_")
+            bookmark.set(qn("w:name"),("medpaper_section_"+str(nonempty_seen)+"_"+slug)[:40])
+            p._p.insert(1 if p._p.pPr is not None else 0,bookmark)
+            end = OxmlElement("w:bookmarkEnd"); end.set(qn("w:id"),str(10000+nonempty_seen));p._p.append(end)
         elif re.match(r"^Heading [2-9]$", original, re.I):
             p.style = section_style
             size = h2_pt
             _remove_heading_metadata(p)
+        elif original in {"SectionHeading","Manuscript Title","ManuscriptTitle"}:
+            previous_size=next((run.font.size.pt for run in p.runs if run.font.size is not None),h1_pt)
+            size = title_pt if "Title" in original else previous_size if previous_size in {h1_pt,h2_pt} else h1_pt
         else:
             if original in {"Normal", "Body Text", "First Paragraph", "Compact"}:
                 p.style = body_style
@@ -357,8 +379,8 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
         if paragraph_text:
             paragraphs.append((paragraph_text, style_id))
     try:
-        start = next(i for i, (value, _) in enumerate(paragraphs)
-                     if value.casefold() == "figure legends") + 1
+        start = next(i for i, (value, paragraph_style) in enumerate(paragraphs)
+                     if value.casefold() == "figure legends" and paragraph_style=="SectionHeading") + 1
     except StopIteration:
         return ["Figure legends heading is missing"]
     headings: list[tuple[int, str, str]] = []
@@ -488,6 +510,46 @@ def audit_docx(path: Path, style: dict, kind: str = "",
             problems.append(f"{path.name}: built-in outline heading style remains on visible text")
             break
     text = docx_text(path)
+    separator=style.get("reference_number_separator")
+    if separator is not None and kind=="manuscript":
+        try:
+            from wfcore.submission import docx_sections
+            _,sections,_=docx_sections(path)
+            references=sections.get("References","")
+            observed=re.findall(r"(?m)^\s*\d+([.)\]])\s+",references)
+            if not observed:
+                # Word stores automatic list labels in numbering.xml, not in paragraph text.
+                with zipfile.ZipFile(path) as archive:
+                    numbering=ET.fromstring(archive.read("word/numbering.xml")) if "word/numbering.xml" in archive.namelist() else None
+                    styles=ET.fromstring(archive.read("word/styles.xml"))
+                nums={n.get(f"{{{W}}}numId"):n.find("w:abstractNumId",NS).get(f"{{{W}}}val") for n in numbering.findall("w:num",NS)} if numbering is not None else {}
+                abstracts={n.get(f"{{{W}}}abstractNumId"):n for n in numbering.findall("w:abstractNum",NS)} if numbering is not None else {}
+                active=False
+                for paragraph in root.findall(".//w:p",NS):
+                    paragraph_text="".join(t.text or "" for t in paragraph.findall(".//w:t",NS)).strip()
+                    ps=paragraph.find("w:pPr/w:pStyle",NS)
+                    sid=ps.get(f"{{{W}}}val","") if ps is not None else ""
+                    if sid in {"SectionHeading","Heading1"} and paragraph_text.casefold()=="references":active=True;continue
+                    if active and sid in {"SectionHeading","Heading1"}:break
+                    if not active:continue
+                    numpr=paragraph.find("w:pPr/w:numPr",NS)
+                    if numpr is None:
+                        st=styles.find(f"w:style[@w:styleId='{sid}']",NS)
+                        numpr=st.find("w:pPr/w:numPr",NS) if st is not None else None
+                    if numpr is None:continue
+                    numid=numpr.find("w:numId",NS);level=numpr.find("w:ilvl",NS)
+                    abstract=abstracts.get(nums.get(numid.get(f"{{{W}}}val") if numid is not None else ""))
+                    if abstract is None:continue
+                    lvl=abstract.find(f"w:lvl[@w:ilvl='{level.get(f'{{{W}}}val') if level is not None else '0'}']",NS)
+                    marker=lvl.find("w:lvlText",NS) if lvl is not None else None
+                    match=re.search(r"%\d([.)\]])",marker.get(f"{{{W}}}val","") if marker is not None else "")
+                    if match:observed.append(match[1])
+            if not observed:
+                problems.append(f"{path.name}: reference numbering separator not observable in actual text; inspect Word numbering/CSL")
+            elif any(value!=separator for value in observed):
+                problems.append(f"{path.name}: actual reference numbering separator differs from journal rule {separator!r}")
+        except (OSError,ValueError,KeyError) as exc:
+            problems.append(f"{path.name}: reference delimiter inspection failed: {exc}")
     if "\u2193" in text:
         problems.append(f"{path.name}: forbidden down-arrow character remains")
     if kind == "manuscript":
@@ -535,10 +597,11 @@ def run_pandoc(inputs: list[Path], output: Path, bibliography: Path | None,
     if csl:
         cmd += [f"--csl={csl}"]
     cmd += ["--metadata=link-citations:false", "-o", str(output)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    from wfcore.execution import run_logged
+    proc = run_logged(cmd,project=project_root(),timeout=180)
     combined = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode:
-        raise RuntimeError(combined.strip() or f"pandoc exited {proc.returncode}")
+        raise RuntimeError((combined.strip() or f"pandoc exited {proc.returncode}")[-2000:]+f"; full log: {proc.log_path}")
     if re.search(r"could not find citation|unresolved", combined, re.I):
         raise RuntimeError("pandoc reported an unresolved citation: " + combined.strip())
 
@@ -553,6 +616,9 @@ def build(args) -> int:
         print("style config must require black text and prohibit external hyperlinks", file=sys.stderr)
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    from wfcore.packagefreeze import _sha256
+    actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl] if p is not None]
+    before = {p:_sha256(p) for p in actual_inputs}
     try:
         source_problems = _source_problems(args.kind, args.input)
         if source_problems:
@@ -563,16 +629,49 @@ def build(args) -> int:
             run_pandoc(args.input, candidate, args.bibliography, args.csl)
             normalize_docx(candidate, style, args.kind)
             problems = audit_docx(candidate, style, args.kind,
-                                  planned_figure_ids() if args.kind == "manuscript" else None,
+                                  planned_figure_ids(scope=getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all"))
+                                  if args.kind in {"manuscript","figure_legends"} else None,
                                   figure_legend_cap())
             if problems:
                 raise ValueError("DOCX audit failed: " + "; ".join(problems))
+            if any(not p.is_file() or _sha256(p)!=h for p,h in before.items()):
+                raise ValueError("DOCX input changed during build; previous output preserved")
             candidate.replace(args.output)
     except Exception as exc:  # noqa: BLE001
         print(f"DOCX build failed: {exc}", file=sys.stderr)
         return 2
-    record_build(project_root(), args.output, [*args.input, args.style_config, args.bibliography, args.csl])
+    project = project_root()
+    plan = project/"08_submission/integration/artifact_plan.json"
+    if not plan.is_file():
+        plan = project/"01_protocol/artifact_plan.json"
+    observed = [*args.input,args.style_config,args.bibliography,args.csl,Path(__file__),
+                project.parent/"pipeline/pipeline.toml", plan if plan.is_file() else None]
+    observed = [p for p in observed if p is not None and p.is_file()]
+    record_build(project, args.output, observed,
+                 entrypoints=args.input,tool="tools/manuscript/build_docx.py",
+                 parameters={"kind":args.kind,"style":str(args.style_config),"bibliography":str(args.bibliography or ""),
+                             "csl":str(args.csl or ""),"legend_scope":getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all")})
     print(f"built and audited {args.kind} -> {args.output}")
+    return 0
+
+
+def finalize(args) -> int:
+    """Clean task-owned Word after layout repair; never recapture changed text."""
+    from wfcore.revision import guard_outputs
+    from wfcore.buildproof import content_digest
+    project = project_root();guard_outputs(project,[args.output])
+    before = content_digest(args.output)
+    style = load_style(args.style_config)
+    with tempfile.TemporaryDirectory(prefix="medpaper-finalize-",dir=args.output.parent) as folder:
+        candidate=Path(folder)/args.output.name;shutil.copy2(args.output,candidate)
+        normalize_docx(candidate,style,args.kind)
+        if content_digest(candidate) != before:
+            raise ValueError("Final cleanup changed visible content; prior Word preserved")
+        problems=audit_docx(candidate,style,args.kind,planned_figure_ids() if args.kind=="manuscript" else None,figure_legend_cap())
+        if problems:
+            raise ValueError("Final cleanup QA failed: "+"; ".join(problems))
+        candidate.replace(args.output)
+    print("Word cleanup complete; render this final file, then bind baseline/portal and user approval")
     return 0
 
 
@@ -598,7 +697,9 @@ def audit_manifest(args) -> int:
         if role in TEXT_ROLES and path.suffix.lower() != ".docx":
             problems.append(f"{role}: narrative upload must be DOCX, got {path.name}")
         if path.suffix.lower() == ".docx":
-            problems += audit_docx(path, style, role, planned, legend_cap)
+            scope=item.get("legend_scope",style.get("figure_legend_scope","all"))
+            wanted=planned_figure_ids(scope=scope) if role in {"manuscript","figure_legends"} else planned
+            problems += audit_docx(path, style, role, wanted, legend_cap)
     for role in ("manuscript", "title_page", "cover_letter"):
         if not any(p.suffix.lower() == ".docx" for p in roles.get(role, [])):
             problems.append(f"manifest lacks a DOCX item for role '{role}'")
@@ -624,7 +725,13 @@ def main() -> int:
     p.add_argument("--style-config", type=Path, required=True)
     p.add_argument("--bibliography", type=Path)
     p.add_argument("--csl", type=Path)
+    p.add_argument("--legend-scope",choices=["main","supp","all"],help="actual journal legend inventory")
     p.set_defaults(fn=build)
+    p = sub.add_parser("finalize",help="clean after Word layout fixes without changing content")
+    p.add_argument("--kind",required=True)
+    p.add_argument("--output",type=Path,required=True)
+    p.add_argument("--style-config",type=Path,required=True)
+    p.set_defaults(fn=finalize)
     p = sub.add_parser("audit")
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--style-config", type=Path, required=True)

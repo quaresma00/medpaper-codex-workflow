@@ -49,6 +49,13 @@ class Ctx:
 
     # ---- convenience ---------------------------------------------------
     def p(self, rel: str) -> Path:
+        # Journal presentation is a separate namespace; scientific checks keep the master.
+        if self.stage.id.startswith(("S20_","S21_","S22_","S23_","S24_","S25_")):
+            overrides = {"01_protocol/artifact_plan.json":"08_submission/integration/artifact_plan.json",
+                         "05_figures/legends.md":"08_submission/integration/figure_legends.md",
+                         "04_tables/table_captions.md":"08_submission/integration/table_captions.md"}
+            if rel in overrides and (self.project/overrides[rel]).is_file():
+                rel = overrides[rel]
         return self.project / rel
 
     def exists(self, rel: str) -> bool:

@@ -14,6 +14,9 @@ Before doing project work, run:
 `status` is compact/local. Read `tools/wf.py card` for active-stage instructions; use
 `status --full` only for diagnostics. Read `reference/efficient-quality.md` at S06/S07,
 when processing feedback and before building/finalizing a journal package.
+For composed builds, journal-only reorganisation and Word repair, also read
+`reference/source-aligned-validation.md`. Actual build receipts, not role guesses, determine
+consumers. Preserve checked-only sources; extend discovered dependencies in the same round.
 
 If the virtual environment does not exist yet, run
 `uv run --python 3.13 python bootstrap.py`. After a context compaction, run `status` again.

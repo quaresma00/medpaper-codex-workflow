@@ -1,5 +1,10 @@
 # Scoped user revisions (v1.7)
 
+For discovered dependencies, package-level presentation migration and the final Word chain,
+read `source-aligned-validation.md`. `rework.py depend` adds a real consumer without rewriting
+feedback. `mark --checked-file` records an unchanged inspected source separately; never touch
+a correct file to manufacture a change. A repeated unchanged check reuses its exact evidence.
+
 All revisions remain inside the medpaper state machine. Reading or editing files directly is
 an implementation step, not permission to bypass the owning stage, source of truth or gates.
 An owning stage supplies rules, not a navigation target. New revision rounds keep their

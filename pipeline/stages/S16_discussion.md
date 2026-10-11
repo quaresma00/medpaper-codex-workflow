@@ -1,5 +1,9 @@
 # S16 - Discussion
 
+Use the already-read close medical comparators to settle the narrative before Word build.
+Default to connected paragraphs, not a subheading for every argument. Add subheadings only
+when the actual design, target-journal examples or explicit author rules support them.
+
 ## Purpose
 Interpret the finding against the literature you actually read. One file, this stage only.
 

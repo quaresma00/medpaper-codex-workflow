@@ -13,7 +13,7 @@ def reader_review_coverage(ctx: Ctx) -> Result:
 
 @check("writing_ready")
 def writing_ready(ctx: Ctx) -> Result:
-    problems = verify_writing(ctx.project)
+    problems = verify_writing(ctx.project,validate_analysis=not ctx.spec.get("reuse_analysis",False))
     return Result(not problems, "writing_ready", "; ".join(problems[:8]) or
                   "analysis contract and clinical story match the S06 freeze")
 

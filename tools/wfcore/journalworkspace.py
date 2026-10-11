@@ -13,6 +13,7 @@ from .scientificfreeze import verify as verify_scientific_freeze
 SCHEMA_VERSION = 1
 MANIFEST_REL = "08_submission/integration/journal_workspace.json"
 SOURCE_MAP = {
+    "01_protocol/artifact_plan.json": "08_submission/integration/artifact_plan.json",
     "07_manuscript/full_manuscript.md": "08_submission/integration/full_manuscript.md",
     "07_manuscript/supplementary_methods.md": "08_submission/integration/supplementary_methods.md",
     "07_manuscript/statements.md": "08_submission/integration/statements.md",

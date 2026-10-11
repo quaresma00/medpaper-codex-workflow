@@ -23,6 +23,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RFigureTests(unittest.TestCase):
+    def test_journal_r_renderer_uses_derived_sources_and_preserves_scientific_outputs(self):
+        self.require_r()
+        from figures.render_r import render
+        self.state.data["current"]="S23_package";self.state.save()
+        entry=copy.deepcopy(self.entry)
+        entry.update({"script":"08_submission/integration/figures/Figure1.R",
+                      "file":"08_submission/integration/figures/Figure1.png",
+                      "pdf":"08_submission/integration/figures/Figure1.pdf"})
+        self.data("08_submission/integration/artifact_plan.json",{"main_figures":[entry]})
+        self.text(entry["script"],self.script.read_text().replace("05_figures/out/Figure1","08_submission/integration/figures/Figure1"))
+        original=self.text(self.entry["file"],"Frozen original figure sentinel")
+        result=render(self.project,"Figure 1")
+        self.assertEqual(original.read_text(),"Frozen original figure sentinel")
+        self.assertTrue(Path(result["png"]).is_file())
+        self.assertIn("08_submission",result["audit"])
+        entry["file"]=self.entry["file"];self.data("08_submission/integration/artifact_plan.json",{"main_figures":[entry]})
+        with self.assertRaises(ValueError):render(self.project,"Figure 1")
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="medpaper-r-figures-")
         self.addCleanup(self.temporary.cleanup)

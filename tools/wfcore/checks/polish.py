@@ -24,7 +24,7 @@ LEGACY_SECTIONS = ["introduction.md", "methods.md", "supplementary_methods.md", 
 def _wanted_sections(ctx: Ctx) -> set[str]:
     if ctx.p("08_submission/integration/full_manuscript.md").exists():
         return {name for name in ("full_manuscript.md", "supplementary_methods.md",
-                                  "title_page.md", "statements.md")
+                                  "title_page.md", "statements.md","figure_legends.md","supplementary_figure_legends.md")
                 if ctx.p(f"08_submission/integration/{name}").exists()}
     return {name for name in LEGACY_SECTIONS if ctx.p(f"07_manuscript/{name}").exists()}
 
@@ -153,55 +153,35 @@ def style_consistent(ctx: Ctx) -> Result:
 
 @check("journal_limits_met")
 def journal_limits_met(ctx: Ctx) -> Result:
-    """Word and reference counts against the guidelines fetched at S20."""
-    gx = "08_submission/guidelines_extract.md"
-    if not ctx.p(gx).exists():
-        return Result(False, "journal_limits_met", f"{gx} missing - fetch the guidelines first")
-    text = ctx.read(gx)
-    rep = _report(ctx)
-    if isinstance(rep, Result):
-        return rep
-    counts = {Path(r["file"]).name: r["words"] for r in rep.get("readability", [])}
-
-    limits = _declared_limits(text)
-    if not limits:
-        return Result(
-            False,
-            "journal_limits_met",
-            "no word or reference limit could be found in guidelines_extract.md",
-            ["Quote the journal's actual limits under 'Word limits', e.g. "
-             "'Abstract: 250 words', 'Main text: 3500 words', 'References: max 50'.",
-             "If the journal states no limit, write 'no stated limit' explicitly."],
-        )
-
-    if ctx.p("08_submission/integration/full_manuscript.md").exists():
-        sections = _canonical_section_counts(ctx.read("08_submission/integration/full_manuscript.md"))
-        abstract_words = sections.get("abstract", 0)
-        body_words = sum(sections.get(k, 0) for k in
-                         ("introduction", "methods", "results", "discussion"))
-    else:
-        abstract_words = counts.get("abstract.md", 0)
-        body_words = sum(v for k, v in counts.items()
-                         if k in ("introduction.md", "methods.md", "results.md", "discussion.md"))
-    problems, notes = [], []
-    for kind, cap in limits.items():
-        if kind == "abstract" and abstract_words:
-            got = abstract_words
-            (problems if got > cap else notes).append(f"abstract {got}/{cap} words")
-        elif kind == "main":
-            (problems if body_words > cap else notes).append(f"main text {body_words}/{cap} words")
-        elif kind == "references":
-            n = _ref_count(ctx)
-            (problems if n and n > cap else notes).append(f"references {n}/{cap}")
-    if problems:
-        return Result(
-            False,
-            "journal_limits_met",
-            "over the journal's limit: " + "; ".join(problems),
-            ["Cut content, do not compress into denser jargon.",
-             "If cutting would remove something a reviewer needs, move it to the supplement."],
-        )
-    return Result(True, "journal_limits_met", "within journal limits: " + "; ".join(notes))
+    """Use explicitly sourced, article-specific fields; unknown limits remain null."""
+    from ..journalrules import limits, compare
+    from ..submission import docx_sections, word_count
+    try:
+        requirements,rules = limits(ctx.project)
+        include = requirements["word_count"]["include_sections"]
+        if not isinstance(include,list) or not include:
+            raise ValueError("Explicit journal main-text section scope is missing")
+        manifest = ctx.read_json("08_submission/bundle/manifest.json") if ctx.exists("08_submission/bundle/manifest.json") else {}
+        final = [r for r in manifest.get("items",[]) if r.get("role") == "manuscript"]
+        if ctx.stage.index >= ctx.pipeline.stage("S23_package").index and len(final) == 1:
+            _,parts,_ = docx_sections(ctx.p(final[0]["file"]),requirements.get("section_aliases"))
+            counts = {k:word_count(v) for k,v in parts.items()}
+        else:
+            rel = "08_submission/integration/full_manuscript.md"
+            if ctx.exists(rel):
+                counts = _canonical_section_counts(ctx.read(rel))
+                counts = {k.title():v for k,v in counts.items()}
+            else:
+                counts = {name:word_count(ctx.read(f"07_manuscript/{name.lower()}.md"))
+                          for name in [*include,"Abstract"] if ctx.exists(f"07_manuscript/{name.lower()}.md")}
+        missing = [name for name in [*include,"Abstract"] if name not in counts]
+        if missing:
+            raise ValueError("Journal-count sections missing: "+", ".join(missing))
+        actual = {"main":sum(counts[name] for name in include),"abstract":counts["Abstract"],"references":_ref_count(ctx)}
+        problems = compare(actual,rules)
+        return Result(not problems,"journal_limits_met","; ".join(problems) or "Article-specific structured limits met; unspecified caps not invented")
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        return Result(False,"journal_limits_met",str(exc),["Resolve the actual S20 requirement fields, not numbers found by regex in guide prose."])
 
 
 # ---------------------------------------------------------------------------
@@ -274,4 +254,3 @@ def _canonical_section_counts(text: str) -> dict[str, int]:
         block = re.sub(r"(?m)^Keywords\s*:.*$", "", block, flags=re.I)
         out[name] = len(re.findall(r"[A-Za-z][A-Za-z'-]*", block))
     return out
-

@@ -29,6 +29,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
 # Component fallback is retained for focused lint calls. Journal polishing itself uses the
 # derived integration manuscript and never edits the S19 scientific master.
@@ -47,6 +48,8 @@ CANONICAL_ORDER = [
     "08_submission/integration/supplementary_methods.md",
     "08_submission/integration/title_page.md",
     "08_submission/integration/statements.md",
+    "08_submission/integration/figure_legends.md",
+    "08_submission/integration/supplementary_figure_legends.md",
 ]
 SNAPSHOT_DIR = "08_submission/integration/prepolish"
 REPORT = "08_submission/integration/polish_report.json"
@@ -60,7 +63,7 @@ NUM_RE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w])")
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+.*$", re.M)
 # P-value notation is a style matter this stage is meant to normalize
 # (P = 0.000 -> P < 0.001), so its digits are excluded from fact comparison.
-PVAL_RE = re.compile(r"\b[Pp]\s*[<>=]\s*\.?\d*\.?\d+", re.I)
+PVAL_RE = re.compile(r"\b[Pp]\s*[<>=≤≥]\s*(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?",re.I)
 
 
 # ===========================================================================
@@ -234,7 +237,16 @@ def facts(text: str) -> dict:
                    for a in ART_RE.findall(b)})
     stripped = PVAL_RE.sub(" ", ART_RE.sub(" ", CITE_RE.sub(" ", b)))
     nums = sorted(NUM_RE.findall(_normalize_for_facts(stripped)))
-    return {"numbers": nums, "citekeys": keys, "artifacts": arts}
+    pvalues=[]
+    for token in PVAL_RE.findall(b):
+        match=re.search(r"([<>=≤≥])\s*((?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)",token)
+        if match:
+            operator,value=match.groups()
+            from decimal import Decimal
+            operator={"≤":"<=","≥":">="}.get(operator,operator)
+            normalized="<0.001" if operator=="=" and Decimal(value)==0 else operator+str(Decimal(value).normalize())
+            pvalues.append(normalized)
+    return {"numbers":nums,"citekeys":keys,"artifacts":arts,"pvalues":sorted(pvalues)}
 
 
 # ===========================================================================
@@ -501,6 +513,26 @@ def cmd_snapshot(args) -> int:
     proj = project_root()
     dest = proj / SNAPSHOT_DIR
     docs = sections()
+    from wfcore.revision import active
+    from wfcore.packagefreeze import _sha256
+    from wfcore.readiness import atomic_json
+    import hashlib
+    round_id=(active(proj) or {}).get("round_id")
+    existing=dest/"facts.json"
+    if existing.is_file() and args.force and round_id and not getattr(args,"new_round",False):
+        previous=json.loads(existing.read_text(encoding="utf-8"))
+        if previous.get("round_id")==round_id and any(previous.get("source_hashes",{}).get(rel)!=_sha256(proj/rel) for rel,_ in docs):
+            raise ValueError("Same-round facts changed after snapshot; force cannot bless post-edit content")
+    if getattr(args,"new_round",False):
+        previous=json.loads(existing.read_text(encoding="utf-8")) if existing.is_file() else {}
+        if not round_id or round_id==previous.get("round_id"):
+            raise ValueError("New snapshot requires a different active feedback round; do not reset a failed same-round comparison")
+        baseline=(active(proj) or {}).get("baseline",{})
+        if any(baseline.get(rel,"").casefold()!=_sha256(proj/rel).casefold() for rel,_ in docs if rel in baseline):
+            raise ValueError("Take the new round snapshot before editing its manuscript sources")
+        if previous:
+            atomic_json(proj/".wf/polish_snapshots"/(previous.get("snapshot_id","legacy")+".json"),previous)
+        args.force=True
     if not docs:
         print("nothing to snapshot: no manuscript section files exist yet")
         return 1
@@ -515,9 +547,10 @@ def cmd_snapshot(args) -> int:
         name = Path(rel).name
         shutil.copy2(proj / rel, dest / name)
         facts_index[rel] = facts(text)
-    (dest / "facts.json").write_text(
-        json.dumps({"snapshot_at": now(), "files": facts_index}, indent=2, ensure_ascii=False),
-        encoding="utf-8")
+    source_hashes={rel:_sha256(proj/rel) for rel,_ in docs}
+    snapshot_id=hashlib.sha256(json.dumps({"round":round_id,"sources":source_hashes},sort_keys=True).encode()).hexdigest()
+    atomic_json(dest/"facts.json",{"schema_version":2,"snapshot_at":now(),"round_id":round_id,
+                                 "snapshot_id":snapshot_id,"source_hashes":source_hashes,"files":facts_index})
     print(f"snapshotted {len(docs)} section(s) -> project/{SNAPSHOT_DIR}/")
     for rel, f in facts_index.items():
         print(f"  {Path(rel).name:<20} {len(f['numbers']):>4} numbers  "
@@ -619,7 +652,13 @@ def cmd_diff(args) -> int:
         print(f"no snapshot at project/{SNAPSHOT_DIR}/facts.json")
         print("run `.venv/Scripts/python.exe tools/text/polish.py snapshot` BEFORE polishing")
         return 1
-    before = json.loads((snap / "facts.json").read_text(encoding="utf-8"))["files"]
+    index=json.loads((snap/"facts.json").read_text(encoding="utf-8"))
+    from wfcore.presentation import MAP,check as check_migration
+    if (proj/MAP).is_file():
+        problems=check_migration(proj,snap,index,facts)
+        print("\n".join(problems) if problems else "Explicit package migration preserves approved facts/citations; scientific master unchanged")
+        return 2 if problems else 0
+    before = index["files"]
 
     problems, rows = [], []
     for rel, expect in before.items():
@@ -630,7 +669,9 @@ def cmd_diff(args) -> int:
         got = facts(p.read_text(encoding="utf-8", errors="replace"))
         old_words = len(body((snap / Path(rel).name).read_text(encoding="utf-8", errors="replace")).split())
         new_words = len(body(p.read_text(encoding="utf-8", errors="replace")).split())
-        for field, label in (("numbers", "number"), ("citekeys", "citekey"), ("artifacts", "artifact ref")):
+        fields=[("numbers","number"),("citekeys","citekey"),("artifacts","artifact ref")]
+        if "pvalues" in expect: fields.append(("pvalues","P value"))
+        for field, label in fields:
             lost = sorted(Counter(expect[field]) - Counter(got[field]))
             added = sorted(Counter(got[field]) - Counter(expect[field]))
             if lost:
@@ -664,6 +705,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("snapshot", help="freeze the pre-polish manuscript (run first)")
+    p.add_argument("--new-round",action="store_true",help="versioned pre-edit snapshot for a different feedback round")
     p.add_argument("--force", action="store_true")
     p.set_defaults(fn=cmd_snapshot)
 
@@ -681,4 +723,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

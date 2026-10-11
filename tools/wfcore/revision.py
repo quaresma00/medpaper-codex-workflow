@@ -59,10 +59,25 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
               for folder in ("tools", "pipeline", "reference") for p in (paths.repo_root() / folder).rglob("*")
               if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
     files = snapshot(project) if files is None else files
+    from .buildproof import load as build_receipts
+    observed={}
+    for output,receipt in build_receipts(project).items():
+        if output not in revision.get("allowed_files",[]):continue
+        inputs={}
+        for name in receipt.get("sources",{}):
+            if name in receipt.get("engine_inputs",[]):continue
+            path=Path(name)
+            try:
+                rel=path.resolve().relative_to(project.resolve()).as_posix()
+                digest=files.get(rel)
+            except ValueError:
+                digest=None
+            inputs[name]=digest if digest is not None else _sha256(path) if path.is_file() else None
+        observed[output]={"inputs":inputs,"entrypoints":receipt.get("entrypoints",[]),"parameters":receipt.get("parameters",{})}
     payload = {"files": {r: h for r, h in files.items() if not renewable(r)},
                "engine": engine, "decisions": state.data.get("decisions", {}),
                "config": state.config(), "scope": revision.get("allowed_files", []),
-               "checks": revision.get("checks", []), "stages": revision.get("validation_stages", [])}
+               "checks": revision.get("checks", []), "stages": revision.get("validation_stages", []),"observed_build_inputs":observed}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
@@ -117,7 +132,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     rebuild = set()
     for item in revision["items"]:
         rebuild.update(closure(project, item["affected_sources"], change_type=item["change_type"],
-                               baseline_documents=revision.get("baseline_documents")))
+                               baseline_documents=revision.get("baseline_documents"), extra_edges=revision.get("dependency_edges")))
     journal_change = any(i["kind"] == "journal" for i in revision["items"])
     if journal_change:
         # Choosing a different journal legitimately affects its whole derived package,
@@ -150,6 +165,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     if any(r.startswith("07_manuscript/") for r in rebuild):
         stages.add("S17_assemble")
     substantive = any(i["change_type"] == "scientific" for i in revision["items"])
+    scientific_inputs = substantive or any(r.startswith(("02_data/", "03_analysis/")) or r in {
+        "01_protocol/protocol_v1.md", "01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in sources)
     if substantive and revision["review_stage"] == "S19_human_review":
         stages.add("S18_independent_review")
         if any(r.startswith(("04_tables/", "05_figures/", "03_analysis/results/")) for r in rebuild):
@@ -167,6 +184,10 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
             # Pristine means a first journal copy, not a revised integration layer.
             if spec["check"] == "journal_workspace_ready":
                 spec = {**spec, "require_pristine": False}
+            if not scientific_inputs and spec["check"] == "data_acquisition_complete":
+                continue  # Unplanned raw/manifest drift is still rejected by scope/signature checks.
+            if not scientific_inputs and spec["check"] == "writing_ready":
+                spec = {**spec, "reuse_analysis": True}
             checks.append({"stage": sid, "spec": spec})
     consistency = ("manuscript_structure", "assembly_matches_sources", "supplementary_methods_clean",
                    "citekeys_resolve", "numbers_have_provenance", "artifact_refs_consistent")
@@ -179,6 +200,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
             if spec["check"] not in LIFECYCLE_CHECKS | {"outputs_exist", "md_sections", "decision_recorded"}:
                 checks.append({"stage": "S24_package_human_review", "spec": spec})
     unique = {json.dumps(row, sort_keys=True): row for row in checks}
+    if not scientific_inputs:
+        unique={k:row for k,row in unique.items() if row["spec"]["check"]!="data_acquisition_complete"}
     controls = set()
     for sid in stages:
         for output in pipeline.stage(sid).outputs:
@@ -196,6 +219,10 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         controls.add("07_manuscript/reconciliation.md")
     if "S22_polish" in stages:
         controls.update({"08_submission/integration/polish_report.json", "08_submission/integration/polish_log.md"})
+        controls.add("08_submission/integration/presentation_map.json")
+        controls.update("08_submission/integration/prepolish/"+name for name in
+                        ("facts.json","full_manuscript.md","supplementary_methods.md","title_page.md",
+                         "statements.md","figure_legends.md","supplementary_figure_legends.md"))
         if revision.get("resume_from_science") or any(i["change_type"] == "administrative" for i in revision["items"]):
             controls.update({"08_submission/integration/prepolish/" + name for name in
                              ("facts.json", "full_manuscript.md", "supplementary_methods.md", "title_page.md", "statements.md")})
@@ -208,6 +235,29 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
                      "reuse_files": sorted(set(revision.get("baseline", {})) - ((rebuild | controls) - REVIEW_OUTPUTS))})
 
 
+def add_dependency(project: Path, pipeline, path: Path, revision: dict, source: str, output: str, why: str) -> None:
+    """Extend a discovered consumer edge, not user feedback or permission to edit its inputs."""
+    if revision.get("schema_version") != 2 or revision.get("status") != "active" or len(why.strip()) < 30:
+        raise ValueError("dependency extension needs an active sealed round and a concrete reason")
+    source, _ = _safe_path(project, source); output, _ = _safe_path(project, output)
+    if source not in revision["allowed_files"]:
+        raise ValueError("dependency must originate in the existing affected closure")
+    if output.startswith((".wf/", "temp/", "02_data/raw/", "08_submission/releases/")):
+        raise ValueError("dependency cannot authorize raw, control or frozen-release writes")
+    if not any(i["change_type"]=="scientific" for i in revision["items"]) and (
+            output.startswith(("02_data/","03_analysis/")) or output in {
+                "01_protocol/protocol_v1.md","01_protocol/protocol_final.md","01_protocol/analysis_contract.json","01_protocol/study_facts.json"}):
+        raise ValueError("a presentation dependency cannot authorize scientific input/result changes")
+    if revision["review_stage"] == "S24_package_human_review" and not output.startswith("08_submission/"):
+        raise ValueError("journal dependency cannot authorize changing the scientific master")
+    row = {"input":source, "output":output, "why":why.strip()}
+    edges = revision.setdefault("dependency_edges", [])
+    if not any(e["input"] == source and e["output"] == output for e in edges):
+        edges.append(row)
+    plan_scope(project,pipeline,revision); revision.pop("validation",None)
+    atomic_json(path,revision)
+
+
 def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str, dict]:
     from . import checks
     from .checks import Ctx, Result
@@ -216,6 +266,8 @@ def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str,
     problems = scope_problems(project, revision, files)
     results = [Result(not problems, "revision_scope_unchanged", "; ".join(problems[:10]) or "unaffected files preserved")]
     seen = set()
+    from .gatecache import Receipts
+    receipts = Receipts(project,pipeline,state)
     for row in revision["checks"]:
         spec = row["spec"]
         contextual = spec["check"] in {"outputs_exist", "handoff_recorded", "decision_recorded", "reference_provenance"}
@@ -225,12 +277,18 @@ def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str,
         seen.add(identity)
         fn = checks.get(spec["check"])
         try:
-            result = fn(Ctx(pipeline, state, project, pipeline.stage(row["stage"]), spec))
+            cache_id = receipts.identity(pipeline.stage(row["stage"]),spec)
+            result = receipts.get(cache_id)
+            if result is None:
+                result = fn(Ctx(pipeline, state, project, pipeline.stage(row["stage"]), spec))
+                if cache_id == receipts.identity(pipeline.stage(row["stage"]),spec):
+                    receipts.put(cache_id,result)
         except Exception as exc:
             result = Result(False, spec["check"], f"{type(exc).__name__}: {exc}")
         if "severity" in spec and not result.ok:
             result.severity = spec["severity"]
         results.append(result)
+    receipts.save()
     # Checks may renew evidence, but must never alter authored sources while certifying them.
     after = snapshot(project)
     drift = {r for r in set(files) | set(after) if not renewable(r) and files.get(r) != after.get(r)}
@@ -244,6 +302,18 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
         raise ValueError("seal the feedback batch before checking")
     if revision.get("schema_version") != 2:
         raise ValueError("finish the legacy round through its recorded stage gates")
+    previous = revision.get("validation",{})
+    try:
+        age = (datetime.now(timezone.utc)-datetime.fromisoformat(previous.get("checked_at",""))).total_seconds()
+    except ValueError:
+        age = -1
+    evidence = {r:h for r,h in snapshot(project).items() if renewable(r)}
+    if (previous.get("ok") and 0 <= age < 86400 and
+            previous.get("input_signature") == input_signature(project,revision) and
+            previous.get("renewable_evidence") == evidence and
+            not any(r["stage"] in {"S13_reflib","S25_submission_audit"} for r in revision["checks"])):
+        print("Scoped checks reused: exact files/rules/configuration/evidence unchanged; freshness not extended")
+        return 0
     results, signature, files = validate(project, pipeline, state, revision)
     revision["validation"] = {"input_signature": signature, "ok": not any(r.blocking for r in results),
                               "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -283,16 +353,15 @@ def refresh_evidence(project: Path, pipeline, state, revision: dict) -> None:
         raise ValueError("renewed evidence is invalid: " + "; ".join(failures[:8]))
 
 
-def record_build(project: Path, output: Path, sources: list[Path]) -> None:
+def record_build(project: Path, output: Path, sources: list[Path], *, entrypoints=None, tool=None, parameters=None) -> None:
     """A real builder receipt, not a user-typed 'validated' label."""
+    from .buildproof import record
+    receipt = record(project, output, sources, entrypoints=entrypoints, tool=tool, parameters=parameters)
     revision = active(project)
     if not revision or revision.get("schema_version") != 2:
         return
     rel = output.resolve().relative_to(project.resolve()).as_posix()
-    revision.setdefault("build_receipts", {})[rel] = {
-        "sha256": _sha256(output),
-        "sources": {str(p.resolve()): _sha256(p) for p in sources if p is not None},
-    }
+    revision.setdefault("build_receipts", {})[rel] = receipt
     atomic_json(project / ".wf/revisions" / f"{revision['round_id']}.json", revision)
 
 
@@ -304,17 +373,23 @@ def baseline_capture_allowed(project: Path) -> bool:
     if all(i["change_type"] == "layout" for i in revision["items"]):
         return False
     from .packagecontent import build_baseline, BASELINE_REL
-    current = build_baseline(project)
+    try:
+        current = build_baseline(project)
+    except (OSError,ValueError):
+        return False
     old_path = project / BASELINE_REL
     previous = json.loads(old_path.read_text(encoding="utf-8")) if old_path.is_file() else {}
     old = {r["path"]: r for r in previous.get("records", [])}
     for row in current["records"]:
         prior = old.get(row["path"], {})
-        if (row.get("visible_text_sha256") == prior.get("visible_text_sha256") and
-                row.get("source_sha256") == prior.get("source_sha256")):
+        if (row.get("content_sha256",row.get("visible_text_sha256")) == prior.get("content_sha256",prior.get("visible_text_sha256")) and
+                row.get("source_sha256") == prior.get("source_sha256") and
+                row.get("upstream_sha256") == prior.get("upstream_sha256")):
             continue
         receipt = revision.get("build_receipts", {}).get(row["path"], {})
-        if receipt.get("sha256") != _sha256(project / row["path"]) or not receipt.get("sources"):
+        from .buildproof import content_digest
+        if (receipt.get("sha256") != _sha256(project / row["path"]) and
+                receipt.get("content_sha256") != content_digest(project / row["path"])) or not receipt.get("sources"):
             return False
         if any(not Path(p).is_file() or _sha256(Path(p)) != h for p, h in receipt["sources"].items()):
             return False
