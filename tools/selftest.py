@@ -2341,6 +2341,10 @@ def main() -> int:
                                  capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("source aligned validation regression suite",aligned.returncode==0,
                (aligned.stdout+aligned.stderr)[-1800:].strip())
+        benchmarked = subprocess.run([sys.executable, str(ROOT / "tools/test_benchmark_acceptance.py")],
+                                    capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("benchmarked professional acceptance regression suite", benchmarked.returncode == 0,
+               (benchmarked.stdout + benchmarked.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

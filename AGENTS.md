@@ -17,6 +17,12 @@ when processing feedback and before building/finalizing a journal package.
 For composed builds, journal-only reorganisation and Word repair, also read
 `reference/source-aligned-validation.md`. Actual build receipts, not role guesses, determine
 consumers. Preserve checked-only sources; extend discovered dependencies in the same round.
+At S07/S13-S17 and S20-S23 read `reference/project-benchmarking.md`. Full-text medical
+comparators must shape structure, evidence coverage and the specific display inventory before
+writing/expensive builds. Legacy library/section/display quotas are retired, not lowered to
+pass. Seal project choices; complete real argument bindings and executor acceptance before
+independent/user delivery. User feedback is not routine quality control. Tool success,
+content acceptance, visual acceptance and actual submission are different states.
 
 If the virtual environment does not exist yet, run
 `uv run --python 3.13 python bootstrap.py`. After a context compaction, run `status` again.
@@ -173,6 +179,12 @@ confirmation of the exact registered file; an identifier in its references is in
     abbreviation placement before production. S18 reviews actual rendered figures alongside
     prose/tables and records exact input hashes plus substantive comprehension findings.
     Engineering QA belongs backstage; a numeric match or a PASS field is not proof of meaning.
+19. Finish the executor's own acceptance at S17, journal preproduction acceptance at S22,
+    and actual-upload acceptance at S23. Read the whole current paper and inspect actual
+    displays. Resolve routine omissions, unsupported arguments and copied display rationales
+    before delivery; quantities are advisory while identity, source support and explicit
+    journal caps remain mandatory. New same-journal style comparators use the public cache,
+    not edits to the accepted scientific bibliography. No extra mandatory user stop or agent.
 
 User instructions take precedence over this workflow. If a missing user choice would
 materially change the scientific result, target journal, private-data handling, or external

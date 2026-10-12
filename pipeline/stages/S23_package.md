@@ -119,6 +119,11 @@ journal-guideline audit.
   rebuild from or modify the frozen `07_manuscript` master for this journal's package.
 
 ## Close
+After final cleanup, rendering and cross-file QA, complete actual-upload executor acceptance:
+`tools/manuscript/benchmark.py accept --layer journal --final --review <findings.json>`.
+Inspect actual references/numbering, each main/supp legend, declarations and upload association.
+Do not present routine defects to the user as a finished package or call generation submission.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "submission package built and visually verified; Word typography/link/heading audit passed; ready for user package review"

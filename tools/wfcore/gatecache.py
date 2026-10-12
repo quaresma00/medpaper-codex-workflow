@@ -15,6 +15,19 @@ from .packagefreeze import _sha256, _safe_path
 from .readiness import atomic_json
 
 INPUTS = {
+    "medical_benchmark": ("01_protocol/artifact_benchmark.md", "01_protocol/artifact_plan.json",
+                          "08_submission/integration/journal_benchmark.md", "08_submission/integration/artifact_plan.json",
+                          "08_submission/target_journal.json", "08_submission/submission_requirements.json",
+                          ".wf/benchmark_*_lock.json", "06_refs/library.json", "06_refs/verified.json",
+                          "06_refs/fulltext/*", "06_refs/cache/*.xml"),
+    "literature_coverage": ("01_protocol/artifact_benchmark.md", "06_refs/library.json", "07_manuscript/*.md"),
+    "executor_acceptance": (".wf/executor_acceptance_*.json", ".wf/benchmark_*_lock.json",
+                            "01_protocol/artifact_benchmark.md", "01_protocol/artifact_plan.json",
+                            "01_protocol/study_facts.json", "07_manuscript/*.md", "07_manuscript/claim_bindings.json",
+                            "04_tables/**/*.xlsx", "04_tables/table_captions.md", "05_figures/out/*", "05_figures/legends.md",
+                            "06_refs/library.json", "06_refs/refs.bib", "06_refs/fulltext/*",
+                            "08_submission/target_journal.json", "08_submission/submission_requirements.json",
+                            "08_submission/integration/**/*", "08_submission/bundle/**/*"),
     "md_sections": (), "md_wordcount": (), "no_ai_boilerplate": (),
     "supplementary_methods_clean": ("07_manuscript/supplementary_methods.md",),
     "numbers_have_provenance": ("03_analysis/results/*", "04_tables/**/*.xlsx",
@@ -58,6 +71,9 @@ class Receipts:
             manifest = self.project / "08_submission/bundle/manifest.json"
             if manifest.is_file():
                 patterns.extend(row["file"] for row in json.loads(manifest.read_text(encoding="utf-8")).get("items", []))
+        if spec["check"] == "executor_acceptance":
+            for report in self.project.glob(".wf/executor_acceptance_*.json"):
+                patterns.extend(json.loads(report.read_text(encoding="utf-8")).get("inputs", {}))
         files = {}
         for pattern in patterns:
             _safe_path(self.project, pattern)  # Reject traversal before globbing.

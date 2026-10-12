@@ -4,8 +4,8 @@
 Records without a retrievable abstract are dropped, not summarized. Citekeys already
 used anywhere in the project are pulled in automatically so no citation is orphaned.
 
-    .venv/Scripts/python.exe tools/pubmed/build_library.py --topic "..." --target 50
-    .venv/Scripts/python.exe tools/pubmed/build_library.py --add-query "..." --target 50
+    .venv/Scripts/python.exe tools/pubmed/build_library.py --add-ids <selected PMIDs>
+    .venv/Scripts/python.exe tools/pubmed/build_library.py --add-query "<uncovered argument>"
     .venv/Scripts/python.exe tools/pubmed/build_library.py --add-ids 12345678,23456789
     .venv/Scripts/python.exe tools/pubmed/build_library.py --export
     .venv/Scripts/python.exe tools/pubmed/build_library.py --report
@@ -221,7 +221,7 @@ def main() -> int:
     ap.add_argument("--topic", help="primary topic; runs a small family of queries")
     ap.add_argument("--add-query", action="append", default=[], help="one extra query (repeatable)")
     ap.add_argument("--add-ids", help="comma-separated PMIDs to add directly")
-    ap.add_argument("--target", type=int, default=50, help="stop searching once this many entries exist")
+    ap.add_argument("--target", type=int, help="legacy advisory planning hint; never skips remaining coverage queries")
     ap.add_argument("--retmax", type=int, default=60, help="records to pull per query")
     ap.add_argument("--years", type=int, help="restrict searches to the last N years")
     ap.add_argument("--export", action="store_true", help="regenerate refs.bib and refs.ris")
@@ -248,9 +248,6 @@ def main() -> int:
     queries += args.add_query
 
     for q in queries:
-        if len(lib["entries"]) >= args.target:
-            print(f"target of {args.target} reached; skipping remaining queries")
-            break
         res = eu.esearch(q, retmax=args.retmax, years=args.years)
         recs = eu.efetch(res["ids"])
         added, dropped, dup = add_records(lib, recs)

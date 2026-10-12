@@ -93,12 +93,8 @@ def artifact_plan_sane(ctx: Ctx) -> Result:
         return Result(False, "artifact_plan_sane", f"{rel} invalid JSON: {exc}")
 
     problems: list[str] = []
-    max_fig = ctx.target("main_figures_max", 6)
-    max_tab = ctx.target("main_tables_max", 5)
-    if len(plan.get("main_figures", [])) > max_fig:
-        problems.append(f"{len(plan['main_figures'])} main figures, cap {max_fig}")
-    if len(plan.get("main_tables", [])) > max_tab:
-        problems.append(f"{len(plan['main_tables'])} main tables, cap {max_tab}")
+    # Inventory adequacy is project/benchmark-dependent, not a universal 6/5 cap.
+    # Explicit journal limits are checked against its typed requirements separately.
     if not plan.get("main_figures") and not plan.get("main_tables"):
         problems.append("no main display items planned")
 

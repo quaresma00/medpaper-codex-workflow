@@ -40,7 +40,8 @@ def snapshot(project: Path) -> dict[str, str]:
         if not path.is_file():
             continue
         rel = path.relative_to(project).as_posix()
-        if (rel.startswith((".wf/", "temp/", "08_submission/releases/", "07_manuscript/review_packages/"))
+        tracked_acceptance = rel.startswith((".wf/executor_acceptance_", ".wf/benchmark_")) and rel.endswith(".json")
+        if ((rel.startswith(".wf/") and not tracked_acceptance) or rel.startswith(("temp/", "08_submission/releases/", "07_manuscript/review_packages/"))
                 or "__pycache__" in path.parts or path.name == ".gitkeep"):
             continue
         if rel.startswith("02_data/raw/") or "/cache/" in rel or "/fulltext/" in rel:
@@ -190,7 +191,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
                 spec = {**spec, "reuse_analysis": True}
             checks.append({"stage": sid, "spec": spec})
     consistency = ("manuscript_structure", "assembly_matches_sources", "supplementary_methods_clean",
-                   "citekeys_resolve", "numbers_have_provenance", "artifact_refs_consistent")
+                   "citekeys_resolve", "numbers_have_provenance", "artifact_refs_consistent", "executor_acceptance")
     if revision["review_stage"] == "S19_human_review":
         for spec in pipeline.stage("S19_human_review").gate:
             if spec["check"] in consistency:
@@ -203,6 +204,12 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     if not scientific_inputs:
         unique={k:row for k,row in unique.items() if row["spec"]["check"]!="data_acquisition_complete"}
     controls = set()
+    for stage, control in (("S07_artifacts", ".wf/benchmark_science_lock.json"),
+                           ("S20_journal", ".wf/benchmark_journal_lock.json"),
+                           ("S17_assemble", ".wf/executor_acceptance_science.json"),
+                           ("S22_polish", ".wf/executor_acceptance_journal_pre.json"),
+                           ("S23_package", ".wf/executor_acceptance_journal_final.json")):
+        if stage in stages: controls.add(control)
     for sid in stages:
         for output in pipeline.stage(sid).outputs:
             if (output.endswith(("manifest.json", "qc_report.json", "_review.md", "_qc.md", "moved_to_legend.md"))

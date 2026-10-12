@@ -43,6 +43,7 @@ NON_OVERRIDABLE_GATES = {
     "portal_fields_current", "bundle_matches_freeze", "submission_audit_matches_freeze",
     "bundle_complete", "docx_bundle_ready", "package_content_matches_baseline",
     "reader_review_coverage",
+    "medical_benchmark", "literature_coverage", "executor_acceptance",
     "numbers_have_provenance", "numbers_cross_match",
     "dependent_checks_pending",
 }
@@ -597,6 +598,10 @@ def cmd_config(args) -> int:
     if args.action == "get":
         print(pipe.targets.get(args.key, "<unset>"))
         return 0
+    from .benchmark import RETIRED_TARGETS
+    if args.key in RETIRED_TARGETS:
+        print("Retired universal quality quota: use the sealed project benchmark and argument coverage; journal limits belong to sourced article-type rules.")
+        return 2
     st.set_config(args.key, args.value)
     print(f"{args.key} = {args.value}   (project override written to {paths.rel(st.config_file)})")
     return 0

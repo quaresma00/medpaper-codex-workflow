@@ -3,6 +3,36 @@ from . import Ctx, Result, check
 from ..readiness import verify_writing, verify_displays
 
 
+def _evidence_result(name, run, success):
+    try:
+        problems = run()
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        problems = [str(exc)]  # Expected missing/invalid evidence is a normal failed gate.
+    return Result(not problems, name, "; ".join(problems[:8]) or success)
+
+
+@check("medical_benchmark")
+def medical_benchmark(ctx: Ctx) -> Result:
+    from ..benchmark import verify_benchmark, display_fit
+    layer = ctx.spec.get("layer", "science")
+    return _evidence_result("medical_benchmark", lambda: verify_benchmark(ctx.project, layer) + display_fit(ctx.project, layer),
+                            "registered close full texts constrain project structure, evidence roles and nonredundant displays; counts are advisory")
+
+
+@check("literature_coverage")
+def literature_coverage(ctx: Ctx) -> Result:
+    from ..benchmark import coverage
+    return _evidence_result("literature_coverage", lambda: coverage(ctx.project, ctx.spec.get("section"), library_only=ctx.spec.get("library_only", False)),
+                            "planned arguments bind their real source keys/passages; semantic support still requires reading")
+
+
+@check("executor_acceptance")
+def executor_acceptance(ctx: Ctx) -> Result:
+    from ..benchmark import verify_acceptance
+    return _evidence_result("executor_acceptance", lambda: verify_acceptance(ctx.project, ctx.spec.get("layer", "science"), final=ctx.spec.get("final", False)),
+                            "executor findings bind actual current manuscript/displays; not an independent or human verdict")
+
+
 @check("reader_review_coverage")
 def reader_review_coverage(ctx: Ctx) -> Result:
     from ..readiness import verify_reader_review

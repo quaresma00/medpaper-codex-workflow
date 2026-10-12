@@ -14,6 +14,8 @@ edits them. This is an independent scientific/editorial audit, not another writi
    `07_manuscript/supplementary_methods.md` when present, every workbook under
    `04_tables/main/` and `04_tables/supplementary/`, every planned rendered figure, legends,
    table captions, and `01_protocol/artifact_plan.json`.
+   Include the source-bound `01_protocol/artifact_benchmark.md`. Evaluate whether the real
+   comparator-derived plan adequately covers the clinical argument, not fixed numeric quotas.
    Run `tools/manuscript/readiness.py review-inputs` for the exact paths and hashes. Supply
    those real files, not a textual description of images. The reviewer opens figures and
    inspects tables; if its tools cannot read them, mark the review incomplete, not PASS.
@@ -50,6 +52,13 @@ edits them. This is an independent scientific/editorial audit, not another writi
    `READY` means ready for the user's review and realistic SCIE targeting; `REVISE` means
    potentially publishable after listed corrections; `NOT_READY` means a material validity
    barrier remains. The workflow may still advance so the user can inspect the evidence.
+   Do not hand known routine citation/display/writing defects to the user as a finished
+   delivery. At the S19 checkpoint, correct safely resolvable QA findings through the same
+   scoped owner rules before presenting materials; label their origin as executor/independent
+   QA, never invented user feedback. Preserve the original independent verdict and record
+   actual primary revalidation; renewed independent review is for material changed science,
+   not another automatic audit of unchanged files. Ask only if author judgment/authority is
+   genuinely needed. The user's explicit S19 approval still cannot be inferred.
 
 ## Outputs
 - `07_manuscript/independent_publishability_review.md`

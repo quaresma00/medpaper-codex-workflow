@@ -41,6 +41,12 @@ unchanged.
 - Do not add content or an AI-use disclosure during polishing.
 
 ## Close
+Complete journal preproduction executor acceptance from the same-journal benchmark and actual
+integration sources: `benchmark.py accept --layer journal --review <findings.json>`.
+Resolve Methods/Discussion organization, declaration order, main/supp legends and sourced
+limits before expensive Word. Use explicit prototype/source_file paths for unbuilt journal
+displays, never pretend a future output was inspected. Final-upload acceptance remains S23.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "journal polish complete; facts preserved; abstract/main/reference limits pass; read by eye"

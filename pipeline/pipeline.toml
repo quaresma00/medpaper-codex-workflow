@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.10.0"
+version = "1.11.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -77,19 +77,8 @@ always_allowed = [
 # (stored in project/.wf/config.toml, which wins over these defaults)
 # ------------------------------------------------------------------------------
 [targets]
-reflib_min = 45
-reflib_max = 60
-deepread_count = 5
-intro_words_min = 450
-intro_words_max = 750
-intro_refs_min = 15
-intro_refs_max = 30
-discussion_words_min = 900
-discussion_words_max = 1500
-discussion_refs_min = 25
-discussion_refs_max = 45
-main_figures_max = 6
-main_tables_max = 5
+# Literature/section/display quantities come from the sealed project benchmark,
+# never universal quality quotas. Only sourced journal requirements are hard caps.
 column_width_mm_single = 90.0
 column_width_mm_double = 180.0
 figure_dpi_min = 300
@@ -245,9 +234,11 @@ check = "writing_ready"
 id = "S07_artifacts"
 title = "Artifact inventory (benchmarked vs comparable papers) + legends"
 card = "stages/S07_artifacts.md"
-outputs = ["01_protocol/artifact_plan.json", "05_figures/legends.md", "04_tables/table_captions.md", "01_protocol/artifact_benchmark.md", "01_protocol/display_review.json"]
+outputs = ["01_protocol/artifact_plan.json", "05_figures/legends.md", "04_tables/table_captions.md", "01_protocol/artifact_benchmark.md", "01_protocol/display_review.json", "06_refs/library.json", "06_refs/verified.json", "06_refs/refs.bib", "06_refs/refs.ris"]
 [[stage.gate]]
 check = "outputs_exist"
+[[stage.gate]]
+check = "medical_benchmark"
 [[stage.gate]]
 check = "json_keys"
 path = "01_protocol/artifact_plan.json"
@@ -310,6 +301,10 @@ optional = true
 
 [[stage.gate]]
 check = "writing_ready"
+
+[[stage.gate]]
+check = "literature_coverage"
+section = "methods"
 
 [[stage]]
 id = "S09_results"
@@ -404,7 +399,7 @@ check = "writing_ready"
 
 [[stage]]
 id = "S13_reflib"
-title = "Build verified reference library (~50, abstracts mandatory)"
+title = "Complete the verified reference library by project argument coverage"
 card = "stages/S13_reflib.md"
 outputs = ["06_refs/library.json", "06_refs/verified.json", "06_refs/refs.bib", "06_refs/refs.ris"]
 [[stage.gate]]
@@ -418,6 +413,10 @@ require_abstract = true
 require_verified = true
 [[stage.gate]]
 check = "bib_ris_match_library"
+
+[[stage.gate]]
+check = "literature_coverage"
+library_only = true
 
 [[stage]]
 id = "S14_introduction"
@@ -434,23 +433,19 @@ live = true
 [[stage.gate]]
 check = "md_wordcount"
 path = "07_manuscript/introduction.md"
-min_key = "intro_words_min"
-max_key = "intro_words_max"
 [[stage.gate]]
 check = "citekeys_resolve"
 paths = ["07_manuscript/introduction.md"]
 [[stage.gate]]
-check = "citation_count"
-path = "07_manuscript/introduction.md"
-min_key = "intro_refs_min"
-max_key = "intro_refs_max"
+check = "literature_coverage"
+section = "introduction"
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/introduction.md"
 
 [[stage]]
 id = "S15_deepread"
-title = "Fetch and deep-read the ~5 papers that carry the Discussion"
+title = "Read the full texts needed for the Discussion arguments"
 card = "stages/S15_deepread.md"
 outputs = ["06_refs/deepread/deepread_index.json"]
 [[stage.gate]]
@@ -473,16 +468,12 @@ live = true
 [[stage.gate]]
 check = "md_wordcount"
 path = "07_manuscript/discussion.md"
-min_key = "discussion_words_min"
-max_key = "discussion_words_max"
 [[stage.gate]]
 check = "citekeys_resolve"
 paths = ["07_manuscript/discussion.md"]
 [[stage.gate]]
-check = "citation_count"
-path = "07_manuscript/discussion.md"
-min_key = "discussion_refs_min"
-max_key = "discussion_refs_max"
+check = "literature_coverage"
+section = "discussion"
 [[stage.gate]]
 check = "deepread_cited"
 path = "07_manuscript/discussion.md"
@@ -534,6 +525,13 @@ require_rendered = true
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/abstract.md"
+
+[[stage.gate]]
+check = "medical_benchmark"
+[[stage.gate]]
+check = "literature_coverage"
+[[stage.gate]]
+check = "executor_acceptance"
 
 [[stage.gate]]
 check = "writing_ready"
@@ -594,6 +592,8 @@ paths = ["07_manuscript/full_manuscript.md"]
 require_all_cited = true
 require_rendered = true
 [[stage.gate]]
+check = "executor_acceptance"
+[[stage.gate]]
 check = "revision_rounds_closed"
 [[stage.gate]]
 check = "manuscript_review_package_current"
@@ -610,7 +610,7 @@ id = "S20_journal"
 title = "Select the most realistic current SCIE journal and freeze its requirements"
 card = "stages/S20_journal.md"
 needs_user = true
-outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json", "08_submission/submission_requirements.json"]
+outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json", "08_submission/submission_requirements.json", "08_submission/integration/journal_benchmark.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -638,6 +638,9 @@ require_pristine = true
 check = "json_keys"
 path = "08_submission/submission_requirements.json"
 keys = ["article_type", "required_upload_roles", "word_count", "blinding"]
+[[stage.gate]]
+check = "medical_benchmark"
+layer = "journal"
 
 [[stage]]
 id = "S21_authors"
@@ -735,6 +738,9 @@ require_rendered = true
 check = "decision_recorded"
 name = "polish_reviewed"
 allowed = ["YES"]
+[[stage.gate]]
+check = "executor_acceptance"
+layer = "journal"
 
 [[stage]]
 id = "S23_package"
@@ -796,6 +802,11 @@ allowed = ["YES"]
 [[stage.gate]]
 check = "portal_fields_current"
 
+[[stage.gate]]
+check = "executor_acceptance"
+layer = "journal"
+final = true
+
 [[stage]]
 id = "S24_package_human_review"
 title = "User review, modification and explicit confirmation of the final submission package"
@@ -839,6 +850,11 @@ allowed = ["OK"]
 
 [[stage.gate]]
 check = "portal_fields_current"
+
+[[stage.gate]]
+check = "executor_acceptance"
+layer = "journal"
+final = true
 
 [[stage]]
 id = "S25_submission_audit"

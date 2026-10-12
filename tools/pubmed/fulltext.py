@@ -81,6 +81,10 @@ def record_retrieval(entry: dict, result: dict) -> dict:
         "authorization_note": result.get("authorization_note", ""),
         "retrieved_at": _now(),
     }
+    if entry.get("cache_file"):
+        metadata = eu.project_root() / entry["cache_file"]
+        record["metadata_cache"] = entry["cache_file"]
+        record["metadata_sha256"] = _sha256(metadata)
     source = record["fulltext"]
     if source and not str(source).startswith("http"):
         local = eu.project_root() / source
@@ -228,6 +232,7 @@ def main() -> int:
     ap.add_argument("--confirmed-by", help="actual reader who explicitly confirmed article identity")
     ap.add_argument("--identity-note", help="concrete first-page/title/authors/identifier evidence, >=30 chars")
     ap.add_argument("--citekey", action="append", default=[])
+    ap.add_argument("--pmid", action="append", default=[], help="comparator-only fresh PubMed route; does not edit the scientific library")
     ap.add_argument("--all-deepread", action="store_true",
                     help="fetch everything listed in deepread_index.json")
     ap.add_argument("--no-stub", action="store_true", help="do not create the notes stub")
@@ -243,11 +248,17 @@ def main() -> int:
     args = ap.parse_args()
 
     lib_path = eu.refs_dir() / "library.json"
-    if not lib_path.exists():
-        eu.die("06_refs/library.json missing. Build the library first (S13).")
-    entries = {e["citekey"]: e for e in json.loads(lib_path.read_text(encoding="utf-8")).get("entries", [])}
+    entries = {e["citekey"]: e for e in json.loads(lib_path.read_text(encoding="utf-8")).get("entries", [])} if lib_path.is_file() else {}
 
     keys = list(args.citekey)
+    # Comparator-only acquisition must not mutate a frozen scientific bibliography.
+    if args.pmid:
+        fetched = eu.efetch(args.pmid, fresh=True, purpose="benchmark")
+        if {str(e["pmid"]) for e in fetched} != set(args.pmid):
+            eu.die("Comparator metadata retrieval incomplete; never replace missing IDs with invented entries")
+        for entry in fetched:
+            key = "benchmark" + str(entry["pmid"])
+            entry["citekey"] = key; entries[key] = entry; keys.append(key)
     dr_path = eu.project_root() / "06_refs" / "deepread" / "deepread_index.json"
     if args.all_deepread:
         if not dr_path.exists():
@@ -335,15 +346,20 @@ def main() -> int:
         return 0
 
     results = {}
+    failed = []
     for key in dict.fromkeys(keys):
         entry = entries.get(key)
         if not entry:
             print(f"{key}: not in library.json - add it before deep-reading")
+            failed.append(key)
             continue
         print(f"{key}: {entry.get('title', '')[:70]}")
         res = fetch_one(entry)
         record_retrieval(entry, res)
         results[key] = res
+        source = res.get("fulltext", "")
+        if res.get("access") not in {"oa", "authorized"} or not source or source.startswith("http") or not (eu.project_root() / source).is_file():
+            failed.append(key)
         print(f"    -> {res['route']} / {res['access']} / {res.get('fulltext', '')}")
         if res.get("note"):
             print(f"       {res['note']}")
@@ -365,6 +381,9 @@ def main() -> int:
     print(f"\n{oa}/{len(results)} available open access.")
     print("Fill in every notes file, then record them in 06_refs/deepread/deepread_index.json.")
     print("Notes under 400 characters are rejected by the S15 gate.")
+    if failed:
+        print("Incomplete full-text acquisition: " + ", ".join(failed) + "; downstream reading/sealing must stop; genuine partial receipts preserved")
+        return 2
     return 0
 
 

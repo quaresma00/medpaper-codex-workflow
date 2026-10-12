@@ -7,8 +7,9 @@ get explicit reader confirmation; `fulltext.py confirm --citekey KEY --confirmed
 not an automatic AI verdict. Wrong identities block; never invent user confirmation.
 
 ## Purpose
-Abstracts are enough to frame the Introduction. They are not enough to compare methods and
-effect sizes with prior work. Fetch and read ~5 full texts properly.
+Read the sources needed for real method/result comparisons and competing explanations.
+Reuse the S07 full texts already read; obtain further sources only for unresolved arguments.
+There is no fixed deep-read quantity; substantive coverage, source identity and notes matter.
 
 ## Procedure
 1. Select the papers that the Discussion genuinely depends on. Typically:

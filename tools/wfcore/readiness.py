@@ -113,9 +113,18 @@ def verify_displays(project: Path) -> list[str]:
         if len(observed) != len(rows) or set(expected) != set(observed):
             return ["display review must cover each planned display exactly once"]
         problems = []
+        benchmarked = (project / "01_protocol/artifact_benchmark.md").is_file()
+        reader_accounts = set()
         for key, entry in expected.items():
             row = observed[key]
             contract = entry.get("reader_contract", {})
+            if benchmarked:
+                from .benchmark import contract_hash
+                if row.get("contract_hash") != contract_hash(entry) or row.get("question") != contract.get("question"):
+                    problems.append(f"{key}: prototype review must bind this display's current concrete question/contract")
+                account = str(row.get("reader_explanation", "")).strip().casefold()
+                if account in reader_accounts: problems.append(f"{key}: copied reader explanation is not an item-specific review")
+                reader_accounts.add(account)
             for field in ("population", "comparison", "measure", "denominator_and_units", "interpretation_limit"):
                 if not _populated(contract.get(field)) or len(str(contract[field]).strip()) < 8:
                     problems.append(f"{key}: explain reader_contract.{field}; give a reason when inapplicable")
@@ -145,7 +154,7 @@ def reader_inputs(project: Path) -> dict[str, str]:
     plan = load(project, "01_protocol/artifact_plan.json")
     files = {"07_manuscript/full_manuscript.md", "01_protocol/artifact_plan.json",
              "05_figures/legends.md", "04_tables/table_captions.md"}
-    for rel in ("01_protocol/study_facts.json", "07_manuscript/claim_bindings.json"):
+    for rel in ("01_protocol/study_facts.json", "07_manuscript/claim_bindings.json", "01_protocol/artifact_benchmark.md"):
         if (project / rel).is_file():
             files.add(rel)
     optional = "07_manuscript/supplementary_methods.md"

@@ -1,7 +1,8 @@
 # S13 - Build the verified reference library
 
 ## Purpose
-Assemble roughly 50 real references with real abstracts, verified against the source APIs.
+Complete the S07-seeded library according to the project's genuine argument needs, verified
+against source APIs. No universal total or chapter minimum substitutes for coverage.
 Everything the Introduction and Discussion say about the literature comes from here.
 
 ## Procedure
@@ -13,8 +14,7 @@ Everything the Introduction and Discussion say about the literature comes from h
    populate the formal library. The script searches, fetches full records, generates
    citekeys, drops records with no abstract, and caches every raw payload:
 ```
-.\.venv\Scripts\python.exe tools/pubmed/build_library.py --topic "<core topic>" --target 50
-.\.venv\Scripts\python.exe tools/pubmed/build_library.py --add-query "<gap area>" --target 50
+.\.venv\Scripts\python.exe tools/pubmed/build_library.py --add-query "<uncovered argument area>"
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --add-ids 12345678,23456789
 ```
    Anything already cited in `feasibility.md`, `method_scan.md` or `methods.md` is pulled in
@@ -61,8 +61,9 @@ Everything the Introduction and Discussion say about the literature comes from h
   them. A green Pandoc build is not evidence that a citation exists.
 - A plugin result becomes citable only after the bundled tools independently fetch and
   verify it into `library.json` and `verified.json`.
-- Do not pad to hit the count. If genuine coverage is 42 papers, lower the target:
-  `.\.venv\Scripts\python.exe tools/wf.py config set reflib_min 40`.
+- Never pad or lower configuration to pass. Complete the sealed benchmark's required
+  argument-source mappings with real selected references; record genuine coverage gaps.
+  Library size, main citations, chapter citations and supplement citations are different.
 - Retracted or expression-of-concern records must be flagged in `library.json` and not
   cited as evidence.
 

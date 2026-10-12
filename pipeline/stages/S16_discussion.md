@@ -8,14 +8,14 @@ when the actual design, target-journal examples or explicit author rules support
 Interpret the finding against the literature you actually read. One file, this stage only.
 
 ## Inputs
-- `06_refs/deepread/*.md` - the ~5 full texts, read
+- `06_refs/deepread/*.md` - argument-bearing full texts, actually read
 - `06_refs/library.json` - abstracts for the wider context
 - `03_analysis/notes.md` -> `Discussion points`, `Limitations`, `Surprises`
 - `07_manuscript/results.md` - what you may interpret (and nothing beyond it)
 - `01_protocol/protocol_diff.md` - deviations that must be owned as limitations
 
 ## Procedure
-1. Structure, in this order:
+1. A useful narrative route, not mandatory subheadings or an inflexible order:
    1. **Principal finding** - one paragraph, plain, no hedging, no new numbers.
    2. **Comparison with prior work** - this is where the deep reads earn their place.
       Where you agree, say with whom and why. Where you disagree, name the study and give a
@@ -29,8 +29,9 @@ Interpret the finding against the literature you actually read. One file, this s
       power, and measurement error. State the direction each bias would push the estimate.
    6. **Conclusion** - two or three sentences, no stronger than the Results support.
 2. Write `project/07_manuscript/discussion.md` with pandoc citations `[@key]`.
-3. Check the counts: `.\.venv\Scripts\python.exe tools/wf.py check` (word and reference targets, and that every
-   deep-read paper is cited).
+3. Complete Discussion argument/passages in the sealed benchmark, including contrary evidence
+   where relevant. Run `tools/wf.py check` for actual coverage and cited deep reads, not fixed
+   chapter counts. Keep a coherent medical argument, not a separate heading per analysis.
 
 ## Outputs
 - `07_manuscript/discussion.md`

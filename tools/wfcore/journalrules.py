@@ -37,3 +37,22 @@ def compare(counts, rules):
     return [f"{field}: {counts[field]} exceeds explicit {row['value']} limit"
             for field,row in rules.items() if row["status"] == "required" and row["value"] is not None
             and counts.get(field) is not None and counts[field] > row["value"]]
+
+
+def display_limits(project):
+    requirements = load(project, "08_submission/submission_requirements.json")
+    article = requirements.get("article_type")
+    parsed = {}
+    for field, row in requirements.get("display_limits", {}).items():
+        if field not in {"main_figures", "main_tables", "main_display_items", "supp_figures", "supp_tables"}:
+            raise ValueError(f"Unknown journal display-limit field: {field}")
+        if (not isinstance(row, dict) or row.get("status") not in {"required", "allowed", "recommended", "unspecified"}
+                or not row.get("source") or not article or row.get("article_type", article) != article):
+            raise ValueError(f"{field}: source/status/selected article type required")
+        value = row.get("value")
+        if row["status"] == "unspecified":
+            if value is not None: raise ValueError(f"{field}: unspecified cap must be null")
+        elif type(value) is not int or value < 0:
+            raise ValueError(f"{field}: explicit nonnegative integer cap required")
+        parsed[field] = row
+    return parsed

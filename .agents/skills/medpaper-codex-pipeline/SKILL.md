@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.10.0"
+  version: "1.11.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -12,6 +12,11 @@ This workspace's `pipeline/pipeline.toml` and stage cards are authoritative.
 If its virtual environment is missing, use `uv run --python 3.13 python bootstrap.py`.
 
 ## Work inside the existing gates
+
+Read `reference/project-benchmarking.md` at S07/S13-S17 and S20-S23: genuine full-text
+comparison shapes project evidence/display choices before writing; complete the executor's
+own current-file acceptance before independent/user delivery. Never lower quotas or pad
+references/displays to make a gate green. Retired numeric quality targets are ignored.
 
 After initialization, read the workspace `AGENTS.md` completely. It owns the detailed
 validity, review, typography, privacy and capability rules; do not duplicate or replace them.

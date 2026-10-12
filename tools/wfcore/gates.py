@@ -43,7 +43,7 @@ def run_stage(pipeline, state, project: Path, stage, *, reuse: bool = False, rec
         if "severity" in spec and not res.ok:
             res.severity = spec["severity"]
         results.append(res)
-        if res.blocking and name in {"outputs_exist", "writing_ready", "feedback_batch_sealed"}:
+        if res.blocking and name in {"outputs_exist", "writing_ready", "feedback_batch_sealed", "medical_benchmark", "literature_coverage", "executor_acceptance"}:
             results.append(Result(False, "dependent_checks_pending", "Required inputs failed; dependent gates were not executed and cannot be forced."))
             break  # Fix missing inputs before costly dependent checks; never mark them passed.
     if receipts:

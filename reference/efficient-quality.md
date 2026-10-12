@@ -8,6 +8,9 @@ their original integrity checks. Final portal counts use typed article-specific 
 
 Use this at S06/S07, when collecting feedback, and when producing a journal package.
 Keep the 25 stages. A checkpoint does not authorize reducing scope or ending an unblocked task.
+At S07/S13-S17 and S20-S23 also read `project-benchmarking.md`: actual close full-text evidence,
+sealed project choices, argument-role coverage and executor acceptance replace numeric quotas.
+Reuse already read unchanged sources; no extra independent auditor or user-approval stop.
 
 ## Before writing: S06
 
@@ -56,6 +59,7 @@ Record `01_protocol/display_review.json` with `items`, one per planned display:
   "preview_sha256": "<computed SHA-256>",
   "source_hashes": {"03_analysis/results/baseline.json": "<computed SHA-256>"},
   "question": "The single clinical question this display answers",
+  "contract_hash": "<SHA-256 of sorted-key JSON for this entry's reader_contract>",
   "reader_explanation": "What the reviewer understood from the display and its caption alone",
   "denominator_units_missingness": "Actual population, denominator, units and missing-data labels checked",
   "encoding_overlap": "Meaning of colours/symbols or non-exclusive categories; applicability explained",

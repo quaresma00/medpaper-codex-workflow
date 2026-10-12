@@ -86,6 +86,14 @@ exposes a real scientific omission, use the existing scoped correction/reapprova
 never invent a performed method or silently change the frozen scientific master.
 
 ## Outputs
+Before closing, read `reference/project-benchmarking.md`, read same-journal close full texts
+and record the resulting structure/display/reference adaptations in
+`08_submission/integration/journal_benchmark.md`; bind it to this journal/article type and
+seal with `benchmark.py seal --layer journal`. Comparator-only `fulltext.py --pmid` acquisition
+must not modify the frozen scientific bibliography. Reuse already read suitable papers.
+Store explicit display caps in `submission_requirements.json.display_limits`; null means
+unstated. Apply those caps to the derived plan at S22 before Word production, not to the master.
+
 - `08_submission/journal_shortlist.md`
 - `08_submission/target_journal.json`
 - `08_submission/guidelines_extract.md`

@@ -14,6 +14,7 @@ pillow==12.3.0          # TIFF print masters (matplotlib reads PNG without it)
 # tables
 openpyxl==3.1.5
 python-docx==1.2.0
+pypdf==6.20.0           # registered PDF comparator text extraction, never abstract substitution
 
 # analysis
 pandas==3.0.5

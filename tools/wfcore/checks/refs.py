@@ -277,8 +277,9 @@ def refs_library(ctx: Ctx) -> Result:
     except json.JSONDecodeError as exc:
         return Result(False, "refs_library", f"{LIB} invalid JSON: {exc}")
     entries = lib.get("entries", [])
-    lo = ctx.spec.get("min_entries", ctx.target("reflib_min", 45))
-    hi = ctx.spec.get("max_entries", ctx.target("reflib_max", 60))
+    # Legacy project numeric targets no longer stand in for evidence coverage.
+    lo = ctx.spec.get("min_entries", 1)
+    hi = ctx.spec.get("max_entries")
 
     problems = []
     if len(entries) < lo:
@@ -314,7 +315,7 @@ def refs_library(ctx: Ctx) -> Result:
             "refs_library",
             "; ".join(problems),
             [
-                "Rebuild with: .venv/Scripts/python.exe tools/pubmed/build_library.py --topic \"...\" --target 50",
+                "Add genuinely needed verified sources with tools/pubmed/build_library.py --add-ids <PMIDs>; inspect benchmark argument coverage.",
                 "Entries without abstracts must be dropped, not padded with a summary you wrote.",
             ],
         )
@@ -472,10 +473,9 @@ def deepread_complete(ctx: Ctx) -> Result:
     except json.JSONDecodeError as exc:
         return Result(False, "deepread_complete", f"{rel} invalid JSON: {exc}")
     sel = idx.get("selected", [])
-    want = ctx.target("deepread_count", 5)
     problems = []
-    if len(sel) < max(3, want - 1):
-        problems.append(f"{len(sel)} paper(s) selected, target ~{want}")
+    if not sel:
+        problems.append("no argument-bearing full text selected; quantity is not a substitute for coverage")
 
     lib_keys = set()
     lib_entries = {}

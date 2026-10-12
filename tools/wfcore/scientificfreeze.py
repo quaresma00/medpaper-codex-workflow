@@ -9,9 +9,10 @@ from pathlib import Path
 from .reviewpackage import verify as verify_review_package
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 FREEZE_REL = "07_manuscript/scientific_master_freeze.json"
 CORE_FILES = (
+    "01_protocol/artifact_benchmark.md",
     "01_protocol/study_facts.json",
     "07_manuscript/claim_bindings.json",
     "01_protocol/artifact_plan.json",
@@ -136,7 +137,7 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     except json.JSONDecodeError as exc:
         return False, [f"{FREEZE_REL} is invalid JSON: {exc}"], None
     problems: list[str] = []
-    if payload.get("schema_version") not in (1, 2, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
+    if payload.get("schema_version") not in (1, 2, 3, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
         problems.append("scientific freeze schema or hash algorithm is invalid")
     ok, review_problems, review = verify_review_package(project)
     if not ok or review is None:
@@ -154,6 +155,11 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     # Legacy receipts included a renewable verification file. Its identity is checked
     # separately by the non-overridable reference gates; refreshing it is not science rework.
     scientific_records = [item for item in recorded if item.get("path") != "06_refs/verified.json"]
+    if payload.get("schema_version") in (1, 2, 3):
+        # Benchmark coverage added in v1.11 is not a retroactive change to an approved
+        # manuscript. Preserve exactly what an older freeze bound; new v4 freezes bind it.
+        bound = {item.get("path") for item in scientific_records}
+        current = [item for item in current if item["path"] != "01_protocol/artifact_benchmark.md" or item["path"] in bound]
     if payload.get("schema_version") in (1, 2):
         # Verify exactly what the legacy receipt covered; do not silently rewrite it or
         # treat newly recognized backstage files as a change to the approved manuscript.

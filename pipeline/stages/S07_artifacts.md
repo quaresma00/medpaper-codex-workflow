@@ -1,5 +1,12 @@
 # S07 - Artifact inventory (benchmarked) + legends written first
 
+Read `reference/project-benchmarking.md` completely. Complete the genuine full-text benchmark
+and seal its project adaptation before Methods or expensive production. Seed the same formal
+PubMed library using selected comparator/method PMIDs and verify it; S13 later completes it.
+Record comparison evidence and project citation-role/range choices in the existing benchmark
+Markdown's `benchmark_version: 1` block. Counts are reference points, not fixed minima/caps.
+Abstracts and a bare "benchmarked" flag do not satisfy this gate.
+
 Read `reference/r-first.md`. Plan new figures with renderer="R" and co-located .R/PNG/PDF.
 Prototype in R with full data and the same semantic layout; retain approved legacy Python
 figures or record a concrete Python exception instead of silently defaulting to it.
@@ -64,7 +71,8 @@ first keep panels from filling up with explanatory text later.
    checklist says so. Number it in the actual scientific narrative, not automatically Figure 1.
    Specific journal reporting/display requirements are handled later in the integration copy.
    Add `reader_contract` to every display: `population`, `comparison`, `measure`,
-   `denominator_and_units`, `interpretation_limit`. Use short factual sentences; explain
+   `denominator_and_units`, `interpretation_limit`, plus distinct `question`,
+   `placement_reason`, `nonredundancy`, `misinterpretation_risk`. Use short factual sentences; explain
    inapplicability rather than inserting a fictional comparison. This internal contract
    guides captions and labels; never print JSON keys or workflow terminology in the figure.
    Declare table `script` paths too, and additional project-specific file consumers in
@@ -122,6 +130,9 @@ first keep panels from filling up with explanatory text later.
   legend title between the heading and the first body sentence.
 
 ## Close
+Run `tools/manuscript/benchmark.py seal` before closing. Do not reduce its protected ranges
+or required argument roles after drafting to get a green check; use a justified scoped replan.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "inventory: <F main / T main / F supp / T supp> vs benchmark <range>; legends written"

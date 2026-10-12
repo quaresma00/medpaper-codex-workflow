@@ -5,7 +5,7 @@ A gate entry in pipeline.toml looks like:
     [[stage.gate]]
     check = "md_wordcount"
     path  = "07_manuscript/introduction.md"
-    min_key = "intro_words_min"
+    min = 1  # A caller's explicit structural example, not a medical quality quota.
 
 `check` selects a function registered here; every other key is passed through in
 `ctx.spec`. Add a check by writing a function and decorating it -- no engine edit.

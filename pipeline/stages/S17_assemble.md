@@ -65,6 +65,12 @@ source for review, user editing, polishing and packaging.
   this file; never patch it as a detached manuscript.
 
 ## Close
+Before S18/user delivery, read `reference/project-benchmarking.md`, read the complete actual
+paper and inspect rendered tables/figures. Resolve routine evidence, Methods/Discussion,
+abbreviation, legend and cross-reference defects; bind actual executor findings with
+`tools/manuscript/benchmark.py accept --review <findings.json>`. This does not replace S18.
+Out-of-range quantities need a coverage-based reason, not padded citations or lowered ranges.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "full manuscript assembled; selected title: <title>; keywords=<n>; figure legends=<n>"
