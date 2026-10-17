@@ -60,13 +60,17 @@ def render(project, figure_id, timeout=180):
     guard_outputs(project, list(destinations.values()) + [sidecar])
     helper = ROOT / "tools/figures/r_style.R"
     recipes = ROOT / "tools/figures/r_recipes.R"
-    before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values()]}
+    from wfcore.journalspec import load
+    profile = load(project)
+    policy = {"spelling": profile.get("spelling") or State(project).config().get("targets", {}).get("spelling", ""), "number_format": profile.get("number_format", {})}
+    policy_files = [path for path in (project/"08_submission/target_journal.json", project/".wf/config.toml") if path.is_file()]
+    before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values(), *policy_files]}
     (project / "temp").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="r-figure-", dir=project / "temp") as temporary:
         stem = Path(temporary) / png.stem
         env = {**os.environ, "MEDPAPER_ROOT": str(ROOT), "MEDPAPER_PROJECT": str(project),
                "MEDPAPER_RENDER_STEM": str(stem), "MEDPAPER_FIGURE_SCRIPT": str(script),
-               "MEDPAPER_SOURCE_RESULTS": json.dumps(list(sources))}
+               "MEDPAPER_SOURCE_RESULTS": json.dumps(list(sources)), "MEDPAPER_LABEL_POLICY": json.dumps(policy)}
         if os.name == "nt":
             env.update({"LC_ALL": "C", "LANG": "C"})
         expression = ("a <- file.path(Sys.getenv('MEDPAPER_ROOT'), 'renv/activate.R'); "
@@ -86,6 +90,8 @@ def render(project, figure_id, timeout=180):
         if any(not Path(p).is_file() or _sha256(Path(p)) != h for p, h in before.items()):
             raise ValueError("Source changed during rendering; prior output preserved")
         for suffix, destination in destinations.items():
+            from wfcore.determinism import normalize
+            if suffix in {".pdf", ".tiff"}: normalize(Path(str(stem) + suffix))
             destination.parent.mkdir(parents=True, exist_ok=True)
             Path(str(stem) + suffix).replace(destination)
         report["source_hashes"] = {r: before[str(p)] for r, p in sources.items()}
@@ -94,7 +100,7 @@ def render(project, figure_id, timeout=180):
         report["render_hashes"] = {p.relative_to(project).as_posix(): _sha256(p) for p in destinations.values()}
         atomic_json(sidecar, report)
         for output in [*destinations.values(), sidecar]:
-            record_build(project, output, [script, helper, recipes, *sources.values()])
+            record_build(project, output, [script, helper, recipes, *sources.values(), *policy_files, ROOT/"tools/wfcore/determinism.py"], parameters={"label_policy":policy})
     return {"figure": figure_id, "engine": "R", "png": str(png), "pdf": str(pdf), "audit": str(sidecar)}
 
 

@@ -155,6 +155,7 @@ NO_DEF_NEEDED = {
     "HIV", "AIDS", "WHO", "USA", "US", "UK", "CT", "MRI", "PET", "ECG", "EKG", "ICU",
     "BP", "HDL", "LDL", "GFR", "eGFR", "CRP", "TNF", "IL", "PCR", "ELISA", "FDA", "EMA",
     "NHS", "NA", "SD", "ANOVA", "ROC", "APC", "AI", "ML",
+    "CRediT", "CREDIT", "ORCID",
 }
 STAT_SYMBOLS = ["n", "P", "r", "t", "F", "z", "df"]
 

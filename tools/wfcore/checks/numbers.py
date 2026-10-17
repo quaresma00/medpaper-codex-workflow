@@ -122,6 +122,7 @@ def _scrub(text: str) -> str:
     text = FENCE_RE.sub(" ", text)
     text = CITE_RE.sub(" ", text)
     text = ARTIFACT_RE.sub(" ", text)
+    text = re.sub(r"\b[A-Za-z][A-Za-z0-9]*-\d+[A-Za-z]?\b", " ", text)  # codes, not measurements
     text = re.sub(r"^\s*#{1,6}\s.*$", " ", text, flags=re.M)
     text = re.sub(r"\b(?:90|95|99)%\s*(?:CI|confidence interval)\b", "CI", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-\u2013]\s*(19|20)?\d{2}\b", " ", text)  # not scrubbed values
@@ -206,7 +207,8 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
             )
         return Result(True, "numbers_have_provenance", f"all table values trace to {len(sources)} result file(s)")
 
-    bad = _offenders(ctx.read(rel), floats, strings, allowed)
+    from ..journalspec import admin_scrub
+    bad = _offenders(admin_scrub(ctx.read(rel), ctx.project, rel), floats, strings, allowed)
     if bad:
         shown = "; ".join(f"line {ln}: {tok}" for ln, tok in bad[:10])
         return Result(

@@ -14,6 +14,14 @@ builds the package; S24 is the user's final content/format review and S25 is the
 journal-guideline audit.
 
 ## Procedure
+Read `reference/content-aware-amendments.md`. Prefer deterministic staged builds. A local
+`integration/csl_patch.json` changes only the derived CSL; test SAME real official-example
+records with `csl_check.py`, never alter verified reference metadata to get a style match.
+If the journal actually requires a Word reporting checklist, `checklist_docx.py` renders
+its real item/location rows with fixed widths and no internal paths. Do not create one otherwise.
+Use `preview.py` for a complete overview of Word-exported PDF pages; retain real detailed QA.
+Check double-blind supplements and document metadata, not only the main manuscript.
+
 1. Freeze the journal-required item list from `guidelines_extract.md`; do not add generic
    extras. Write the journal-specific cover letter source outside the bundle at
    `project/08_submission/cover_letter.md`.
@@ -92,6 +100,10 @@ journal-guideline audit.
     per-table orientation, continuous page numbers and truthful reading-copy handoffs.
 
 ## Outputs
+At handoff list portal-only tasks separately: actual upload slots/article type, coauthor
+approvals, unresolved user-owned compliance items and final Submit. Never mark these done
+merely because local files exist; never draft an AI-use disclosure without the exact request.
+
 - A journal-requested reporting checklist only if explicitly required in the sourced upload
   list; complete that specific current form from actual integration content, with truthful
   locations/inapplicability. Otherwise create no reporting checklist. This is separate from

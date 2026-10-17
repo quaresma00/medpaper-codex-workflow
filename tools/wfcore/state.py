@@ -13,6 +13,10 @@ from pathlib import Path
 SCHEMA = 1
 
 
+def version_tuple(value: str) -> tuple:
+    return tuple(int(part) for part in value.split("-")[0].split(".") if part.isdigit())
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -44,6 +48,7 @@ class State:
             "schema": SCHEMA,
             "pipeline": pipeline_name,
             "pipeline_version": pipeline_version,
+            "engine_pin": pipeline_version,
             "created_at": _now(),
             "current": first_stage,
             "stages": {first_stage: {"status": "active", "started_at": _now(), "loops": 0}},
@@ -52,6 +57,8 @@ class State:
             "events": [{"at": _now(), "kind": "init", "detail": first_stage}],
         }
         self.save()
+        if "spelling" not in self.config().get("targets", {}):
+            self.set_config("spelling", "american")
         if not self.handoff_file.exists():
             self.handoff_file.write_text(
                 "# Handoff log\n\n"
@@ -86,11 +93,23 @@ class State:
             self.data["current"] = replacement
             changed = True
         if changed:
+            self.data.setdefault("engine_pin", old_version)
             self.data["pipeline_version"] = pipeline_version
             self.event("pipeline_migration",
                        f"{old_version} -> {pipeline_version}; current {current} -> {self.data['current']}")
+            self.event("requirements_changed", "Engine refreshed; completed stages retain their pinned added-gate set until wf migrate. Research files were not rewritten.")
             self.save()
         return changed
+
+    def pin_excludes(self, sid: str, since: str | None) -> bool:
+        return bool(since and self.status_of(sid) in {"done", "skipped"} and
+                    version_tuple(str(self.data.get("engine_pin", self.data.get("pipeline_version", "0")))) < version_tuple(since))
+
+    def migrate_pin(self, version: str) -> None:
+        old = self.data.get("engine_pin", self.data.get("pipeline_version"))
+        self.data["engine_pin"] = version
+        self.event("engine_pin_migrated", f"{old} -> {version}; no research-file edits or stage rewind")
+        self.save()
 
     # ---- config --------------------------------------------------------
     def config(self) -> dict:

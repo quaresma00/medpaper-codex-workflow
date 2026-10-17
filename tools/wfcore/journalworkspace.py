@@ -100,14 +100,15 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
         if not source.is_file():
             continue
         frozen = records_by_path.get(source_rel)
-        if not frozen or frozen.get("sha256") != _sha256(source):
+        from .presentationdelta import covered
+        if not frozen or not covered(project, source_rel, frozen.get("sha256", ""), _sha256(source)):
             raise ValueError(f"source is not part of the current scientific freeze: {source_rel}")
         destination = project / destination_rel
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
         copies.append({
             "source": source_rel,
-            "source_sha256": frozen["sha256"],
+            "source_sha256": _sha256(source),
             "destination": destination_rel,
             "initial_destination_sha256": _sha256(destination),
         })
@@ -117,7 +118,7 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
         "schema_version": SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scientific_freeze_id": freeze["freeze_id"],
-        "review_package_id": freeze["review_package_id"],
+        "review_package_id": freeze.get("review_package_id") or freeze.get("review_round_id"),
         "journal": target.get("journal"),
         "issn": target.get("issn"),
         "target_journal_sha256": target_hash,
@@ -173,7 +174,8 @@ def verify(project: Path, *, require_pristine: bool = False) -> tuple[bool, list
             continue
         seen.add((source_rel, destination_rel))
         source_record = frozen.get(source_rel)
-        if not source_record or source_record.get("sha256") != item.get("source_sha256"):
+        from .presentationdelta import covered
+        if not source_record or not covered(project, source_rel, source_record.get("sha256", ""), item.get("source_sha256", "")):
             problems.append(f"workspace origin is not in the current freeze: {source_rel}")
             continue
         try:
@@ -225,7 +227,7 @@ def rebase(project: Path, why: str) -> Path:
         records.append({"source": source, "source_sha256": frozen[source]["sha256"],
                         "destination": destination, "initial_destination_sha256": _sha256(dest)})
     guard_outputs(project, [output])
-    payload.update({"scientific_freeze_id": freeze["freeze_id"], "review_package_id": freeze["review_package_id"],
+    payload.update({"scientific_freeze_id": freeze["freeze_id"], "review_package_id": freeze.get("review_package_id") or freeze.get("review_round_id"),
                     "target_journal_sha256": target_hash, "files": records,
                     "rebase": {"round": revision["round_id"], "why": why,
                                "at": datetime.now(timezone.utc).isoformat()}})

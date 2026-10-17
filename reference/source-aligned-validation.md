@@ -1,5 +1,9 @@
 # Source-aligned incremental validation
 
+For post-freeze revisions, also read `content-aware-amendments.md`: a real presentation
+delta preserves scientific approval and exact historical releases, without repeated author
+confirmation. Actual clinical meaning, content checks and changed-page visual QA remain.
+
 Read for composed submission documents, discovered dependencies, journal reorganisation or
 Word postprocessing. Keep the existing 25 stages and scientific/human approval boundaries.
 

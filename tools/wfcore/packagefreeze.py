@@ -198,7 +198,12 @@ def verify_freeze(project: Path, freeze: Path | None = None) -> tuple[bool, list
         item = recorded[rel]
         path = expected[rel]
         if item.get("size") != path.stat().st_size or item.get("sha256") != _sha256(path):
-            problems.append(f"changed after user confirmation: {rel}")
+            from .presentationdelta import covered
+            from .determinism import content_sha256
+            original = project / str(payload.get("release_dir", "")) / Path(rel).relative_to("08_submission/bundle")
+            same_container = original.is_file() and content_sha256(original) == content_sha256(path)
+            if not same_container and not covered(project, rel, str(item.get("sha256", "")), _sha256(path)):
+                problems.append(f"changed after user confirmation: {rel}")
     expected_release = "08_submission/releases/" + str(payload.get("freeze_id", ""))
     if payload.get("release_dir") != expected_release:
         problems.append("release directory does not match upload identity")

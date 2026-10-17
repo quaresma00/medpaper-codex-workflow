@@ -91,6 +91,10 @@ def load_style(path: Path) -> dict:
         "external_hyperlinks": False,
     }
     defaults.update(data)
+    project = path.resolve().parent.parent if path.resolve().parent.name == "08_submission" else project_root()
+    from wfcore.journalspec import load
+    defaults["journal_profile"] = load(project)
+    defaults["journal_project"] = str(project)
     return defaults
 
 
@@ -284,6 +288,8 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
 
     _flatten_hyperlinks(doc)
     _replace_manual_line_breaks(doc)
+    from wfcore.journalspec import apply_docx
+    apply_docx(doc, style.get("journal_profile", {}), kind)
     _format_reference_spacing(doc, style.get("reference_separator", "space"))
     paras = list(iter_paragraphs(doc))
     nonempty_seen = 0
@@ -350,6 +356,8 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
 
     doc.save(path)
     _sanitize_package_xml(path, font)
+    from wfcore.determinism import normalize
+    normalize(path)
 
 
 def _format_reference_spacing(doc, separator: str) -> None:
@@ -469,6 +477,13 @@ def audit_docx(path: Path, style: dict, kind: str = "",
     problems: list[str] = []
     if not path.is_file():
         return [f"missing DOCX: {path}"]
+    try:
+        with zipfile.ZipFile(path) as archive:
+            if archive.testzip(): return [f"{path.name}: corrupt Office container"]
+    except (OSError, zipfile.BadZipFile) as exc:
+        return [f"{path.name}: invalid DOCX ({exc})"]
+    from wfcore.journalspec import docx_problems
+    problems += docx_problems(path, style.get("journal_profile", {}), Path(style.get("journal_project", project_root())), kind)
     from wfcore.wordtables import table_problems
     problems.extend(table_problems(Document(path)))
     for paragraph in Document(path).paragraphs:
@@ -672,7 +687,17 @@ def build(args) -> int:
     if tables_path:
         from wfcore.wordtables import load_spec
         tables, table_inputs = load_spec(project_root(), tables_path)
-    actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs] if p is not None]
+    profile_path = project_root()/"08_submission/target_journal.json"
+    profile_inputs = [profile_path] if profile_path.is_file() else []
+    author_input = project_root()/"00_input/author_info.json"
+    if style.get("journal_profile", {}).get("blinded_main_manuscript") and author_input.is_file():
+        profile_inputs.append(author_input)
+    patch_path = getattr(args, "csl_patch", None) or project_root()/"08_submission/integration/csl_patch.json"
+    patch_path = patch_path if patch_path.is_file() else None
+    if patch_path:
+        if not args.csl: raise ValueError("CSL patch needs an explicitly sourced base --csl")
+        profile_inputs.append(patch_path)
+    actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,*profile_inputs] if p is not None]
     before = {p:_sha256(p) for p in actual_inputs}
     try:
         source_problems = _source_problems(args.kind, args.input)
@@ -681,7 +706,12 @@ def build(args) -> int:
         # Validate a temporary candidate; a failed rebuild must preserve the user's file.
         with tempfile.TemporaryDirectory(prefix="medpaper-docx-", dir=args.output.parent) as folder:
             candidate = Path(folder) / args.output.name
-            run_pandoc(args.input, candidate, args.bibliography, args.csl)
+            used_csl = args.csl
+            if patch_path:
+                from wfcore.cslpatch import apply
+                used_csl = Path(folder)/"journal.csl"
+                apply(args.csl, patch_path, used_csl)
+            run_pandoc(args.input, candidate, args.bibliography, used_csl)
             if tables:
                 from wfcore.wordtables import append_tables
                 document = Document(candidate)
@@ -704,7 +734,9 @@ def build(args) -> int:
     plan = project/"08_submission/integration/artifact_plan.json"
     if not plan.is_file():
         plan = project/"01_protocol/artifact_plan.json"
-    observed = [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,Path(__file__),
+    observed = [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,*profile_inputs,Path(__file__),
+                ROOT/"tools/wfcore/journalspec.py",ROOT/"tools/wfcore/determinism.py",
+                ROOT/"tools/wfcore/cslpatch.py",
                 ROOT/"tools/wfcore/wordtables.py",
                 project.parent/"pipeline/pipeline.toml", plan if plan.is_file() else None]
     observed = [p for p in observed if p is not None and p.is_file()]
@@ -787,6 +819,7 @@ def main() -> int:
     p.add_argument("--style-config", type=Path, required=True)
     p.add_argument("--bibliography", type=Path)
     p.add_argument("--csl", type=Path)
+    p.add_argument("--csl-patch", type=Path, help="local formatting-only patch; never edit a shared CSL or reference metadata")
     p.add_argument("--tables-json", type=Path, help="declared XLSX sheets/ranges/orientations appended as native three-line tables")
     p.add_argument("--legend-scope",choices=["main","supp","all"],help="actual journal legend inventory")
     p.set_defaults(fn=build)

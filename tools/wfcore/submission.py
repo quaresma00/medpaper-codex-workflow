@@ -74,7 +74,10 @@ def build_portal(project: Path) -> dict:
     rel, manuscript = _safe_path(project, manuscripts[0]["file"])
     if manuscript.suffix.lower() != ".docx":
         raise ValueError("portal source must be the final DOCX")
-    title, sections, full_text = docx_sections(manuscript, requirements.get("section_aliases"))
+    from .journalspec import aliases, load as journal_profile
+    section_aliases = {label.casefold(): key for key, label in aliases(journal_profile(project)).items()}
+    section_aliases.update(requirements.get("section_aliases", {}))
+    title, sections, full_text = docx_sections(manuscript, section_aliases)
     if not title or not sections.get("Abstract"):
         raise ValueError("final manuscript needs a title before an explicit Abstract heading")
     rule = requirements.get("word_count", {})

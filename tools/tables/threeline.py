@@ -154,9 +154,21 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
     for spec in tables:
         ws = wb.create_sheet(title=spec["sheet"][:31])
         _write_sheet(ws, spec)
+    # Apply display language from the actual study, never to raw data or model values.
+    import os
+    project_value = os.environ.get("MEDPAPER_PROJECT")
+    if project_value:
+        from wfcore.journalspec import label_text
+        project = Path(project_value)
+        for sheet in wb:
+            for row in sheet:
+                for cell in row:
+                    if isinstance(cell.value, str): cell.value = label_text(cell.value, project)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     wb.save(p)
+    from wfcore.determinism import normalize
+    normalize(p)
     print(f"wrote {p}  ({len(tables)} sheet(s))")
     return p
 

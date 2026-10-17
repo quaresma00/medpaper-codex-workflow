@@ -10,6 +10,7 @@ from ..journalworkspace import verify as verify_journal_workspace
 from ..reviewpackage import verify as verify_review_package
 from ..evidence import renewable
 from ..scientificfreeze import verify as verify_scientific_freeze
+from ..determinism import holds
 
 
 @check("review_round_approved")
@@ -85,7 +86,8 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
                 problems.append(f"{path.name}: no actual scoped-check evidence")
             for rel, expected in proof.get("artifact_hashes", {}).items():
                 if not renewable(rel):
-                    latest_receipts[rel] = (path.name, "scoped validation", expected)
+                    latest_receipts[rel] = (path.name, "scoped validation", {"path":rel, "sha256":expected,
+                                             "content_sha256":proof.get("artifact_content", {}).get(rel)})
         items = revision.get("items")
         if not isinstance(items, list) or not items:
             problems.append(f"{path.name}: no revision items")
@@ -110,12 +112,15 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
                 # Keep every old receipt as history, but compare the working tree only with
                 # the newest completed receipt for each path.
                 if not renewable(str(rel)):
-                    latest_receipts[str(rel)] = (path.name, str(item_id), str(expected))
+                    latest_receipts[str(rel)] = (path.name, str(item_id), receipt)
     for rel, (round_name, item_id, expected) in latest_receipts.items():
         source = ctx.project / rel
+        if isinstance(expected, dict) and expected.get("deleted"):
+            if source.exists(): problems.append(f"{round_name}/{item_id}: deleted source reappeared ({rel})")
+            continue
         if not source.is_file():
             problems.append(f"{round_name}/{item_id}: changed source missing ({rel})")
-        elif _sha256(source).casefold() != expected.casefold():
+        elif not (holds(ctx.project, expected) if isinstance(expected,dict) else _sha256(source).casefold() == expected.casefold()):
             problems.append(f"{round_name}/{item_id}: changed source drifted after latest closure ({rel})")
     if problems:
         return Result(False, "revision_rounds_closed", "; ".join(problems[:8]))

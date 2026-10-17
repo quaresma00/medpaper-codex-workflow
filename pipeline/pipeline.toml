@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.12.0"
+version = "1.13.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -295,6 +295,10 @@ optional = true
 check = "no_ai_boilerplate"
 path = "07_manuscript/methods.md"
 [[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/methods.md"
+since = "1.13.0"
+[[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/supplementary_methods.md"
 optional = true
@@ -325,6 +329,10 @@ require_all_cited = true
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/results.md"
+[[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/results.md"
+since = "1.13.0"
 
 [[stage.gate]]
 check = "writing_ready"
@@ -384,6 +392,10 @@ outputs = ["07_manuscript/reconciliation.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "display_numbering_consistent"
+paths = ["07_manuscript/methods.md", "07_manuscript/results.md"]
+since = "1.13.0"
+[[stage.gate]]
 check = "artifact_refs_consistent"
 paths = ["07_manuscript/results.md", "07_manuscript/methods.md"]
 require_all_cited = true
@@ -442,6 +454,10 @@ section = "introduction"
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/introduction.md"
+[[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/introduction.md"
+since = "1.13.0"
 
 [[stage]]
 id = "S15_deepread"
@@ -483,12 +499,24 @@ path = "07_manuscript/discussion.md"
 [[stage.gate]]
 check = "no_ai_boilerplate"
 path = "07_manuscript/discussion.md"
+[[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/discussion.md"
+since = "1.13.0"
 
 [[stage]]
 id = "S17_assemble"
 title = "Automatically select the title and assemble the complete manuscript"
 card = "stages/S17_assemble.md"
 outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md"]
+[[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/full_manuscript.md"
+since = "1.13.0"
+[[stage.gate]]
+check = "display_numbering_consistent"
+paths = ["07_manuscript/full_manuscript.md"]
+since = "1.13.0"
 [[stage.gate]]
 check = "outputs_exist"
 optional = ["07_manuscript/statements.md"]
@@ -610,6 +638,9 @@ title = "Select the most realistic current SCIE journal and freeze its requireme
 card = "stages/S20_journal.md"
 needs_user = true
 outputs = ["08_submission/journal_shortlist.md", "08_submission/target_journal.json", "08_submission/guidelines_extract.md", "08_submission/docx_style.json", "08_submission/integration/journal_workspace.json", "08_submission/submission_requirements.json", "08_submission/integration/journal_benchmark.md"]
+[[stage.gate]]
+check = "journal_profile_valid"
+since = "1.13.0"
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -906,7 +937,9 @@ check = "revision_rounds_closed"
 [[stage.gate]]
 check = "decision_recorded"
 name = "submission_package_independent_audit"
-allowed = ["PASS"]
+allowed = ["PASS", "PASS_AUTHOR_FINAL_COPY"]
+[[stage.gate]]
+check = "final_copy_verified"
 [[stage.gate]]
 check = "submission_measurements_current"
 
@@ -936,6 +969,7 @@ globs = [
   "06_refs/deepread/*.md",
   "07_manuscript/review_packages/*.zip",
   "08_submission/integration/**",
+  "08_submission/final_copy/**",
   "08_submission/journal_archives/**",
   "08_submission/cache/**",
   "08_submission/*.csl",

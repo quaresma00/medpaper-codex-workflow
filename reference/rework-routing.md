@@ -1,5 +1,11 @@
 # Scoped user revisions (v1.7)
 
+v1.13 post-freeze rule: read `content-aware-amendments.md`. Proven presentation-only
+corrections retain approval, run scoped checks and report once; no new S19 review,
+subagent round or confirmation. Initial/real scientific review still follows below.
+Use `journal-format` for same-journal presentation, `journal-switch` for a new journal
+(legacy `journal` remains accepted). S25 may open a presentation batch in place.
+
 For discovered dependencies, package-level presentation migration and the final Word chain,
 read `source-aligned-validation.md`. `rework.py depend` adds a real consumer without rewriting
 feedback. `mark --checked-file` records an unchanged inspected source separately; never touch
@@ -143,6 +149,8 @@ Before changing an artifact after it has been presented for review, run:
 | title, abstract, keywords or initial assembly | `title-abstract-keywords` -> S17 |
 | meaning-preserving copyedit | `manuscript-copyedit` -> S19 before freeze; at S24, S22 integration copy only |
 | target journal or its rules | `journal` -> S20 |
+| new journal identity | `journal-switch` -> S20; derived journal layer only |
+| same-journal display/CSL/heading/spelling | `journal-format` -> S23; integration only |
 | title page or declarations | `title-page-or-statements` -> S21 |
 | cover letter, filename, upload list or package composition | `cover-letter-or-package-structure` -> S23 |
 | journal-only figure/table layout | `journal-figure-layout` / `journal-table-layout` -> S23 integration only |

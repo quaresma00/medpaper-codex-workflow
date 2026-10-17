@@ -1,5 +1,9 @@
 # Quality-preserving execution
 
+For already approved versions, `content-aware-amendments.md` supersedes generic reconfirmation
+instructions below for proven presentation changes only. Keep actual scoped checks and
+visual inspection; do not commission another unchanged independent review or rewind S19.
+
 For composed sources, journal display migration, inspected-only files and final Word repair,
 read `source-aligned-validation.md`. A full round proof may be reused unchanged for 24 hours;
 that is distinct from the 120-second pure-check cache. Cosmetic changes retain scientific

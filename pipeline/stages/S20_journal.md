@@ -13,6 +13,13 @@ Choose a legitimate current SCIE venue that maximises realistic acceptance proba
 then freeze its actual author instructions and Word-format rules.
 
 ## Procedure
+Read `reference/content-aware-amendments.md`. Freeze sourced article-specific presentation
+fields (`main_text_headings`, `keywords.min/max/separator`, `blinded_main_manuscript`,
+`spelling`, `number_format`) before expensive construction. Builders must apply them to the
+actual Word/table/R output; canonical source Markdown need not be rewritten for display labels.
+Use null limits for a silent guide; do not add a hidden 97% ceiling. `journal-format` differs
+from a `journal-switch`, which still preserves the same accepted science.
+
 1. Read the user-reviewed full manuscript and the independent review. Search for journals
    that recently published studies of the same design, scale and topic; this is stronger
    scope evidence than a generic aims-and-scope match.

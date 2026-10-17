@@ -17,6 +17,10 @@ when processing feedback and before building/finalizing a journal package.
 For composed builds, journal-only reorganisation and Word repair, also read
 `reference/source-aligned-validation.md`. Actual build receipts, not role guesses, determine
 consumers. Preserve checked-only sources; extend discovered dependencies in the same round.
+For post-freeze edits/S20-S25, read `reference/content-aware-amendments.md`. Proven
+presentation amendments preserve approval: no S19 rewind, new review round or confirmation.
+Validate actual content/meaning and affected outputs, retain old freezes/releases, report
+the delta once. Never infer equal science from equal numbers or exempt real errors.
 At S07/S13-S17 and S20-S23 read `reference/project-benchmarking.md`. Full-text medical
 comparators must shape structure, evidence coverage and the specific display inventory before
 writing/expensive builds. Legacy library/section/display quotas are retired, not lowered to
@@ -130,10 +134,11 @@ confirmation of the exact registered file; an identifier in its references is in
    headings use the Normal-based `SectionHeading` style. Supplementary Methods is prose only:
    its tables belong in the separate three-line supplementary workbook, and it contains no
    Markdown thematic rules. Figure legend section/figure titles cannot be duplicated.
-11. A built package is not final approval. After the user edits it, require an explicit request
+11. A built package is not initial approval. For first review or changed science, require an explicit request
     for the final independent review, freeze the exact files, and complete the S25 reader,
     editor and journal-compliance audit. Any post-confirmation change invalidates the freeze
-    and returns the workflow to S24.
+    and returns the workflow to S24. A proven meaning-preserving presentation amendment uses
+    the scoped path and approval lineage instead of another review/confirmation loop.
 12. A user-requested revision remains inside the workflow. Read `reference/rework-routing.md`
     and create or extend a persisted batch with `tools/rework.py batch` before editing. S19 is
     the repeatable scientific-content loop and S24 is the repeatable journal-package loop;
@@ -153,7 +158,8 @@ confirmation of the exact registered file; an identifier in its references is in
     private data stays local. Legacy archives and freezes remain intact and verifiable.
 14. After explicit S19 approval, create and verify
     `07_manuscript/scientific_master_freeze.json`. S20-S25 must not alter a frozen scientific
-    source. Initialize the selected journal under `08_submission/integration/` and keep every
+    source for a journal-only requirement. Explicit master copyedits need a proven
+    presentation amendment, not a silently rewritten freeze. Initialize `08_submission/integration/` and keep every
     journal-specific wording, structure, title-page, declaration and packaging change there.
     A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
     and requires a new review round, explicit approval and freeze before submission work resumes.

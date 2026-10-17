@@ -59,3 +59,17 @@ medpaper_write_results <- function(name, payload, seed, inputs) {
   }
   invisible(out)
 }
+# Baseline output contains every level; never infer the other sex/category in prose.
+baseline_counts <- function(values, groups = NULL, levels = NULL) {
+  if (is.null(levels)) levels <- if (is.factor(values)) base::levels(values) else unique(values[!is.na(values)])
+  if (any(!values[!is.na(values)] %in% levels)) stop("Declared levels omit observed values")
+  count <- function(x) list(n_total = length(x), n_nonmissing = sum(!is.na(x)), missing = sum(is.na(x)),
+    counts = as.list(stats::setNames(vapply(levels, function(level) sum(x == level, na.rm = TRUE), integer(1)), as.character(levels))))
+  out <- list(levels = as.character(levels), overall = count(values), groups = list())
+  if (!is.null(groups)) {
+    if (length(groups) != length(values)) stop("Groups must align with every observation")
+    out$groups <- lapply(unique(groups[!is.na(groups)]), function(group) c(list(group = as.character(group)), count(values[!is.na(groups) & groups == group])))
+    out$missing_group <- count(values[is.na(groups)])
+  }
+  out
+}

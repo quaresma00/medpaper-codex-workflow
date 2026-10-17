@@ -961,7 +961,7 @@ def run_codex_integration() -> None:
            "tools/package_review.py freeze" in package_human_card and
            "exactly one independent read-only subagent" in final_audit_card and
            "Freeze ID: <freeze_id>" in final_audit_card and
-           "allowed = [\"PASS\"]" in
+           "allowed = [\"PASS\", \"PASS_AUTHOR_FINAL_COPY\"]" in
            (ROOT / "pipeline/pipeline.toml").read_text(encoding="utf-8") and
            "loop --to S24_package_human_review" in final_audit_card,
            "user confirmation -> immutable freeze -> one guideline audit -> PASS or S24 loop")
@@ -2362,6 +2362,10 @@ def main() -> int:
                                 capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("independent review rounds and native Word tables regression suite", rounds.returncode == 0,
                (rounds.stdout + rounds.stderr)[-1800:].strip())
+        migration = subprocess.run([sys.executable, str(ROOT / "tools/test_kiro_v190.py")],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("content-aware Kiro 1.9 migration regressions", migration.returncode == 0,
+               (migration.stdout + migration.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

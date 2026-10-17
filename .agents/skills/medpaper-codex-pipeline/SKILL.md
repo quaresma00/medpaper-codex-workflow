@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.12.0"
+  version: "1.13.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -52,6 +52,13 @@ Unmapped dependencies remain conservative. Preserve unrelated edits and frozen s
 - Other skills/plugins inside a stage: `reference/codex-integration.md`.
 
 ## Essential boundaries
+For post-freeze revisions and S20-S25, read `reference/content-aware-amendments.md`.
+Proven presentation amendments keep prior approval without an S19 rewind, new subagent
+round or user re-confirmation; run actual scoped content/meaning/format checks and report
+the delta once. New science still needs original review. `journal-format` differs from
+`journal-switch`. Completed-stage added presentation gates are pinned until `wf migrate`.
+Author final-copy handoff is explicit and never a claim of new independence.
+
 
 Do not default ordinary database-mining/retrospective studies to public registration or
 preselected reporting checklists. Follow AGENTS.md: applicable registration exceptions are

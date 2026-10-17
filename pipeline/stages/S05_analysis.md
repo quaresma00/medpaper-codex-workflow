@@ -65,6 +65,9 @@ half-finish it and move on.
 - (plus scripts in `03_analysis/code/` and result JSONs in `03_analysis/results/`)
 
 ## Hard rules
+For new/revised categorical baseline producers, Python/R `baseline_counts` exports every
+category (both binary levels), counts by group, missingness and explicit denominators.
+Do not infer unexported complementary counts later or replay old analysis solely for this helper.
 - **No publication plotting.** Keep computational scripts under `03_analysis/code/`
   free of matplotlib, seaborn, plotly, ggplot and savefig; that separation is gated.
   When needed to judge model fit, missingness or bias, run a small diagnostic-only script

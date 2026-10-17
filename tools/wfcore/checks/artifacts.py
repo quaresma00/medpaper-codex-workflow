@@ -658,7 +658,16 @@ def submission_audit_matches_freeze(ctx: Ctx) -> Result:
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         return Result(False, "submission_audit_matches_freeze", f"audit/freeze unreadable: {exc}")
     freeze_id = str(freeze.get("freeze_id", "")).strip()
-    if len(freeze_id) != 64 or freeze_id not in audit:
+    amendment = freeze.get("presentation_approval", {})
+    inherited = False
+    if freeze_id not in audit and amendment:
+        try:
+            revision = ctx.read_json(f".wf/revisions/{amendment['round']}.json")
+            inherited = (revision.get("status") == "complete" and revision.get("validation", {}).get("ok")
+                         and revision.get("content_classification", {}).get("class") == "presentation"
+                         and any(identity in audit for identity in amendment.get("ancestors", [])))
+        except (OSError, ValueError, KeyError): pass
+    if len(freeze_id) != 64 or (freeze_id not in audit and not inherited):
         return Result(
             False,
             "submission_audit_matches_freeze",
@@ -667,10 +676,11 @@ def submission_audit_matches_freeze(ctx: Ctx) -> Result:
         )
     from ..packagefreeze import sync_evidence
     evidence = sync_evidence(ctx.project)
-    if evidence["audit_context_id"] not in audit:
+    if evidence["audit_context_id"] not in audit and not (inherited and bool(amendment.get("prior_audit_context")) and amendment.get("prior_audit_context") in audit
+                                                         and amendment.get("current_audit_context") == evidence["audit_context_id"]):
         return Result(False, "submission_audit_matches_freeze",
                       "audit context changed or is missing; recheck changed journal requirements without asking the user to reapprove unchanged uploads")
-    return Result(True, "submission_audit_matches_freeze", f"audit identifies freeze {freeze_id[:12]}...")
+    return Result(True, "submission_audit_matches_freeze", f"{'prior audit + validated presentation amendment; not a new independent reading' if inherited else 'audit identifies freeze'} {freeze_id[:12]}...")
 
 
 # ---------------------------------------------------------------------------

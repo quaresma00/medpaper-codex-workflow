@@ -18,6 +18,25 @@ medpaper_theme <- function(base_size = 9, family = "Arial") {
 
 medpaper_palette <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")
 
+# Display strings only: never rename data levels, populations or model objects.
+medpaper_label <- function(value) {
+  if (!is.character(value)) return(value)
+  policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
+  if (!is.null(policy$spelling) && grepl("^american|^en-us$|^us$", policy$spelling, ignore.case = TRUE)) policy$spelling <- "american"
+  if (!is.null(policy$spelling) && grepl("^british|^en-gb$|^uk$", policy$spelling, ignore.case = TRUE)) policy$spelling <- "british"
+  pairs <- c(colour="color", colours="colors", centre="center", centres="centers", tumour="tumor", randomised="randomized", analysed="analyzed", modelling="modeling")
+  if (identical(policy$spelling, "british")) pairs <- stats::setNames(names(pairs), pairs)
+  if (!is.null(policy$spelling) && nzchar(policy$spelling)) for (word in names(pairs)) value <- gsub(paste0("\\b", word, "\\b"), pairs[[word]], value)
+  value
+}
+
+medpaper_number <- function(value) {
+  policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
+  mark <- if (is.null(policy$number_format$thousands)) "" else policy$number_format$thousands
+  if (identical(mark, "thin")) mark <- "\u2009"
+  format(value, trim = TRUE, scientific = FALSE, big.mark = mark)
+}
+
 medpaper_result <- function(relative_path) {
   medpaper_require("jsonlite")
   allowed <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_SOURCE_RESULTS", "[]"))
@@ -56,6 +75,13 @@ medpaper_layers <- function(plot) {
 medpaper_save <- function(plot, stem, width = "single", height_mm = 75, dpi = 600,
                          panels = list(plot), tiff = FALSE) {
   medpaper_require(c("ggplot2", "jsonlite", "ragg", "svglite", "systemfonts"))
+  apply_labels <- function(item) {
+    if (inherits(item, "ggplot")) for (name in c("title", "subtitle", "caption", "x", "y")) if (is.character(item$labels[[name]])) item$labels[[name]] <- medpaper_label(item$labels[[name]])
+    policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
+    if (inherits(item, "ggplot") && length(policy$number_format)) for (scale in item$scales$scales) if (!scale$is_discrete() && inherits(scale$labels, "waiver")) scale$labels <- medpaper_number
+    item
+  }
+  plot <- apply_labels(plot); panels <- lapply(panels, apply_labels)
   output <- Sys.getenv("MEDPAPER_RENDER_STEM")
   if (!nzchar(output)) stop("Use tools/figures/render_r.py; a managed staging directory is required.")
   if (basename(stem) != basename(output)) stop("Figure script stem differs from the requested plan entry.")

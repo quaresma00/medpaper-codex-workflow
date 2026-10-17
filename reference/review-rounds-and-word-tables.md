@@ -1,5 +1,9 @@
 # Independent review rounds and native Word tables
 
+v1.13: first review and changed science use these rounds. Proven post-approval presentation
+changes follow `content-aware-amendments.md`: no new review round or re-confirmation, but
+actual scoped checks/visual QA and an explicit presentation delta.
+
 Adapted from user-maintained Kiro v1.8.1, commit
 `1c49c93b9899368811849867ae382ed86c691229` (retrieved 2026-10-17).
 Codex uses its actual subagent API, project paths, scoped revisions and build receipts;

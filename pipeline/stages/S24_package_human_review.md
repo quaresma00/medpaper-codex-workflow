@@ -6,6 +6,11 @@ then ask whether another round is needed. No review ZIP. User inspection and edi
 welcome; never overwrite them by blindly rebuilding.
 
 ## Procedure
+If the package was already explicitly approved and the request is presentation-only, use
+the content-aware scoped amendment path; do not start another round or ask again. Verify
+actual content/meaning/guide/format/changed-page evidence and report the delta once. Real
+science or an explicitly requested additional independent reading still follows below.
+
 1. Start with `tools/review_round.py start --scope package` (later rounds use `--delta`).
    Give one independent read-only subagent actual uploads in `bundle/manifest.json`, generated
    hash-bound text copies, rendered page images/figures, current official guideline snapshot

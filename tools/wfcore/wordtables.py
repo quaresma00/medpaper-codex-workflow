@@ -111,6 +111,15 @@ def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
                                         and cell.number_format not in {"General", "@"}):
                         raise ValueError(f"{cell.coordinate}: use explicit approved display text for formatted numbers/dates; do not change units or precision")
             values = [[sheet.cell(r, c).value for c in range(1, ncol + 1)] for r in range(start, last + 1)]
+            import re
+            from .journalspec import spelling, number_text
+            profile = style.get("journal_profile", {})
+            def display(value):
+                if not isinstance(value, str): return value
+                value = number_text(spelling(value, profile.get("spelling", "")), profile.get("number_format", {}))
+                value = re.sub(r"([<≤>≥])\s+(\d)", lambda m: m[1]+"\u00a0"+m[2], value)
+                return re.sub(r"\b(n)\s*=\s*(\d)|\b(95%)\s+(CI)\b", lambda m: (m[1]+"\u00a0=\u00a0"+m[2]) if m[1] else m[3]+"\u00a0"+m[4], value)
+            values = [[display(value) for value in row] for row in values]
             if any(isinstance(value, str) and value.startswith("=") for row in values for value in row):
                 raise ValueError("formula cells require an explicitly calculated value source; never render formulas as results")
             chars = [min(40, max(6, max(len(str(row[c] or "")) for row in values))) for c in range(ncol)]
@@ -136,6 +145,12 @@ def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
             weights = [char + 3 for char in chars]
             widths = [int(width * weight / sum(weights)) for weight in weights]
             widths[-1] += width - sum(widths)
+            # Protect unbreakable medical tokens; grow their column before shrinking text.
+            minimum = [max(len(token) for row in values for token in str(row[c] or "").split(" ") or [""]) * float(style["body_font_pt"]) * 10 + 180 for c in range(ncol)]
+            if sum(minimum) > width: raise ValueError("unbreakable table tokens exceed page width; revise journal layout/header labels, never silently shrink or drop values")
+            spare = width - sum(minimum)
+            widths = [int(amount + spare * weight / sum(weights)) for amount, weight in zip(minimum, weights)]
+            widths[-1] += width - sum(widths)
             for column, amount in zip(table.columns, widths):
                 column.width = Twips(amount)
             for r, row in enumerate(values):
@@ -159,7 +174,7 @@ def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
                 value = sheet.cell(merged.min_row, merged.min_col).value
                 cell = table.cell(merged.min_row - start, merged.min_col - 1).merge(
                     table.cell(merged.max_row - start, merged.max_col - 1))
-                cell.text = "" if value is None else str(value)
+                cell.text = "" if value is None else str(display(value))
                 for run in cell.paragraphs[0].runs:
                     run.bold = merged.max_row <= end
             for r, row in enumerate(table.rows):

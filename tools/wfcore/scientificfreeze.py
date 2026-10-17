@@ -204,9 +204,9 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
             elif rel not in current_map:
                 problems.append(f"frozen scientific source is missing: {rel}")
             elif current_map[rel] != recorded_map[rel]:
-                problems.append(f"scientific source changed after freeze: {rel}")
-            if len(problems) >= 10:
-                break
+                from .presentationdelta import covered
+                if not covered(project, rel, recorded_map[rel].get("sha256", ""), current_map[rel]["sha256"]):
+                    problems.append(f"scientific source changed after freeze: {rel}")
     expected_id = _freeze_id(token, recorded)
     if payload.get("freeze_id") != expected_id:
         problems.append("freeze_id does not match the current scientific source records")

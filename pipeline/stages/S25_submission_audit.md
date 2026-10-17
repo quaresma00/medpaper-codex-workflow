@@ -12,6 +12,15 @@ journal editor screening for avoidable defects, and a submission-compliance revi
 the chosen journal's current official instructions.
 
 ## Procedure
+For an already approved package's proven presentation-only correction, follow
+`reference/content-aware-amendments.md`; preserve prior review, validate affected files and
+report once, without an automatic S19/S24 loop or repeated confirmation. A new exact release
+retains its historical approval lineage, not a false claim of a new independent reading.
+If the author explicitly wants a manually finished upload copy, use `final_copy.py
+prepare|record|check|finish`. Original independent PASS remains required; the terminal mode
+is explicitly AUTHOR_FINAL_COPY handoff, not submission or a new independent PASS. Missing
+facts, scientific changes and unresolved objective defects cannot be waived.
+
 Generate current hash-bound reading copies with `tools/review_round.py reader-copies --scope
 package`. They aid reading, not actual page/figure inspection. Run `tools/submission_qc.py
 verify` for the same final-file measurements used at S23/S24.

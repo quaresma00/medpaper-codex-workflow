@@ -164,7 +164,10 @@ def journal_limits_met(ctx: Ctx) -> Result:
         manifest = ctx.read_json("08_submission/bundle/manifest.json") if ctx.exists("08_submission/bundle/manifest.json") else {}
         final = [r for r in manifest.get("items",[]) if r.get("role") == "manuscript"]
         if ctx.stage.index >= ctx.pipeline.stage("S23_package").index and len(final) == 1:
-            _,parts,_ = docx_sections(ctx.p(final[0]["file"]),requirements.get("section_aliases"))
+            from ..journalspec import aliases, load
+            mapping = {label.casefold(): key for key,label in aliases(load(ctx.project)).items()}
+            mapping.update(requirements.get("section_aliases", {}))
+            _,parts,_ = docx_sections(ctx.p(final[0]["file"]),mapping)
             counts = {k:word_count(v) for k,v in parts.items()}
         else:
             rel = "08_submission/integration/full_manuscript.md"

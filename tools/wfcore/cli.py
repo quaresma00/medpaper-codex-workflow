@@ -37,6 +37,7 @@ NON_OVERRIDABLE_GATES = {
     "revision_rounds_closed",
     "s19_review_release_explicit",
     "review_round_approved", "submission_measurements_current",
+    "final_copy_verified",
     "scientific_master_frozen",
     "scientific_master_unchanged",
     "journal_workspace_ready",
@@ -299,6 +300,10 @@ def cmd_check(args) -> int:
             "results": [{"check": r.check, "ok": r.ok, "label": r.label,
                          "detail": r.detail, "hints": r.hints} for r in results],
         }, indent=2, ensure_ascii=False))
+        return 0 if ok else 2
+    if getattr(args, "summary", False) or getattr(args, "quiet", False):
+        if not (getattr(args, "quiet", False) and ok):
+            print(f"{'GREEN' if ok else 'RED'}: {len(results)-blocking}/{len(results)}; failures: " + ", ".join(r.check for r in results if r.blocking))
         return 0 if ok else 2
     print(f"gate: {stage.id} - {stage.title}")
     print(DASH)
@@ -653,6 +658,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_card)
 
     p = sub.add_parser("check", help="run the gate for a stage without advancing")
+    p.add_argument("--quiet", action="store_true", help="suppress successful check output")
+    p.add_argument("--summary", action="store_true", help="print counts and failed check names only")
     p.add_argument("--full", action="store_true", help="include passing checks")
     p.add_argument("stage", nargs="?")
     p.add_argument("--json", action="store_true")
@@ -700,8 +707,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("checks", help="list registered gate checks")
     p.set_defaults(fn=cmd_checks)
+    p = sub.add_parser("migrate", help="explicitly adopt current added presentation gates")
+    p.set_defaults(fn=cmd_migrate)
 
     return ap
+
+
+def cmd_migrate(args) -> int:
+    pipe, state, _ = _load()
+    old = state.data.get("engine_pin")
+    state.migrate_pin(str(pipe.meta["version"]))
+    print(f"gate pin {old} -> {pipe.meta['version']}; research files and completed stages preserved")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

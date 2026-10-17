@@ -6,6 +6,11 @@ not by asking the user to discover routine defects. No review ZIP is created. Pr
 archives and legacy freezes; never delete them during an engine update.
 
 ## Procedure
+Already approved/frozen and only presentation requested? Follow
+`reference/content-aware-amendments.md` for a proved scoped amendment, not a fresh review
+round/question. The procedure below covers first review, user-requested extra reading or
+changed science. Unknown equivalence is not automatically presentation.
+
 1. Continue manuscript round M001 started at S18. Its genuine read-only subagent report must
    already be attached. Later rounds start only after the user's another-round answer:
 ```

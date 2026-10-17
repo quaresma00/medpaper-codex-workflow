@@ -57,6 +57,18 @@ def changed(before: dict, after: dict) -> list[str]:
     return sorted(rel for rel in set(before) | set(after) if before.get(rel) != after.get(rel))
 
 
+def input_drift(project: Path, before: dict, after: dict, containers: dict | None = None) -> list[str]:
+    from .presentationdelta import covered
+    from .determinism import content_sha256
+    result = []
+    for rel in changed(before, after):
+        if rel not in before or rel not in after:
+            result.append(rel); continue
+        if containers and rel in containers and content_sha256(project / rel) == containers[rel]: continue
+        if not covered(project, rel, before[rel], after[rel]): result.append(rel)
+    return result
+
+
 def start(project: Path, scope: str, *, delta: bool = False) -> dict:
     previous = latest(project, scope)
     if previous and (not previous.get("closed_at") or not previous.get("user_decision")):
@@ -159,7 +171,9 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
     missing = set(changed(record["before"], current)) - {entry[0] for entry in changes}
     if missing:
         raise ValueError("record each changed/removed review artifact: " + ", ".join(sorted(missing)))
-    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved)
+    from .determinism import content_sha256
+    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved,
+                  container_inputs={rel: content_sha256(project / rel) for rel in current})
     save(project, record)
     summary(project, record)
     return record
@@ -174,7 +188,7 @@ def decide(project: Path, scope: str, answer: str, words: str) -> dict:
     if answer == "no_further_review" and words.strip().strip("。.!！").casefold() in {
             "继续", "好的", "好", "ok", "okay", "thanks", "谢谢", "continue", "looks fine"}:
         raise ValueError("generic continuation/acknowledgment is not explicit no-further-review approval")
-    if inputs(project, scope) != record["after"]:
+    if input_drift(project, record["after"], inputs(project, scope), record.get("container_inputs")):
         raise ValueError("review files/context changed after closure; do not reuse this approval")
     if answer == "no_further_review" and record.get("unresolved"):
         raise ValueError("unresolved objective defects/user-owned facts prevent approval; preferences may be kept with reasons")
@@ -214,7 +228,7 @@ def approved(project: Path, scope: str) -> dict:
         raise ValueError("no complete independent review round")
     if (record.get("user_decision") or {}).get("value") != "no_further_review":
         raise ValueError("the user has not explicitly ended this review round")
-    if inputs(project, scope) != record["after"]:
+    if input_drift(project, record["after"], inputs(project, scope), record.get("container_inputs")):
         raise ValueError("approved review inputs/context drifted")
     if json.loads((project / ROOT / f"{record['id']}.json").read_text(encoding="utf-8")) != record:
         raise ValueError("review index and sealed round disagree")

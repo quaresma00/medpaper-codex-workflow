@@ -14,11 +14,11 @@ RECEIPTS = ".wf/build_receipts.json"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
-def content_digest(path: Path) -> str:
+def content_parts(path: Path) -> list[str]:
     """Content, not ZIP bytes: includes text and embedded media; ignores layout whitespace."""
     import hashlib
     if path.suffix.lower() != ".docx":
-        return _sha256(path)
+        return [_sha256(path)]
     parts = []
     with zipfile.ZipFile(path) as archive:
         for name in sorted(archive.namelist()):
@@ -51,7 +51,13 @@ def content_digest(path: Path) -> str:
             text = re.sub(r"\s+", " ", text.replace("\u00a0", " ")).strip()
             if text:
                 parts.append(name+"\n"+text)
-    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest().upper()
+    return parts
+
+
+def content_digest(path: Path) -> str:
+    import hashlib
+    if path.suffix.lower() != ".docx": return _sha256(path)
+    return hashlib.sha256("\n".join(content_parts(path)).encode("utf-8")).hexdigest().upper()
 
 
 def load(project: Path) -> dict:

@@ -48,6 +48,9 @@ later stage argues against the same target instead of a remembered paraphrase.
 - `03_analysis/notes.md`
 
 ## Hard rules
+New studies default to American English in `.wf/config.toml`; reuse a stated user preference.
+`wf config set spelling british` changes the display policy, not scientific facts. Do not
+rewrite an old unconfigured study just for an engine upgrade.
 - Do not ask routine database-mining/retrospective users to register a study or choose a
   reporting checklist. Do not create candidate-guideline or checklist fields. Follow the
   applicability boundary in AGENTS.md; journal reporting paperwork starts only at S20.

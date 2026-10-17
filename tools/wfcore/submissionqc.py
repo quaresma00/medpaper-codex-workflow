@@ -11,6 +11,9 @@ from .readiness import atomic_json
 RECEIPT = ".wf/submission_measurements.json"
 CHECKLIST = "08_submission/evidence/SUBMISSION_CHECKLIST.md"
 BEGIN, END = "<!-- medpaper measured begin -->", "<!-- medpaper measured end -->"
+RULE_FILES = [Path(__file__), *(Path(__file__).with_name(name + ".py") for name in
+    ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch")),
+    Path(__file__).parents[1]/"manuscript/build_docx.py"]
 
 
 def measure(project: Path) -> dict:
@@ -58,10 +61,7 @@ def measure(project: Path) -> dict:
                 "08_submission/portal_fields.json", "00_input/author_info.json"):
         if (project / rel).is_file():
             sources[rel] = _sha256(project / rel)
-    engine = {str(path.resolve()): _sha256(path) for path in (
-        Path(__file__), Path(__file__).with_name("wordtables.py"),
-        Path(__file__).with_name("submission.py"), Path(__file__).with_name("journalrules.py"),
-        Path(__file__).parents[1] / "manuscript/build_docx.py")}
+    engine = {str(path.resolve()): _sha256(path) for path in RULE_FILES}
     signature = hashlib.sha256(json.dumps({"sources": sources, "engine": engine}, sort_keys=True).encode()).hexdigest()
     return {"schema_version": 1, "input_signature": signature, "sources": sources, "engine": engine, "rows": rows,
             "ok": all(row["status"] == "PASS" for row in rows),
@@ -100,9 +100,7 @@ def verify(project: Path) -> list[str]:
         if any(rel not in receipt["sources"] for rel in current_files):
             return ["submission upload inventory changed"]
         # The receipt signature includes code identity, preventing stale-rule reuse.
-        for path in (Path(__file__), Path(__file__).with_name("wordtables.py"), Path(__file__).with_name("submission.py"),
-                     Path(__file__).with_name("journalrules.py"),
-                     Path(__file__).parents[1] / "manuscript/build_docx.py"):
+        for path in RULE_FILES:
             if receipt.get("engine", {}).get(str(path.resolve())) != _sha256(path):
                 return ["measurement rules changed; remeasure final files"]
         return [] if receipt.get("ok") else ["actual-file measurements contain failed rows"]

@@ -23,6 +23,25 @@ def set_seed(seed: int) -> None:
         sys.modules["numpy"].random.seed(seed)
 
 
+def baseline_counts(values, groups=None, *, levels=None) -> dict:
+    """All category levels, including both binary levels, with explicit denominators."""
+    import pandas as pd
+    series = pd.Series(values, dtype=object)
+    categories = list(levels) if levels is not None else list(pd.unique(series.dropna()))
+    if len({str(value) for value in categories}) != len(categories): raise ValueError("ambiguous category labels")
+    if any(value not in categories for value in series.dropna()): raise ValueError("declared levels omit observed values")
+    def count(part):
+        return {"n_total": int(len(part)), "n_nonmissing": int(part.notna().sum()), "missing": int(part.isna().sum()),
+                "counts": {str(level): int((part == level).sum()) for level in categories}}
+    result = {"levels": [str(level) for level in categories], "overall": count(series), "groups": []}
+    if groups is not None:
+        grouping = pd.Series(groups, dtype=object)
+        if len(grouping) != len(series): raise ValueError("groups must align with every observation")
+        for group in pd.unique(grouping.dropna()): result["groups"].append({"group": str(group), **count(series[grouping == group])})
+        result["missing_group"] = count(series[grouping.isna()])
+    return result
+
+
 def write_results(name: str, payload: dict, *, seed: int, inputs: list[str]) -> Path:
     """Call from the real producer, not from a receipt-repair script.
 

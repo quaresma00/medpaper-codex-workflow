@@ -169,8 +169,12 @@ def manuscript_structure(ctx: Ctx) -> Result:
             if any(ch in payload for ch in "/;&"):
                 problems.append("Keywords must use commas only; '/', ';' and '&' are forbidden")
             terms = [x.strip() for x in payload.split(",") if x.strip()]
-            if not 3 <= len(terms) <= 6:
-                problems.append(f"Keywords must contain 3-6 terms, found {len(terms)}")
+            from ..journalspec import load
+            journal_keywords = load(ctx.project).get("keywords", {}) if rel.startswith("08_submission/") else {}
+            minimum = journal_keywords.get("min", 3) if not journal_keywords else journal_keywords.get("min") or 1
+            maximum = journal_keywords.get("max", 6) if not journal_keywords else journal_keywords.get("max")
+            if len(terms) < minimum or (maximum is not None and len(terms) > maximum):
+                problems.append(f"Keywords outside project/journal range {minimum}-{maximum}, found {len(terms)}")
             if len({x.casefold() for x in terms}) != len(terms):
                 problems.append("Keywords contain duplicates")
     if "references" in positions:

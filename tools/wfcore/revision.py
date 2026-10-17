@@ -117,7 +117,7 @@ def scope_problems(project: Path, revision: dict, files: dict | None = None) -> 
             return True
         # A new journal may preserve the old integration/bundle, but only as byte-identical
         # new archive files. Existing archived attempts are never mutable control records.
-        if (any(i["kind"] == "journal" for i in revision["items"]) and rel not in before
+        if (any(i["kind"] in {"journal", "journal-switch"} for i in revision["items"]) and rel not in before
                 and rel.startswith("08_submission/journal_archives/")):
             tail = rel.split("/", 3)[-1]
             return before.get("08_submission/" + tail) == now.get(rel)
@@ -134,7 +134,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     for item in revision["items"]:
         rebuild.update(closure(project, item["affected_sources"], change_type=item["change_type"],
                                baseline_documents=revision.get("baseline_documents"), extra_edges=revision.get("dependency_edges")))
-    journal_change = any(i["kind"] == "journal" for i in revision["items"])
+    journal_change = any(i["kind"] in {"journal", "journal-switch"} for i in revision["items"])
     if journal_change:
         # Choosing a different journal legitimately affects its whole derived package,
         # never the accepted scientific master. It still does not replay completed stages.
@@ -277,6 +277,8 @@ def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str,
     receipts = Receipts(project,pipeline,state)
     for row in revision["checks"]:
         spec = row["spec"]
+        if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid"} and state.pin_excludes(row["stage"], spec.get("since")):
+            continue
         contextual = spec["check"] in {"outputs_exist", "handoff_recorded", "decision_recorded", "reference_provenance"}
         identity = json.dumps([row["stage"] if contextual else None, spec], sort_keys=True)
         if identity in seen:
@@ -309,6 +311,14 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
         raise ValueError("seal the feedback batch before checking")
     if revision.get("schema_version") != 2:
         raise ValueError("finish the legacy round through its recorded stage gates")
+    if revision.get("presentation_candidate"):
+        from .presentationdelta import classify
+        revision["content_classification"] = classify(project, revision)
+        atomic_json(path, revision)
+        if revision["content_classification"]["class"] != "presentation":
+            print(json.dumps(revision["content_classification"], ensure_ascii=False))
+            print("Changed science needs its source-owned scientific item; uncertain wording needs actual --meaning-review, never a numeric-only waiver.")
+            return 2
     previous = revision.get("validation",{})
     try:
         age = (datetime.now(timezone.utc)-datetime.fromisoformat(previous.get("checked_at",""))).total_seconds()
@@ -322,10 +332,15 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
         print("Scoped checks reused: exact files/rules/configuration/evidence unchanged; freshness not extended")
         return 0
     results, signature, files = validate(project, pipeline, state, revision)
+    from .determinism import content_sha256
     revision["validation"] = {"input_signature": signature, "ok": not any(r.blocking for r in results),
                               "checked_at": datetime.now(timezone.utc).isoformat(),
                               "artifact_hashes": {rel: (h if not h.startswith("stat:") else _sha256(project / rel))
                                                   for rel, h in files.items() if rel in revision["allowed_files"] and not renewable(rel)},
+                              "artifact_content": {rel: content_sha256(project / rel) for rel in files
+                                                   if rel in revision["allowed_files"] and not renewable(rel)
+                                                   and (Path(rel).suffix.lower() in {".docx", ".xlsx"}
+                                                        or rel in {"04_tables/manifest.json", "05_figures/qc/qc_report.json"})},
                               "renewable_evidence": {r: h for r, h in files.items() if renewable(r)},
                               "results": [{"check": r.check, "ok": r.ok, "detail": r.detail,
                                            "severity": r.severity} for r in results]}

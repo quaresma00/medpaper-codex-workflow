@@ -153,6 +153,8 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
             link(source, item.get("file"))
         if str(item.get("file", "")).endswith(".docx"):
             link("08_submission/docx_style.json", item["file"])
+            for source in ("08_submission/target_journal.json", "08_submission/integration/csl_patch.json"):
+                link(source, item["file"])
         if item.get("role") == "manuscript":
             link(item["file"], "08_submission/portal_fields.json")
         if item.get("upload", True):
