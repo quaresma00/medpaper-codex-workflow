@@ -12,6 +12,10 @@ journal editor screening for avoidable defects, and a submission-compliance revi
 the chosen journal's current official instructions.
 
 ## Procedure
+Generate current hash-bound reading copies with `tools/review_round.py reader-copies --scope
+package`. They aid reading, not actual page/figure inspection. Run `tools/submission_qc.py
+verify` for the same final-file measurements used at S23/S24.
+
 1. Before delegation, verify that the package still matches the user's freeze:
 ```
 .\.venv\Scripts\python.exe tools/package_review.py verify --project project
@@ -76,7 +80,9 @@ the chosen journal's current official instructions.
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide submission_package_independent_audit "PASS|REVISE|BLOCKED" --why "<concise evidence-based basis>"
 ```
-6. For `REVISE`, summarise the findings, return to S24, correct the package, revalidate it and
+6. For `REVISE`, reuse the genuine version-matching findings in the next S24 round rather
+   than commissioning another reviewer before applying the same known fixes.
+   Return to S24, correct the package, revalidate it and
    obtain a new explicit user confirmation before auditing the changed freeze:
 ```
 .\.venv\Scripts\python.exe tools/wf.py loop --to S24_package_human_review --why "<material audit defects requiring correction and renewed user confirmation>"

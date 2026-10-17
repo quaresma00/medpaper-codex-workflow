@@ -9,7 +9,7 @@ from pathlib import Path
 from .reviewpackage import verify as verify_review_package
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 FREEZE_REL = "07_manuscript/scientific_master_freeze.json"
 CORE_FILES = (
     "01_protocol/artifact_benchmark.md",
@@ -57,13 +57,19 @@ def _sha256(path: Path) -> str:
 
 def collect_files(project: Path, review_manifest: dict) -> list[dict]:
     project = project.resolve()
+    round_based = bool(review_manifest.get("round_id"))
     required = {
         "07_manuscript/full_manuscript.md",
         "07_manuscript/human_review.md",
-        "07_manuscript/review_packages/latest_review_package.json",
-        str(review_manifest.get("archive_path", "")),
     }
-    paths = [project / rel for rel in CORE_FILES if (project / rel).is_file()]
+    if round_based:
+        required.update((f".wf/review_rounds/{review_manifest['round_id']}.json", review_manifest["report_path"]))
+    else:
+        required.update(("07_manuscript/review_packages/latest_review_package.json", str(review_manifest.get("archive_path", ""))))
+    paths = [project / rel for rel in CORE_FILES if (project / rel).is_file()
+             and not (round_based and rel.startswith("07_manuscript/review_packages/"))]
+    if round_based:
+        paths.extend(project / rel for rel in required)
     for pattern in COLLECTION_GLOBS:
         paths.extend(path for path in project.glob(pattern) if path.is_file())
     archive_rel = str(review_manifest.get("archive_path", "")).strip()
@@ -86,13 +92,24 @@ def _freeze_id(review_package_id: str, records: list[dict]) -> str:
 
 
 def build_payload(project: Path, pipeline_version: str) -> dict:
+    from .reviewrounds import latest, approved
+    if latest(project, "manuscript") is not None:
+        review = approved(project, "manuscript")
+        binding = {"round_id": review["id"], "report_path": review["report"]["path"]}
+        records = collect_files(project, binding)
+        return {"schema_version": SCHEMA_VERSION, "pipeline_version": pipeline_version,
+                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "freeze_id": _freeze_id(review["id"], records), "review_round_id": review["id"],
+                "algorithm": "SHA-256", "files": records}
+    # Compatibility only for an already built legacy review package. New stage gates
+    # require a review round, so a ZIP cannot release a newly running S19 workflow.
     ok, details, review = verify_review_package(project)
     if not ok or review is None:
         raise ValueError("current S19 review package is invalid: " + "; ".join(details[:8]))
     records = collect_files(project, review)
     package_id = str(review["package_id"])
     return {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": 4,
         "pipeline_version": pipeline_version,
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "freeze_id": _freeze_id(package_id, records),
@@ -137,14 +154,26 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
     except json.JSONDecodeError as exc:
         return False, [f"{FREEZE_REL} is invalid JSON: {exc}"], None
     problems: list[str] = []
-    if payload.get("schema_version") not in (1, 2, 3, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
+    if payload.get("schema_version") not in (1, 2, 3, 4, SCHEMA_VERSION) or payload.get("algorithm") != "SHA-256":
         problems.append("scientific freeze schema or hash algorithm is invalid")
-    ok, review_problems, review = verify_review_package(project)
-    if not ok or review is None:
-        problems.append("current S19 review package is invalid: " + "; ".join(review_problems[:5]))
-        return False, problems, payload
-    if payload.get("review_package_id") != review.get("package_id"):
-        problems.append("scientific freeze is bound to a different S19 review package")
+    if payload.get("schema_version") == SCHEMA_VERSION:
+        from .reviewrounds import approved
+        try:
+            round_record = approved(project, "manuscript")
+            review = {"round_id": round_record["id"], "report_path": round_record["report"]["path"]}
+            token = round_record["id"]
+            if payload.get("review_round_id") != token:
+                problems.append("scientific freeze is bound to a different approved review round")
+        except (OSError, ValueError, KeyError) as exc:
+            return False, problems + [str(exc)], payload
+    else:
+        ok, review_problems, review = verify_review_package(project)
+        if not ok or review is None:
+            problems.append("legacy S19 review package is invalid: " + "; ".join(review_problems[:5]))
+            return False, problems, payload
+        token = str(review["package_id"])
+        if payload.get("review_package_id") != token:
+            problems.append("scientific freeze is bound to a different legacy S19 review package")
     try:
         current = collect_files(project, review)
     except (OSError, ValueError) as exc:
@@ -178,7 +207,7 @@ def verify(project: Path) -> tuple[bool, list[str], dict | None]:
                 problems.append(f"scientific source changed after freeze: {rel}")
             if len(problems) >= 10:
                 break
-    expected_id = _freeze_id(str(review["package_id"]), recorded)
+    expected_id = _freeze_id(token, recorded)
     if payload.get("freeze_id") != expected_id:
         problems.append("freeze_id does not match the current scientific source records")
     return not problems, problems, payload

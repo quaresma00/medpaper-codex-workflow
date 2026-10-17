@@ -13,7 +13,7 @@ from .evidence import renewable
 SCIENTIFIC_KINDS = {"study-design", "data", "analysis", "final-protocol"}
 LIFECYCLE_CHECKS = {
     "no_future_artifacts", "single_section_written", "temp_clean", "revision_rounds_closed",
-    "manuscript_review_package_current", "s19_review_release_explicit", "scientific_master_frozen",
+    "manuscript_review_package_current", "s19_review_release_explicit", "review_round_approved", "scientific_master_frozen",
     "bundle_matches_freeze", "submission_audit_matches_freeze",
 }
 REVIEW_OUTPUTS = {"07_manuscript/human_review.md", "07_manuscript/scientific_master_freeze.json",

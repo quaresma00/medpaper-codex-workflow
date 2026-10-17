@@ -12,6 +12,27 @@ from ..evidence import renewable
 from ..scientificfreeze import verify as verify_scientific_freeze
 
 
+@check("review_round_approved")
+def review_round_approved(ctx: Ctx) -> Result:
+    from ..reviewrounds import approved, SCOPES
+    scope = ctx.spec.get("scope", "manuscript")
+    try:
+        record = approved(ctx.project, scope)
+        decision = ctx.state.decision(SCOPES[scope][1]) or {}
+        if decision.get("value") != SCOPES[scope][2] or not str(decision.get("rationale", "")).startswith(record["id"] + ":"):
+            raise ValueError("user approval is not bound to this review round")
+        return Result(True, "review_round_approved", f"{record['id']}: independent review, scoped fixes and explicit user answer recorded")
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        return Result(False, "review_round_approved", str(exc), ["Use tools/review_round.py; do not generate a review ZIP or infer user approval."])
+
+
+@check("submission_measurements_current")
+def submission_measurements_current(ctx: Ctx) -> Result:
+    from ..submissionqc import verify
+    problems = verify(ctx.project)
+    return Result(not problems, "submission_measurements_current", "; ".join(problems[:6]) or "actual upload measurements match final files and rules")
+
+
 def _sha256(path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -175,7 +196,7 @@ def _scientific_freeze_result(ctx: Ctx, check_name: str) -> Result:
             ],
         )
     decision = ctx.state.decision("manuscript_human_reviewed")
-    token = str(freeze.get("review_package_id", ""))[:12]
+    token = str(freeze.get("review_round_id") or freeze.get("review_package_id", ""))[:12]
     if (not decision or decision.get("value") != "NO_FURTHER_REVIEW" or
             token not in str(decision.get("rationale", ""))):
         return Result(
@@ -187,7 +208,7 @@ def _scientific_freeze_result(ctx: Ctx, check_name: str) -> Result:
     return Result(
         True, check_name,
         f"journal-independent scientific master {str(freeze['freeze_id'])[:12]} is unchanged "
-        f"and bound to S19 review package {token}",
+        f"and bound to S19 review {token}",
     )
 
 

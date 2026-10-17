@@ -33,10 +33,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="versioned S19 scientific-review ZIP")
     parser.add_argument("command", choices=["build", "verify"])
     parser.add_argument("--project", type=Path, default=None)
+    parser.add_argument("--legacy", action="store_true", help="explicit compatibility operation for an existing historical ZIP; not the active workflow")
     args = parser.parse_args()
     project = args.project.resolve() if args.project else _project()
     try:
         if args.command == "build":
+            if not args.legacy:
+                raise ValueError("review ZIP generation is retired; use tools/review_round.py (legacy archives remain verifiable)")
             stage = _current_stage(project)
             if stage and stage != "S19_human_review":
                 raise ValueError(
@@ -66,4 +69,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

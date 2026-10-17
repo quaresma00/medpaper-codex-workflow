@@ -284,6 +284,7 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
 
     _flatten_hyperlinks(doc)
     _replace_manual_line_breaks(doc)
+    _format_reference_spacing(doc, style.get("reference_separator", "space"))
     paras = list(iter_paragraphs(doc))
     nonempty_seen = 0
     for p in paras:
@@ -324,17 +325,58 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
             _set_run(run, font, size)
 
     margin = Inches(float(style["margins_in"]))
-    for section in doc.sections:
+    for section_index, section in enumerate(doc.sections):
+        landscape = section.orientation == WD_ORIENT.LANDSCAPE
         section.top_margin = section.bottom_margin = margin
         section.left_margin = section.right_margin = margin
         if str(style["paper_size"]).upper() == "LETTER":
             section.page_width, section.page_height = Inches(8.5), Inches(11)
         else:
             section.page_width, section.page_height = Inches(8.2677), Inches(11.6929)
-        section.orientation = WD_ORIENT.PORTRAIT
+        if landscape:
+            section.page_width, section.page_height = section.page_height, section.page_width
+        section.orientation = WD_ORIENT.LANDSCAPE if landscape else WD_ORIENT.PORTRAIT
+        if style.get("page_numbers", True):
+            section.footer.is_linked_to_previous = section_index > 0
+            has_page = any("PAGE" in (node.text or "").split() for node in section.footer._element.iter(qn("w:instrText"))) or any(
+                "PAGE" in node.get(qn("w:instr"), "").split() for node in section.footer._element.iter(qn("w:fldSimple")))
+            if not has_page:
+                paragraph = section.footer.paragraphs[0]
+                field = OxmlElement("w:fldSimple"); field.set(qn("w:instr"), "PAGE")
+                paragraph._p.append(field)
+            numbering = section._sectPr.find(qn("w:pgNumType"))
+            if numbering is not None:
+                numbering.attrib.pop(qn("w:start"), None)
 
     doc.save(path)
     _sanitize_package_xml(path, font)
+
+
+def _format_reference_spacing(doc, separator: str) -> None:
+    """Preserve reference identity/formatting; normalize only numeric lead spacing."""
+    if separator not in {"space", "tab"}:
+        raise ValueError("reference_separator must be space or tab, based on actual journal rules")
+    for paragraph in doc.paragraphs:
+        if paragraph.style is None or paragraph.style.name != "Bibliography":
+            continue
+        match = re.match(r"^\s*(\[\d+\]|\d+[.)]?)[ \t\u00a0]*", paragraph.text)
+        if not match or not paragraph.runs:
+            continue
+        label, remaining = match.group(1), match.end()
+        for run in paragraph.runs:
+            length = len(run.text)
+            if remaining:
+                run.text = run.text[min(length, remaining):]
+                remaining = max(0, remaining - length)
+        first = paragraph.runs[0]
+        first.text = label + ("\t" if separator == "tab" else " ") + first.text
+        paragraph.paragraph_format.left_indent = Inches(0.5 if separator == "tab" else 0)
+        paragraph.paragraph_format.first_line_indent = Inches(-0.5 if separator == "tab" else 0)
+        tabs = paragraph._p.get_or_add_pPr().find(qn("w:tabs"))
+        if tabs is not None:
+            tabs.getparent().remove(tabs)
+        if separator == "tab":
+            paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(0.5))
 
 
 def _sanitize_package_xml(path: Path, font: str) -> None:
@@ -427,6 +469,14 @@ def audit_docx(path: Path, style: dict, kind: str = "",
     problems: list[str] = []
     if not path.is_file():
         return [f"missing DOCX: {path}"]
+    from wfcore.wordtables import table_problems
+    problems.extend(table_problems(Document(path)))
+    for paragraph in Document(path).paragraphs:
+        if paragraph.style is not None and paragraph.style.name == "Bibliography":
+            match = re.match(r"^\s*(?:\[\d+\]|\d+[.)]?)([ \t\u00a0]*)", paragraph.text)
+            expected = "\t" if style.get("reference_separator", "space") == "tab" else " "
+            if match and match.group(1) != expected:
+                problems.append(f"{path.name}: actual numeric reference lead must use exactly one {style.get('reference_separator', 'space')}")
     try:
         with zipfile.ZipFile(path) as zf:
             bad = zf.testzip()
@@ -617,7 +667,12 @@ def build(args) -> int:
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
     from wfcore.packagefreeze import _sha256
-    actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl] if p is not None]
+    tables_path = getattr(args, "tables_json", None)
+    tables, table_inputs = [], []
+    if tables_path:
+        from wfcore.wordtables import load_spec
+        tables, table_inputs = load_spec(project_root(), tables_path)
+    actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs] if p is not None]
     before = {p:_sha256(p) for p in actual_inputs}
     try:
         source_problems = _source_problems(args.kind, args.input)
@@ -627,6 +682,11 @@ def build(args) -> int:
         with tempfile.TemporaryDirectory(prefix="medpaper-docx-", dir=args.output.parent) as folder:
             candidate = Path(folder) / args.output.name
             run_pandoc(args.input, candidate, args.bibliography, args.csl)
+            if tables:
+                from wfcore.wordtables import append_tables
+                document = Document(candidate)
+                append_tables(document, project_root(), tables, style)
+                document.save(candidate)
             normalize_docx(candidate, style, args.kind)
             problems = audit_docx(candidate, style, args.kind,
                                   planned_figure_ids(scope=getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all"))
@@ -644,13 +704,15 @@ def build(args) -> int:
     plan = project/"08_submission/integration/artifact_plan.json"
     if not plan.is_file():
         plan = project/"01_protocol/artifact_plan.json"
-    observed = [*args.input,args.style_config,args.bibliography,args.csl,Path(__file__),
+    observed = [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,Path(__file__),
+                ROOT/"tools/wfcore/wordtables.py",
                 project.parent/"pipeline/pipeline.toml", plan if plan.is_file() else None]
     observed = [p for p in observed if p is not None and p.is_file()]
     record_build(project, args.output, observed,
-                 entrypoints=args.input,tool="tools/manuscript/build_docx.py",
+                 entrypoints=[*args.input, *([tables_path] if tables_path else [])],tool="tools/manuscript/build_docx.py",
                  parameters={"kind":args.kind,"style":str(args.style_config),"bibliography":str(args.bibliography or ""),
-                             "csl":str(args.csl or ""),"legend_scope":getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all")})
+                             "csl":str(args.csl or ""),"tables_json":str(tables_path or ""),
+                             "legend_scope":getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all")})
     print(f"built and audited {args.kind} -> {args.output}")
     return 0
 
@@ -719,12 +781,13 @@ def main() -> int:
     p = sub.add_parser("build")
     p.add_argument("--kind", required=True,
                    choices=["manuscript", "title_page", "cover_letter", "supplementary",
-                            "statements", "checklist_form", "coi_forms", "figure_legends"])
+                            "statements", "checklist_form", "coi_forms", "figure_legends", "tables"])
     p.add_argument("--input", type=Path, action="append", required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--style-config", type=Path, required=True)
     p.add_argument("--bibliography", type=Path)
     p.add_argument("--csl", type=Path)
+    p.add_argument("--tables-json", type=Path, help="declared XLSX sheets/ranges/orientations appended as native three-line tables")
     p.add_argument("--legend-scope",choices=["main","supp","all"],help="actual journal legend inventory")
     p.set_defaults(fn=build)
     p = sub.add_parser("finalize",help="clean after Word layout fixes without changing content")

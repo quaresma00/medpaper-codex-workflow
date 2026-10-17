@@ -16,6 +16,9 @@ the effect size and the data's limits are known. This is the last cheap exit.
    `Deviations from protocol v1`. The deviations section is the important one:
    for each change, state what changed, why, and whether the change was driven by the
    data (which weakens it) or by a method-scan finding (which strengthens it).
+   Reconcile the actual control, denominator and endpoint choices with the S03 design/method
+   precedents. Keep their applicability and departures in the existing sections; do not
+   re-search unchanged evidence or add a default registration/reporting form.
 2. Write `project/01_protocol/protocol_diff.md` - a plain list of v1 -> final changes,
    one line each. This becomes the honest basis for any "pre-specified" claim in Methods.
 3. Confirm the analysis is finished:

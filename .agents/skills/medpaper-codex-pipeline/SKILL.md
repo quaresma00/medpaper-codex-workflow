@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.11.0"
+  version: "1.12.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -74,8 +74,10 @@ not regenerate scientific plots. Required rendered visual QA remains mandatory.
 
 S17 chooses an accurate title and assembles the paper before S21 author administration.
 S18 gives the frozen manuscript, supplement, tables and actual rendered figures to exactly
-one independent read-only subagent. At each scientific S19 version, present the verified
-review ZIP and exact material paths, invite review, and wait for explicit no-further-review
+one independent read-only subagent. Follow `reference/review-rounds-and-word-tables.md`:
+S19/S24 use version-bound subagent rounds, not review ZIPs. Apply safe findings through
+scoped owner rules, report changes/unadopted reasons once, ask whether another round is wanted,
+and wait for explicit no-further-review
 approval. Generic "continue" is not approval. Freeze the scientific master before journal
 selection; all journal-specific edits belong in `08_submission/integration/`.
 A real scientific correction needs renewed S19 review/freeze, then scoped S24 package updates,

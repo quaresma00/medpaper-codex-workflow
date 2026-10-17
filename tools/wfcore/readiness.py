@@ -172,10 +172,16 @@ def reader_inputs(project: Path) -> dict[str, str]:
 def verify_reader_review(project: Path) -> list[str]:
     import re
     try:
-        report = (project / "07_manuscript/independent_publishability_review.md").read_text(encoding="utf-8")
+        from .reviewrounds import latest, inputs
+        round_record = latest(project, "manuscript")
+        report_path = (project / round_record["report"]["path"]) if round_record and round_record.get("report") else project / "07_manuscript/independent_publishability_review.md"
+        report = report_path.read_text(encoding="utf-8")
         metadata = [json.loads(block) for block in re.findall(r"```json\s*\n(.*?)\n```", report, re.S)]
         evidence = [doc for doc in metadata if isinstance(doc, dict) and "reviewed_artifacts" in doc]
-        if len(evidence) != 1 or evidence[0]["reviewed_artifacts"] != reader_inputs(project):
+        expected = round_record["reviewed_artifacts"] if round_record else reader_inputs(project)
+        if round_record and inputs(project, "manuscript") != round_record.get("reviewed_after", round_record["before"]):
+            return ["scientific review inputs changed; obtain actual independent delta revalidation before closing scientific revisions"]
+        if len(evidence) != 1 or evidence[0]["reviewed_artifacts"] != expected:
             return ["independent reader review must identify the exact current manuscript, supplement, tables AND rendered figures"]
         for heading in ("Reader comprehension", "Medical presentation"):
             match = re.search(r"(?mi)^#{1,3}\s+" + re.escape(heading) + r"\s*$\n(.*?)(?=^#{1,3}\s|\Z)", report, re.S | re.M)

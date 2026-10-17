@@ -1,116 +1,59 @@
-# S24 - User review and confirmation of the submission package
+# S24 - Package subagent review and scoped correction rounds
 
 ## Purpose
-Let the user inspect and modify the assembled journal-specific submission files, then obtain
-an explicit final `OK` before an independent reviewer sees a frozen package.
-
-## This stage needs the user
-Present clickable paths to the complete `08_submission/bundle/`, the
-`08_submission/evidence/SUBMISSION_CHECKLIST.md`, `manifest.json`, the rendered previews used for visual QA, and
-`guidelines_extract.md`. Tell the user that both content and formatting may be edited. Do not
-treat delivery, silence, or an earlier manuscript approval as approval of this submission
-package.
-
-This is a repeatable package-review loop. The user may request any number of correction
-rounds; do not freeze the package until the current round is closed and the user explicitly
-approves the exact visible files.
+Independently read actual journal uploads, fix safe defects in the workflow, report once,
+then ask whether another round is needed. No review ZIP. User inspection and edits remain
+welcome; never overwrite them by blindly rebuilding.
 
 ## Procedure
-1. Wait while the user performs the requested manual content and formatting review. Do not
-   overwrite user-edited DOCX, table, figure, supplement or checklist files by rebuilding
-   them blindly.
-2. Preserve each feedback message verbatim and interpret it once into atomic items in
-   `project/temp/revision_plan.json`; name each item's revision kind, source files and
-   acceptance criteria. Start or extend the persisted round:
+1. Start with `tools/review_round.py start --scope package` (later rounds use `--delta`).
+   Give one independent read-only subagent actual uploads in `bundle/manifest.json`, generated
+   hash-bound text copies, rendered page images/figures, current official guideline snapshot
+   and typed article-specific requirements. Text copies do not replace visual inspection.
+   Do not transfer patient data/credentials. Missing delegation means independent review pending.
+2. The reviewer reads as a first-time reader and screening editor, then checks files,
+   compliance and consistency. Require precise locations, severity and rule/evidence; the
+   exact printed `reviewed_artifacts` JSON; substantive `Reader comprehension`, `Editorial
+   screening and low-level errors` and `Guideline compliance` sections. Attach before editing:
 ```
-.\.venv\Scripts\python.exe tools/rework.py batch --plan project\temp\revision_plan.json
-.\.venv\Scripts\python.exe tools/rework.py status
+.\.venv\Scripts\python.exe tools/review_round.py attach --scope package --report <actual-report.md>
 ```
-   Keep collecting without rebuilding until the user finishes the batch, then run
-   `tools/rework.py seal --why "<user's instruction>"`. If the complete request already asks
-   to implement now, use `batch --sealed` directly without another confirmation.
-   After sealing, a content change routes to its earliest Markdown, analysis, table, figure, reference,
-   title-page or package source; rebuild its true dependants under the owner rules while
-   staying at S24. Do not reset completed stages or replay S20-S23. Never edit
-   narrative content only in DOCX. Format-only work stays at S24. Preserve every unrelated
-   user edit and modify only the affected Word file or deterministic style/build source.
-   A journal-specific wording, abstract-organization, title-page or declaration edit that
-   preserves the accepted science belongs in `08_submission/integration/`; it must never be
-   copied back into `07_manuscript`. A genuine change to methods, analysis, results or
-   scientific interpretation returns to its scientific owner and invalidates the S19 approval.
-   If context compacts, resume from `tools/rework.py status` rather than re-reading the entire
-   feedback history. Token pressure is not permission to reduce or skip requested work.
-3. When the user has already edited files, identify which bundle files changed and run:
-```
-.\.venv\Scripts\python.exe tools/package_content.py verify --project project
-```
-   A passing visible-text baseline proves a DOCX change was formatting-only. If it fails,
-   reconcile the changed wording back to its owning source, rebuild under the scoped S23
-   task, then capture a new baseline only with the actual builder receipts. Never recapture
-   a manual Word edit to bless drift. Run `rework.py check` before marking/closing the round.
-   When a genuine scientific change was requested, repeat the S19 review ZIP, explicit user
-   confirmation and scientific freeze. The workflow then resumes its package-only scoped
-   round at S24, preserving prior stage history and unrelated journal edits. Merge the delta
-   and use `journal_workspace.py rebase`; do not regenerate the entire integration layer.
-4. Re-run `bundle_complete`, `docx_bundle_ready`, `package_content_matches_baseline`, the
-   standalone Word manifest audit and
-   visual QA for every changed file. Recheck filenames, upload roles, word/keyword/reference
-   limits, figure/table/legend numbering, supplements, declarations and cross-file facts
-   against the chosen journal's official guideline snapshot. If a title-page reference count
-   is present, verify that both the integration source and the user-edited DOCX still equal the
-   number of distinct citekeys actually used in
-   `08_submission/integration/full_manuscript.md`, not the library size.
-5. At S24, verify each atomic request against its acceptance criteria. Mark the final changed
-   files and checks, then close the revision round with `tools/rework.py close`. Present the
-   resulting package again; later feedback opens a new round without a fixed round limit.
-6. Write or append `project/08_submission/package_human_review.md` with headings `Package presented`,
-   `User modifications`, `Revalidation`, `User confirmation`, `Frozen package`.
-7. After all revision rounds are closed and the user's edits have been revalidated, ask exactly one clear confirmation question:
-   **“投稿包已按您的修改重新校验。是否确认 OK，并调用一个独立子代理，以普通读者和期刊编辑的视角终审当前冻结版本？”**
-   Continue only after an explicit affirmative answer such as `OK`, `确认` or `可以`.
-8. Record the actual explicit user confirmation before creating the release:
-```
-.\.venv\Scripts\python.exe tools/wf.py decide submission_package_user_confirmed OK --why "<what the user reviewed or changed, what was revalidated, and that independent audit was explicitly approved>"
-```
+   Returning from S25 REVISE: reuse genuine findings only when input versions match. Map frozen
+   release files to byte-identical working uploads, retain original evidence and add the exact
+   round hash block. Otherwise obtain a current review, not a stale or invented hash claim.
+3. The main agent fixes safe findings through one scoped `rework.py batch --sealed` at S24.
+   Journal-only changes stay in `08_submission/integration/`. Visible Word text edits must be
+   reconciled to source and legitimately rebuilt; format-only changes may remain when
+   `package_content.py verify` proves unchanged visible content. Scientific corrections need
+   owner rules, renewed S19 round/approval and freeze, then merge only the delta into journal
+   copies, preserving unrelated user edits. Never guess author/ethics/funding facts or insert
+   AI-use disclosures. Unadopted preferences need reasons; objective defects cannot be waived.
+4. Rebuild affected outputs only, finalize, render and visually inspect changed files, then
+   update legitimate baselines/portal fields. Run actual scoped checks and close the source
+   revision. Refresh `tools/submission_qc.py measure`. Do not reacquire raw data or reanalyse
+   the study for an unrelated formatting change.
+5. Run `tools/review_round.py close --scope package`, repeating `--change <file> <why>` for
+   each changed/removed review artifact and `--kept <finding-ID> <reason>` as needed. Use the
+   actual `--unresolved` count; missing required author facts/objective defects block approval.
+6. Report once with exact upload/checklist/preview/report paths, corrections and unadopted
+   reasons. Ask ONLY:
 
-   Then create and verify the upload-only read-only release:
-```
-.\.venv\Scripts\python.exe tools/manuscript/submission_fields.py
-.\.venv\Scripts\python.exe tools/package_review.py freeze --project project
-.\.venv\Scripts\python.exe tools/package_review.py verify --project project
-```
-   Present the exact `08_submission/releases/<freeze_id>/` path and portal fields. Record the
-   file count and freeze ID under `Frozen package`. Read `reference/efficient-quality.md`.
-   Keep backstage evidence in its own manifest; refreshing evidence does not require another
-   author approval of identical upload bytes.
+   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“无需继续审阅”。
 
-## Outputs
-- `08_submission/package_human_review.md`
-- `08_submission/package_review_freeze.json`
-- `08_submission/evidence/evidence_manifest.json`
-- the exact read-only release under `08_submission/releases/`
-
-## Hard rules
-- The confirmation must concern the final journal-specific upload package, not the earlier
-  scientific manuscript review.
-- No independent final audit starts before explicit user confirmation and a successful
-  freeze.
-- The user's confirmation is also the explicit request to invoke one independent subagent
-  for the final reader/editor/compliance review; an earlier review request does not substitute.
-- Any actual upload change after confirmation requires revalidation and new confirmation.
-  Background cache/log/control refreshes do not; changed journal rules require compliance
-  revalidation bound to the new audit context.
-- A direct Word content edit can never be classified as format-only. Visible-text drift blocks
-  freezing until it is applied to the owning source and rebuilt through S23.
-- Journal-specific adaptations stay in `08_submission/integration/` and the bundle. Frozen
-  scientific-master files may change only after source-routed scientific rework, renewed S19
-  review and a new freeze.
-- Never infer or rewrite user-owned authorship, affiliation, funding, ethics or conflict data.
-- Do not trade away a requested correction, full validation, independent review or visual QA
-  to save tokens. Save tokens by reading the persisted item and its dependency closure only.
-
-## Close
+   Preserve the answer using `tools/review_round.py decide --scope package --answer
+   another_round|no_further_review --words "<actual words>"`. Only explicit no-further-review
+   binds `submission_package_user_confirmed=OK` to this closed round. Generic “继续” is not
+   approval. Never infer a user decision from successful review or building.
+7. After approval, create/verify the exact upload-only release, then continue to S25:
 ```
+.\.venv\Scripts\python.exe tools/package_review.py freeze
+.\.venv\Scripts\python.exe tools/package_review.py verify
 .\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "user reviewed and explicitly confirmed the final package; changed files=<...>; freeze=<timestamp and file count>"
+.\.venv\Scripts\python.exe tools/wf.py advance --note "package round approved; exact uploads frozen for independent final audit"
 ```
+
+## Hard boundaries
+This does not replace S25 on the confirmed freeze. The reviewer reports only; the main agent
+corrects outside immutable releases. New uploads need renewed approval/freeze. Preserve old
+rounds, releases and legacy archives. Review cannot create clinical facts, citations, private
+data transfer authority or actual journal submission. The portal remains user-controlled.

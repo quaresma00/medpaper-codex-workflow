@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.11.0"
+version = "1.12.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -31,7 +31,7 @@ temp_dir = "temp"
 "04_tables" = "main/ (one xlsx per main table), supplementary/ (single xlsx, one sheet per table)."
 "05_figures" = "out/ (co-located plot scripts, vector PDF and PNG previews), code/ (legacy scripts), qc/ (QC reports), legends.md."
 "06_refs" = "refs.bib, refs.ris, library.json, verified.json, fulltext/, deepread/."
-"07_manuscript" = "Section drafts, accepted journal-independent full_manuscript.md, S19 review ZIP, and scientific-master freeze."
+"07_manuscript" = "Section drafts, accepted journal-independent full_manuscript.md, review summary and scientific-master freeze."
 "08_submission" = "Journal shortlist, guideline extract, derived journal integration sources, final bundle, user confirmation and independent audit."
 
 # ------------------------------------------------------------------------------
@@ -57,8 +57,8 @@ invariants = [
   "The S23 package is not final until S24 records the user's explicit request for final review and freezes the exact files, then S25 obtains one independent PASS from reader, editor and journal-compliance perspectives. Any post-confirmation change returns to S24.",
   "A user-requested revision never leaves the workflow. Route it with tools/rework.py to the earliest owning stage, update the source of truth, rebuild only true dependants, and invalidate downstream approvals. Word-only layout edits are allowed at S24 only when the S23 visible-text baseline is unchanged.",
   "Repeated feedback is handled as a persisted revision round at S19 (scientific manuscript) or S24 (journal package). Interpret the feedback once into atomic items, route the batch to its earliest owner, read and rebuild only affected sources/dependants, preserve unaffected approved evidence, and still run every applicable quality gate. Token or context pressure is never permission to omit an item, shorten the scientific work or skip validation; resume from tools/rework.py status after compaction.",
-  "Every initial or revised S19 scientific version must have a current, versioned third-party review ZIP and be presented with clickable locations for the manuscript, optional supplementary Methods, tables, figures and independent verdict. Remain at S19 until the user explicitly states that no further review is needed; silence, file delivery, thanks, or a generic continue instruction is not approval.",
-  "After explicit S19 approval, freeze the journal-independent scientific master. S20-S25 may edit only the derived 08_submission/integration copies and package files. A real scientific change invalidates S19 approval, returns to the owning source stage, and requires a new review ZIP, user confirmation and freeze.",
+  "S19/S24 use version-bound independent read-only subagent review rounds, not review ZIPs. The executor applies safe scoped corrections, reports changed and unadopted findings once, then asks whether another round is needed. Only an explicit no-further-review answer releases the checkpoint; generic continue is insufficient.",
+  "After explicit S19 approval, freeze the journal-independent scientific master. S20-S25 edit only derived integration/package files. Real scientific changes invalidate approval and require scoped correction, a new review round, user confirmation and freeze; never replay unaffected stages.",
   "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
 ]
 
@@ -564,7 +564,7 @@ id = "S19_human_review"
 title = "User review of the full manuscript, supplementary Methods and tables"
 card = "stages/S19_human_review.md"
 needs_user = true
-outputs = ["07_manuscript/human_review.md", "07_manuscript/review_packages/latest_review_package.json", "07_manuscript/scientific_master_freeze.json"]
+outputs = ["07_manuscript/human_review.md", "07_manuscript/scientific_master_freeze.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -596,9 +596,8 @@ check = "executor_acceptance"
 [[stage.gate]]
 check = "revision_rounds_closed"
 [[stage.gate]]
-check = "manuscript_review_package_current"
-[[stage.gate]]
-check = "s19_review_release_explicit"
+check = "review_round_approved"
+scope = "manuscript"
 [[stage.gate]]
 check = "scientific_master_frozen"
 
@@ -798,6 +797,8 @@ headings = ["Rendered files inspected", "Citation and cross-reference checks", "
 check = "decision_recorded"
 name = "submission_files_visually_confirmed"
 allowed = ["YES"]
+[[stage.gate]]
+check = "submission_measurements_current"
 
 [[stage.gate]]
 check = "portal_fields_current"
@@ -847,6 +848,12 @@ check = "revision_rounds_closed"
 check = "decision_recorded"
 name = "submission_package_user_confirmed"
 allowed = ["OK"]
+
+[[stage.gate]]
+check = "review_round_approved"
+scope = "package"
+[[stage.gate]]
+check = "submission_measurements_current"
 
 [[stage.gate]]
 check = "portal_fields_current"
@@ -900,6 +907,8 @@ check = "revision_rounds_closed"
 check = "decision_recorded"
 name = "submission_package_independent_audit"
 allowed = ["PASS"]
+[[stage.gate]]
+check = "submission_measurements_current"
 
 [[stage.gate]]
 check = "portal_fields_current"

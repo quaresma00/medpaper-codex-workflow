@@ -70,9 +70,10 @@ confirmation of the exact registered file; an identifier in its references is in
 - Use the spreadsheet workflow at S10 to render and visually inspect the pipeline-generated
   XLSX files. At S18, give the frozen complete manuscript, optional supplementary Methods
   and tables to exactly one independent read-only subagent for publication-readiness review.
-  At every initial or revised S19 presentation, run `tools/manuscript/review_package.py build`
-  and `verify`, show clickable locations for every review artifact and the exact versioned ZIP,
-  and invite the user or a third party to review it. Stay at S19 until the user explicitly says
+  Read `reference/review-rounds-and-word-tables.md`. S18 starts manuscript round M001;
+  S19/S24 use independent subagent review rounds, not review ZIPs. The main executor applies
+  safe scoped corrections, reports changes and unadopted reasons once, then asks whether
+  another round is wanted. Show exact artifact/report paths. Stay until the user explicitly says
   no further review is needed; do not infer approval from delivery, silence, thanks, completion
   of one revision, or a generic instruction to continue.
   Use the document/PDF workflows at S23 to render and inspect submission files.
@@ -143,20 +144,19 @@ confirmation of the exact registered file; an identifier in its references is in
     output, gate, visual inspection or review. Never patch assembled Markdown or Word narrative
     content as detached final files; S24 permits Word-only layout changes only when the S23
     visible-text baseline passes.
-13. S19 is an explicit, repeatable user-review stop. Every scientifically changed version has
-    a newly verified third-party review ZIP containing the manuscript, optional supplementary
-    Methods, tables, rendered figures, verified BibTeX/RIS exports and independent verdict,
-    but no patient-level data,
-    credentials, full-text literature or internal analysis code. Record
-    `manuscript_human_reviewed=NO_FURTHER_REVIEW` only after the user explicitly states that no
-    further review is needed and identify the presented ZIP revision and package ID in the
-    rationale. This approval is valid for that package only and cannot be forced.
+13. S19/S24 are explicit repeatable review stops. Use `tools/review_round.py` to start a
+    version-bound round, attach the genuine read-only subagent report before edits, correct
+    safe findings through scoped owner rules, close and report once. Ask only whether another
+    round is needed. Record no-further-review only from the actual explicit user answer,
+    bound to this round/current files. No review ZIP is created. Missing independent review
+    remains pending, unresolved objective defects cannot be dismissed as preferences, and
+    private data stays local. Legacy archives and freezes remain intact and verifiable.
 14. After explicit S19 approval, create and verify
     `07_manuscript/scientific_master_freeze.json`. S20-S25 must not alter a frozen scientific
     source. Initialize the selected journal under `08_submission/integration/` and keep every
     journal-specific wording, structure, title-page, declaration and packaging change there.
     A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
-    and requires a new review ZIP, explicit approval and freeze before submission work resumes.
+    and requires a new review round, explicit approval and freeze before submission work resumes.
     New scoped revisions stay at the review checkpoint and call owner rules in place; do
     not use `wf loop` or reset completed-stage history. `rework.py check` must pass on final
     files before closure. After a late scientific correction is approved at S19, resume the

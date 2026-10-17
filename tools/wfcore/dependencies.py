@@ -155,9 +155,15 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
             link("08_submission/docx_style.json", item["file"])
         if item.get("role") == "manuscript":
             link(item["file"], "08_submission/portal_fields.json")
+        if item.get("upload", True):
+            link(item.get("file"), "08_submission/evidence/SUBMISSION_CHECKLIST.md")
     for source in ("00_input/author_info.json", "08_submission/submission_requirements.json",
                    "08_submission/bundle/manifest.json"):
         link(source, "08_submission/portal_fields.json")
+    for source in ("08_submission/docx_style.json", "08_submission/portal_fields.json",
+                   "08_submission/target_journal.json", "08_submission/submission_requirements.json",
+                   "08_submission/bundle/manifest.json"):
+        link(source, "08_submission/evidence/SUBMISSION_CHECKLIST.md")
     # Explicit additional consumers cover shared supplements and project-specific builders.
     from .buildproof import load as build_receipts, project_inputs
     for output, receipt in build_receipts(project).items():

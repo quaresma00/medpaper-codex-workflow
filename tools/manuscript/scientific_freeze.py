@@ -46,7 +46,7 @@ def main() -> int:
             output, payload, created = write(project, str(pipeline.meta["version"]))
             action = "created" if created else "reused unchanged"
             print(f"{action} scientific-master freeze -> {output}")
-            print(f"freeze_id={payload['freeze_id']}; review_package_id={payload['review_package_id']}")
+            print(f"freeze_id={payload['freeze_id']}; review={payload.get('review_round_id') or payload.get('review_package_id')}")
             return 0
         ok, problems, payload = verify(project)
         if not ok or payload is None:
@@ -63,4 +63,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

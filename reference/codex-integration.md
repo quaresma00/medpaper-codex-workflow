@@ -95,14 +95,11 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   component Markdown at S19; do not patch it as a detached final file.
   Run `rework.py check` before marking/closing. Do not reset the stage tail or rely on typed
   validation labels. Read S07's reader contracts and S18's exact input-hash/comprehension rules.
-- S19 delivery: run `tools/manuscript/review_package.py build` and `verify` for every initial
-  or scientifically changed version. Present clickable paths for the manuscript, optional
-  supplementary Methods, table workbooks, rendered PNG figures, verified BibTeX/RIS exports,
-  independent verdict and exact versioned ZIP. The ZIP is safe for third-party scientific review because it excludes raw or
-  patient-level data, credentials, full-text literature and internal analysis code. Remain at
-  S19 until the user explicitly says no further review is needed. Then run
-  `tools/manuscript/scientific_freeze.py freeze`; this hashes the accepted journal-independent
-  manuscript sources, scientific artifacts, references, review record and exact S19 ZIP.
+- S19/S24 follow `reference/review-rounds-and-word-tables.md`: independent read-only subagent
+  rounds, safe main-agent scoped corrections, one report of changes/unadopted reasons and
+  one another-round question. No review ZIP. Present exact artifact/report paths; wait for
+  explicit no-further-review approval bound to the current closed round. Scientific freeze
+  hashes the accepted sources, scientific artifacts, references and actual approved round/report.
 - S20-S22: verify the scientific freeze and run
   `tools/manuscript/journal_workspace.py init` after the journal is chosen. The derived
   `08_submission/integration/` files are the only editable source for journal-specific

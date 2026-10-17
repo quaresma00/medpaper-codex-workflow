@@ -34,6 +34,10 @@ def main() -> int:
             decision = state.decision("submission_package_user_confirmed") or {}
             if decision.get("value") != "OK":
                 raise ValueError("the user's explicit S24 confirmation is required")
+            from wfcore.reviewrounds import approved
+            record = approved(project, "package")
+            if not str(decision.get("rationale", "")).startswith(record["id"] + ":"):
+                raise ValueError("package approval must bind the current independent review round")
             output = write_freeze(project, freeze)
             ok, problems, count = verify_freeze(project, output)
             if not ok:

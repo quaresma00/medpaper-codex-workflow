@@ -154,7 +154,7 @@ medical language. A value merely found somewhere in result JSON is insufficient:
 its endpoint, population, comparator, units, denominator, time window and adjustment set.
 
 S18 reads actual rendered figures as well as the prose and tables. Use
-`readiness.py review-inputs` and bind its hashes inside the existing independent report,
+`review_round.py start --scope manuscript` once and bind its hashes inside the independent report,
 alongside Reader comprehension and Medical presentation findings. No second report or
 additional mandatory agent is introduced. Automated coverage cannot certify human-like
 understanding; the independent reviewer must actually inspect the files and explain defects.

@@ -159,7 +159,7 @@ must verify it unchanged. The active target journal works only on files derived 
 Changing target journals creates a new integration copy from the same freeze; it does not
 rewrite the accepted master. If a user requests a real scientific correction from S24, do
 not retain the old `manuscript_human_reviewed` decision: route to the scientific owner,
-rebuild, generate a new S19 review ZIP, obtain explicit approval again and replace the freeze.
+rebuild, complete a new S19 subagent review round, obtain explicit approval again and replace the freeze.
 Package-only items in a mixed batch are retained for later. After the new approval/freeze,
 `wf advance` resumes a scoped package round at S24, without replaying S20-S23. Merge only
 the changed science into existing journal copies, preserving unrelated user edits, then use

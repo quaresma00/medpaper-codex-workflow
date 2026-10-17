@@ -951,13 +951,13 @@ def run_codex_integration() -> None:
     record("independent reviewer is singular, read-only, and before author intake",
            independent.get("needs_user", False) is False and human.get("needs_user") is True and
            authors.get("needs_user") is True and "exactly one independent subagent" in review_card and
-           "must not edit files" in review_card and "Do not ask for authors" in
+           "must not edit files" in review_card and "Do not ask for author administration" in
            (ROOT / "pipeline/stages/S19_human_review.md").read_text(encoding="utf-8"),
            "one frozen-package review, then user review, then authors")
     record("final package audit waits for explicit user OK and is independent",
            package_human.get("needs_user") is True and
            final_audit.get("needs_user", False) is False and
-           "是否确认 OK" in package_human_card and
+           "无需继续审阅" in package_human_card and
            "tools/package_review.py freeze" in package_human_card and
            "exactly one independent read-only subagent" in final_audit_card and
            "Freeze ID: <freeze_id>" in final_audit_card and
@@ -986,19 +986,19 @@ def run_codex_integration() -> None:
            "revision_rounds_closed" in package_checks and
            any(gate["check"] == "revision_rounds_closed" for gate in final_audit["gate"]) and
            "08_submission/package_content_baseline.json" in package_stage["outputs"] and
-           "tools/rework.py batch" in package_human_card and
-           "tools/rework.py status" in package_human_card and
-           "actual builder receipts" in package_human_card,
+           "rework.py batch" in package_human_card and
+           "rework.py batch --sealed" in package_human_card and
+           "legitimately rebuilt" in package_human_card,
            "persisted S19/S24 rounds + component equality + visible-text enforcement")
-    record("S19 requires a current third-party ZIP and explicit no-further-review decision",
-           "manuscript_review_package_current" in human_checks and
-           "s19_review_release_explicit" in human_checks and
-           "tools/manuscript/review_package.py build" in human_card and
-           "无需继续审核，可以进入下一步" in human_card and
-           "05_figures/out/" in human_card and "exact ZIP" in human_card and
-           '"s19_review_release_explicit"' in
+    record("S19 requires independent review rounds and explicit no-further-review decision without ZIP",
+           "review_round_approved" in human_checks and
+           "manuscript_review_package_current" not in human_checks and
+           "review_round.py" in human_card and
+           "无需继续审阅" in human_card and
+           "No review ZIP" in human_card and
+           '"review_round_approved"' in
            (ROOT / "tools/wfcore/cli.py").read_text(encoding="utf-8"),
-           "versioned review ZIP + exact paths + package-bound non-overridable stop")
+           "actual report + round-bound non-overridable stop; no review ZIP")
     journal = next(s for s in pipe["stage"] if s["id"] == "S20_journal")
     late_stages = [next(s for s in pipe["stage"] if s["id"] == stage_id) for stage_id in
                    ("S20_journal", "S21_authors", "S22_polish", "S23_package",
@@ -1515,7 +1515,7 @@ def run_manuscript_docx(proj: Path) -> None:
     state.save()
     review_tool = ROOT / "tools/manuscript/review_package.py"
     first_review_zip = subprocess.run(
-        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        [sys.executable, str(review_tool), "build", "--legacy", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
     review_manifest_path = manuscript / "review_packages/latest_review_package.json"
     review_manifest = (json.loads(review_manifest_path.read_text(encoding="utf-8"))
@@ -1526,7 +1526,7 @@ def run_manuscript_docx(proj: Path) -> None:
         with zipfile.ZipFile(review_archive) as zf:
             members = set(zf.namelist())
     outcome = gate("manuscript_review_package_current", "S19_human_review")
-    record("S19 builds a verified third-party review ZIP with exact review materials",
+    record("legacy review archives remain verifiable with exact historic materials",
            first_review_zip.returncode == 0 and outcome.ok and
            review_manifest.get("package_revision") == 1 and
            {"07_manuscript/full_manuscript.md",
@@ -1542,7 +1542,7 @@ def run_manuscript_docx(proj: Path) -> None:
            ((first_review_zip.stdout or "") + (first_review_zip.stderr or "") +
             outcome.detail).strip()[:180])
     unchanged_review_zip = subprocess.run(
-        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        [sys.executable, str(review_tool), "build", "--legacy", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
     unchanged_manifest = json.loads(review_manifest_path.read_text(encoding="utf-8"))
     record("unchanged S19 sources reuse the verified ZIP without duplicate versions",
@@ -1571,7 +1571,7 @@ def run_manuscript_docx(proj: Path) -> None:
     )
     stale_review = gate("manuscript_review_package_current", "S19_human_review")
     rebuilt_review_zip = subprocess.run(
-        [sys.executable, str(review_tool), "build", "--project", str(proj)],
+        [sys.executable, str(review_tool), "build", "--legacy", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
     revised_manifest = json.loads(review_manifest_path.read_text(encoding="utf-8"))
     revised_review = gate("manuscript_review_package_current", "S19_human_review")
@@ -2021,8 +2021,21 @@ def run_manuscript_docx(proj: Path) -> None:
     (submission / "cache/guidelines.html").write_text("<html>fixture</html>", encoding="utf-8")
     freezer = ROOT / "tools/package_review.py"
     state.data["current"] = "S24_package_human_review"
-    state.record_decision("submission_package_user_confirmed", "OK",
-                          "Fixture user approved these exact final upload files for independent review.")
+    state.save()
+    # Controlled synthetic reviewer response exercises the new lifecycle; it is not
+    # claimed as an actual independent scientific review of a real study.
+    from wfcore import reviewrounds
+    test_round = reviewrounds.start(proj, "package")
+    fixture_report = proj / "temp/synthetic_package_review.md"
+    fixture_report.parent.mkdir(parents=True, exist_ok=True)
+    fixture_report.write_text("# Synthetic lifecycle review fixture\n\n" + "\n\n".join(
+        f"## {heading}\n\n" + "Controlled synthetic reviewer response for lifecycle regression testing only. " * 3
+        for heading in ("Reader comprehension", "Editorial screening and low-level errors", "Guideline compliance")) +
+        "\n\n```json\n" + json.dumps({"reviewed_artifacts": test_round["reviewed_artifacts"]}) + "\n```\n", encoding="utf-8")
+    reviewrounds.attach(proj, "package", fixture_report)
+    reviewrounds.close(proj, "package", [], [])
+    reviewrounds.decide(proj, "package", "no_further_review", "Test fixture user explicitly said no further review needed.")
+    state.load()
     frozen = subprocess.run(
         [sys.executable, str(freezer), "freeze", "--project", str(proj)],
         capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
@@ -2345,6 +2358,10 @@ def main() -> int:
                                     capture_output=True, text=True, encoding="utf-8", errors="replace")
         record("benchmarked professional acceptance regression suite", benchmarked.returncode == 0,
                (benchmarked.stdout + benchmarked.stderr)[-1800:].strip())
+        rounds = subprocess.run([sys.executable, str(ROOT / "tools/test_review_rounds.py")],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+        record("independent review rounds and native Word tables regression suite", rounds.returncode == 0,
+               (rounds.stdout + rounds.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
     finally:

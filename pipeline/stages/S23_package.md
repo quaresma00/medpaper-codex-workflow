@@ -52,7 +52,8 @@ journal-guideline audit.
 6. Add figures and tables in the exact editable/separate forms required by the journal.
    Never omit the supplementary file. Supplementary Methods must contain prose only and no
    Markdown horizontal rules. Put every supplementary table in the separate three-line
-   workbook under `04_tables/supplementary/` and list that workbook as a table upload; the
+   workbook under `04_tables/supplementary/` and deliver it in the selected journal's required
+   table format (native three-line Word when required, otherwise XLSX); the
    supplementary-Methods DOCX audit rejects embedded Word tables. Write
    `08_submission/evidence/SUBMISSION_CHECKLIST.md` and `bundle/manifest.json`;
    every bundle upload is listed with its role, exact guideline rule and `source_files`
@@ -84,6 +85,11 @@ journal-guideline audit.
 10. Write `submission_qc.md` with `Rendered files inspected`, `Citation and cross-reference
    checks`, `Typography and hyperlinks`, `Tables and figures`, `Defects resolved`. Record
    `submission_files_visually_confirmed YES`, then clean temporary/orphaned files.
+11. Run `tools/submission_qc.py measure` on final files. It updates only its marked measured
+    block in the internal evidence checklist, preserving manual visual findings. Run the same
+    receipt verification at S24/S25; unchanged file/rule hashes reuse real measurements.
+    Read `reference/review-rounds-and-word-tables.md` for native Word table sheets/ranges,
+    per-table orientation, continuous page numbers and truthful reading-copy handoffs.
 
 ## Outputs
 - A journal-requested reporting checklist only if explicitly required in the sourced upload

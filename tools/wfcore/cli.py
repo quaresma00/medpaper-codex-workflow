@@ -36,6 +36,7 @@ NON_OVERRIDABLE_GATES = {
     "citekeys_resolve",
     "revision_rounds_closed",
     "s19_review_release_explicit",
+    "review_round_approved", "submission_measurements_current",
     "scientific_master_frozen",
     "scientific_master_unchanged",
     "journal_workspace_ready",
@@ -343,8 +344,10 @@ def cmd_advance(args) -> int:
             print("--force cannot waive an unfinished revision round. Complete every recorded "
                   "item, return through its gates, and close the round at the review stage.")
         if "s19_review_release_explicit" in failed_names:
-            print("--force cannot waive S19 review. Present the current versioned ZIP and exact "
+            print("--force cannot waive legacy S19 review. Present the recorded archive and exact "
                   "artifact paths, then wait for the user's explicit no-further-review statement.")
+        if "review_round_approved" in failed_names:
+            print("--force cannot waive the current independent review round or explicit user answer.")
         return 2
     if not ok and not args.force:
         print(f"refusing to advance: {blocking} blocking issue(s) in {stage.id}")

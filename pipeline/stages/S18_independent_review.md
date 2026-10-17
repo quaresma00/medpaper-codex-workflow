@@ -10,13 +10,20 @@ Test the frozen complete manuscript, supplementary Methods, every table and rend
 edits them. This is an independent scientific/editorial audit, not another writing pass.
 
 ## Procedure
+Start M001 before delegation: `tools/review_round.py start --scope manuscript`.
+Use its exact `reviewed_artifacts` hashes, including bibliography exports when present.
+Attach the actual report with `tools/review_round.py attach --scope manuscript --report
+project/07_manuscript/independent_publishability_review.md` before changing inputs.
+M001 remains open for safe executor correction at S19; do not ask for user decisions per
+finding. Follow S19 for close, one report, one question and the actual user answer.
+
 1. Freeze the inputs for this audit: `07_manuscript/full_manuscript.md`,
    `07_manuscript/supplementary_methods.md` when present, every workbook under
    `04_tables/main/` and `04_tables/supplementary/`, every planned rendered figure, legends,
    table captions, and `01_protocol/artifact_plan.json`.
    Include the source-bound `01_protocol/artifact_benchmark.md`. Evaluate whether the real
    comparator-derived plan adequately covers the clinical argument, not fixed numeric quotas.
-   Run `tools/manuscript/readiness.py review-inputs` for the exact paths and hashes. Supply
+   Use `tools/review_round.py start --scope manuscript` once for the exact paths/hashes. Supply
    those real files, not a textual description of images. The reviewer opens figures and
    inspects tables; if its tools cannot read them, mark the review incomplete, not PASS.
    Do not change them while the reviewer is working.
@@ -37,7 +44,7 @@ edits them. This is an independent scientific/editorial audit, not another writi
    under these exact headings: `Verdict`, `Critical barriers`, `Scientific validity`,
    `Reporting completeness`, `Tables and supplementary material`, `Journal suitability`,
    `Required revisions`, `Post-revision outlook`, `Reader comprehension`, `Medical presentation`.
-   Include the `reviewed_artifacts` JSON from the handoff in one fenced JSON block inside
+   Include the `reviewed_artifacts` JSON from review_round.py in one fenced JSON block inside
    this existing report after verifying the files actually reviewed are unchanged.
    Under Reader comprehension explain the clinical question, population/comparison,
    principal result and what cannot be inferred in plain language; identify ambiguous

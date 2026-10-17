@@ -11,6 +11,11 @@ a local protocol does not imply public preregistration.
 
 ## Procedure
 1. Fix the actual study design and analysis scope, not a reporting-checklist label.
+   Before expensive analysis, check close published design/method precedents for control
+   selection, unit/denominator, endpoint definitions and key model assumptions. Record the
+   concrete source and project-specific rationale in the relevant protocol sections; explain
+   mismatches rather than copying a design label. This is methodological grounding, not a
+   new reporting checklist, citation quota or separate dossier. Reuse the evidence at S07.
    Ordinary data mining, secondary analysis and retrospective centre data need no default
    public registration, platform search, registration number or registration deliverable.
    For a systematic review/meta-analysis or actual prospective interventional trial only,
