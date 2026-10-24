@@ -67,6 +67,12 @@ class Receipts:
         # All path overrides are included, not only their default locations.
         patterns.extend(v for k, v in spec.items() if isinstance(v, str) and
                         (k == "path" or k.endswith("_path") or k in {"manifest", "style"}))
+        if spec["check"]=="numbers_have_provenance":
+            patterns.append("01_protocol/artifact_plan.json")
+            for location in ("07_manuscript/claim_bindings.json","08_submission/integration/claim_bindings.json"):
+                path=self.project/location
+                if path.is_file():
+                    patterns.extend(row["source_path"] for row in json.loads(path.read_text(encoding="utf-8")).get("claims",[]) if row.get("kind")=="unit_scale" and row.get("source_path"))
         if spec["check"] == "docx_bundle_ready":
             manifest = self.project / "08_submission/bundle/manifest.json"
             if manifest.is_file():
@@ -77,7 +83,8 @@ class Receipts:
         files = {}
         for pattern in patterns:
             _safe_path(self.project, pattern)  # Reject traversal before globbing.
-            found = [p for p in self.project.glob(pattern) if p.is_file()]
+            found = [p for p in self.project.glob(pattern) if p.is_file() and not (
+                p.name.startswith("~$") and p.suffix.lower() in {".xlsx",".docx",".pptx"})]
             files[pattern] = {p.relative_to(self.project).as_posix(): _sha256(p) for p in sorted(found)}
         payload = {"stage": stage.id, "spec": spec, "files": files, "engine": self.engine,
                    "targets": self.pipeline.targets, "config": self.state.config(),

@@ -123,6 +123,15 @@ def blind_problems(path: Path, project: Path, role: str) -> list[str]:
 
 
 def apply_docx(doc, target: dict, role: str) -> None:
+    if role=="manuscript" and "line_numbers" in target:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        if type(target["line_numbers"]) is not bool: raise ValueError("line_numbers must be the journal's explicit boolean requirement")
+        for section in doc.sections:
+            for node in list(section._sectPr.findall(qn("w:lnNumType"))): section._sectPr.remove(node)
+            if target["line_numbers"]:
+                node=OxmlElement("w:lnNumType"); node.set(qn("w:countBy"),"1"); node.set(qn("w:restart"),"continuous")
+                section._sectPr.insert_element_before(node,"w:pgNumType","w:cols","w:formProt","w:vAlign","w:noEndnote","w:titlePg","w:textDirection","w:bidi","w:rtlGutter","w:docGrid","w:printerSettings","w:sectPrChange")
     heads = aliases(target); keywords = target.get("keywords", {})
     separator = keywords.get("separator", ", ")
     if separator not in {",", ", ", ";", "; "}: raise ValueError("keyword separator must be a sourced comma or semicolon")
@@ -147,6 +156,13 @@ def docx_problems(path: Path, target: dict, project: Path, role: str) -> list[st
     from docx import Document
     doc = Document(path); problems = []
     if role == "manuscript":
+        if "line_numbers" in target:
+            from docx.oxml.ns import qn
+            for section in doc.sections:
+                nodes=section._sectPr.findall(qn("w:lnNumType"))
+                expected=target["line_numbers"]
+                if type(expected) is not bool or (expected and (len(nodes)!=1 or nodes[0].get(qn("w:countBy"))!="1" or nodes[0].get(qn("w:restart"))!="continuous")) or (expected is False and nodes):
+                    problems.append("actual Word line numbering differs from explicit journal requirement")
         actual = {paragraph.text.strip() for paragraph in doc.paragraphs}
         for canonical, label in aliases(target).items():
             if canonical not in {"Introduction","Methods","Results","Discussion","Conclusion"}: continue

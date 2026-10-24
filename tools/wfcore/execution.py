@@ -4,13 +4,16 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
+import time
 import uuid
 from pathlib import Path
 
 from .readiness import atomic_json
 
 
-def run_logged(command, *, project, timeout=180, cwd=None, env=None):
+def run_logged(command, *, project, timeout=180, cwd=None, env=None, heartbeat=25):
+    if timeout<=0 or heartbeat<=0: raise ValueError("Positive task timeout and heartbeat required")
     env={**os.environ,**(env or {}),"PYTHONIOENCODING":"utf-8","PYTHONUTF8":"1"}
     project=Path(project).resolve();job=uuid.uuid4().hex
     log=project/".wf/processes"/(job+".log");log.parent.mkdir(parents=True,exist_ok=True)
@@ -21,8 +24,17 @@ def run_logged(command, *, project, timeout=180, cwd=None, env=None):
     metadata={"job":job,"pid":process.pid,"executable":Path(str(command[0])).name,
               "cwd":str(Path(cwd or os.getcwd()).resolve()),"timeout_seconds":timeout,"log":str(log),"status":"running"}
     atomic_json(record,metadata)
+    started=time.monotonic()
     try:
-        stdout,stderr=process.communicate(timeout=timeout)
+        while True:
+            remaining=timeout-(time.monotonic()-started)
+            if remaining<=0: raise subprocess.TimeoutExpired(command,timeout)
+            try:
+                stdout,stderr=process.communicate(timeout=min(remaining,heartbeat,30))
+                break
+            except subprocess.TimeoutExpired:
+                if time.monotonic()-started>=timeout: raise
+                print(f"Task running: {metadata['executable']} pid={process.pid}; {int(time.monotonic()-started)}s elapsed; job={job}. Completion is pending.",file=sys.stderr,flush=True)
     except subprocess.TimeoutExpired:
         process.kill()  # Only the child created above; no taskkill by global process name.
         stdout,stderr=process.communicate();log.write_text(stdout+stderr,encoding="utf-8")

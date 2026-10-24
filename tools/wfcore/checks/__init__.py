@@ -69,7 +69,8 @@ class Ctx:
         return json.loads(self.read(rel))
 
     def glob(self, pattern: str) -> list[Path]:
-        return sorted(x for x in self.project.glob(pattern) if x.is_file())
+        return sorted(x for x in self.project.glob(pattern) if x.is_file() and not (
+            x.name.startswith("~$") and x.suffix.lower() in {".xlsx",".docx",".pptx"}))
 
     def target(self, key: str, default=None):
         return self.pipeline.targets.get(key, default)

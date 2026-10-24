@@ -195,10 +195,17 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
         for p in ctx.glob("04_tables/main/*.xlsx") + ctx.glob("04_tables/supplementary/*.xlsx"):
             try:
                 cells = xlsxlite.numeric_cell_values(p)
+            except PermissionError as exc:
+                return Result(False,"numbers_have_provenance",f"Workbook IO pending: {p.name}: {exc}",
+                              ["Close or finish saving this workbook in Excel, then rerun the check; do not regenerate data or mark provenance passed."])
             except Exception as exc:  # noqa: BLE001 - report, do not crash the gate
                 return Result(False, "numbers_have_provenance", f"cannot read {p.name}: {exc}")
             for sheet, ref, val in cells:
-                if _offenders(str(val), floats, strings, allowed):
+                from ..claims import table_unit_constants
+                try: constants=table_unit_constants(ctx.project,p,sheet,ref,val)
+                except (OSError,ValueError,KeyError,TypeError,StopIteration) as exc:
+                    return Result(False,"numbers_have_provenance",f"{p.name}[{sheet}]!{ref}: {exc}")
+                if _offenders(str(val), floats, strings, allowed|constants):
                     offenders.append(f"{p.name}[{sheet}]!{ref}={val}")
         from ..claims import validate_tables
         offenders.extend(validate_tables(ctx.project, ctx.glob("04_tables/main/*.xlsx") + ctx.glob("04_tables/supplementary/*.xlsx")))

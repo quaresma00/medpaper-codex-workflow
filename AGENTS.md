@@ -32,6 +32,16 @@ current context remain available. Preview revision scope before editing; scienti
 renewal needs explicit authorization, never an inferred numbered-label change. Keep the
 user's centralized abbreviations, Word cleanup and independent review/freeze boundaries.
 
+## Runtime reliability (v1.17)
+
+Read the runtime section of `reference/structural-quality.md` for exact UTF-8 author-text
+transport, real header/note unit constants, per-figure job isolation and IO pending states.
+After compaction use `wf handoff`; it is bounded local context, not a new check or report.
+Long S07/S20/S23/S25 cards are compact; `wf card <stage> --details` retrieves their single
+maintained full procedure. Read applicable details once, reuse already-loaded guidance.
+The engine/state/pinned gate versions are distinct; only explicit `wf migrate` changes pin.
+No modern engine refresh may silently rewind a journal-tail project or mark pending work PASS.
+
 ## Start and resume
 
 Before doing project work, run:

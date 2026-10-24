@@ -69,7 +69,8 @@ def _load(need_state: bool = True):
         # v1.4 introduces the S19 scientific-master freeze and derived per-journal sources.
         # A legacy run already in the journal tail cannot prove that its 07_manuscript files
         # were not polished in place, so return it to S19 without deleting any artifact.
-        if (previous_version != str(pipe.meta.get("version", "0")) and
+        from .state import version_tuple
+        if (version_tuple(previous_version) < (1,4,0) and
                 st.current in {stage.id for stage in pipe.stages[pipe.stage("S20_journal").index:]} and
                 not (proj / "07_manuscript/scientific_master_freeze.json").is_file()):
             later = [stage.id for stage in pipe.stages_after("S19_human_review")]
@@ -171,6 +172,7 @@ def cmd_status(args) -> int:
         cached = st.data.get("last_check", {})
         payload = {
             "pipeline": f"{pipe.meta.get('name')} {pipe.meta.get('version')}",
+            "versions": {"engine":str(pipe.meta.get("version")),"state":st.data.get("pipeline_version"),"pin":st.data.get("engine_pin")},
             "current": stage.id, "title": stage.title,
             "missing_outputs": missing, "active_feedback": active,
             "feedback_status": revision.get("status"),
@@ -186,6 +188,7 @@ def cmd_status(args) -> int:
             print(json.dumps(payload, indent=2, ensure_ascii=False))
         else:
             print(f"{payload['pipeline']} | {stage.id} | {stage.title}")
+            print("Versions: engine={engine}, state={state}, completed-gate pin={pin} (wf migrate changes pin)".format(**payload["versions"]))
             print("Missing outputs: " + (", ".join(missing) or "none"))
             print(f"Feedback: {active or 'none'} {revision.get('status', '')}")
             if revision.get("rebuild_files"):
@@ -272,6 +275,9 @@ def cmd_card(args) -> int:
         st.load()
         stage = pipe.stage(st.current)
     card = stage.card_path()
+    if getattr(args,"details",False):
+        detail=paths.repo_root()/"reference/stage_details"/card.name
+        if detail.is_file(): card=detail
     if not card.exists():
         print(f"card missing: {card}")
         return 1
@@ -290,7 +296,7 @@ def cmd_check(args) -> int:
             print(f"revision check: {exc}")
             return 2
     stage = pipe.resolve(args.stage) if args.stage else pipe.stage(st.current)
-    results = gates.run_stage(pipe, st, proj, stage, record=True)
+    results = gates.run_stage(pipe, st, proj, stage, reuse=True, record=True)
     ok, blocking, warned = gates.summarize(results)
     st.data["last_check"] = {"stage": stage.id, "ok": ok,
                              "failures": [f"{r.check}: {r.detail}" for r in results if not r.ok]}
@@ -315,6 +321,35 @@ def cmd_check(args) -> int:
         return 0
     print(f"RED - {blocking} blocking issue(s)")
     return 2
+
+
+def cmd_handoff(args) -> int:
+    """Bounded local resume context, never a new dossier or a gate run."""
+    pipe,st,project=_load(); stage=pipe.stage(st.current)
+    missing=[r for r in stage.outputs if not (project/r).exists()]
+    active=st.data.get("active_revision_round")
+    revision=json.loads((st.dir/"revisions"/(active+".json")).read_text(encoding="utf-8")) if active else {}
+    print(f"Stage: {stage.id} | {stage.title}")
+    print(f"Versions: engine={pipe.meta['version']}; state={st.data.get('pipeline_version')}; pin={st.data.get('engine_pin')}")
+    print("Card: "+str(stage.card_path()))
+    detail=paths.repo_root()/"reference/stage_details"/stage.card_path().name
+    if detail.is_file(): print("Details (read relevant procedure once): "+str(detail))
+    print("Missing outputs: "+(", ".join(missing)[:1500] or "none"))
+    last=st.data.get("last_check",{})
+    print("Previous check only (not rerun, not current certification): "+str(last.get("stage","none")))
+    for failure in last.get("failures",[])[:8]: print("  "+str(failure)[:300])
+    print("Feedback: "+str(active or "none")+" "+revision.get("status",""))
+    for item in [i for i in revision.get("items",[]) if i.get("status")!="done"][:12]:
+        print("  "+str(item.get("id",item.get("item_id","?")))+": "+str(item.get("request",""))[:220])
+    from .reviewrounds import latest
+    for scope in ("manuscript","package"):
+        record=latest(project,scope)
+        if record:
+            status="closed" if record.get("closed_at") else "open"
+            print(f"Review {scope}: {record['id']} {status}; answer="+str((record.get("user_decision") or {}).get("value","pending")))
+    print("Next: "+("rework.py status -> scoped correction/check; preserve checkpoint" if active else "card -> required work -> check -> advance; review approvals need actual author words"))
+    print("Logs: "+str(st.dir/"processes")+"; original user data and accepted sources stay unchanged.")
+    return 0
 
 
 def cmd_advance(args) -> int:
@@ -645,6 +680,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="medpaper workflow driver. Start with: wf status",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
+    from .argtext import add
 
     p = sub.add_parser("init", help="scaffold project folders and create run state")
     p.add_argument("--force", action="store_true")
@@ -656,8 +692,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_status)
 
+    p = sub.add_parser("handoff",help="bounded local resumption context; no checks/network/new output files")
+    p.set_defaults(fn=cmd_handoff)
+
     p = sub.add_parser("card", help="print a stage card")
     p.add_argument("stage", nargs="?")
+    p.add_argument("--details",action="store_true",help="show the full procedure behind a compact stage card")
     p.set_defaults(fn=cmd_card)
 
     p = sub.add_parser("check", help="run the gate for a stage without advancing")
@@ -669,13 +709,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=cmd_check)
 
     p = sub.add_parser("advance", help="close the current stage and move to the next")
-    p.add_argument("--note", help="handoff note (required unless already noted)")
+    add(p,"--note",help="handoff note (required unless already noted)")
     p.add_argument("--force", action="store_true", help="advance despite a red gate; recorded in state")
     p.set_defaults(fn=cmd_advance)
 
     p = sub.add_parser("loop", help="deliberately return to an earlier stage")
     p.add_argument("--to", required=True)
-    p.add_argument("--why", required=True)
+    add(p,"--why", required=True)
     p.set_defaults(fn=cmd_loop)
 
     p = sub.add_parser("note", help="append to the handoff log")
@@ -685,7 +725,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("decide", help="record a gated decision with its rationale")
     p.add_argument("name")
     p.add_argument("value")
-    p.add_argument("--why", required=True)
+    add(p,"--why", required=True)
     p.set_defaults(fn=cmd_decide)
 
     p = sub.add_parser("tree", help="whole pipeline with status")

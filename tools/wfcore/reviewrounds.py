@@ -209,6 +209,8 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
 
 
 def decide(project: Path, scope: str, answer: str, words: str) -> dict:
+    from .argtext import intact
+    intact(words)
     record = latest(project, scope)
     if not record or not record.get("closed_at") or record.get("user_decision"):
         raise ValueError("a closed round awaiting the actual user answer is required")
@@ -222,6 +224,8 @@ def decide(project: Path, scope: str, answer: str, words: str) -> dict:
         raise ValueError("unresolved objective defects/user-owned facts prevent approval; preferences may be kept with reasons")
     record["user_decision"] = {"value": answer, "words": words, "at": now()}
     save(project, record)
+    if latest(project,scope)["user_decision"]["words"] != words:
+        raise ValueError("Stored author text differs; no approval may be recorded")
     summary(project, record)
     if answer == "no_further_review":
         from .state import State

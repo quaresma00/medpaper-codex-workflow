@@ -62,6 +62,8 @@ def no_future_artifacts(ctx: Ctx) -> Result:
 @check("single_section_written")
 def single_section_written(ctx: Ctx) -> Result:
     """A manuscript stage may add only its own declared manuscript file(s)."""
+    if ctx.stage.id != ctx.state.current and (ctx.state.is_done(ctx.stage.id) or ctx.state.stage_info(ctx.stage.id).get("completed_at")):
+        return Result(True,"single_section_written","historical completed stage: later manuscript files are legitimate; owner content checks still execute")
     manuscript_stages = [
         s for s in ctx.pipeline.stages
         if any(o.startswith("07_manuscript/") and o.endswith(".md") for o in s.outputs)

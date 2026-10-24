@@ -25,8 +25,9 @@ def main() -> int:
     parser.add_argument("--kept", nargs=2, action="append", default=[])
     parser.add_argument("--unresolved", type=int, default=0)
     parser.add_argument("--answer", choices=["another_round", "no_further_review"])
-    parser.add_argument("--words")
-    parser.add_argument("--why")
+    from wfcore.argtext import add
+    add(parser,"--words")
+    add(parser,"--why")
     parser.add_argument("--author-decisions",type=Path)
     parser.add_argument("--resolutions",type=Path,help="complete finding-ID disposition map for the existing review report")
     args = parser.parse_args()

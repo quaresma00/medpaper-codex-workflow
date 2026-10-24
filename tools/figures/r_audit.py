@@ -77,7 +77,8 @@ def audit_svg(path, metadata):
     def element(found, evidence):
         return {"found": bool(found), "evidence": evidence}
     bars = [l for l in layers if l.get("geom") in {"GeomBar", "GeomCol"}]
-    bar_zero = all(l.get("ymin") == 0 or l.get("xmin") == 0 for l in bars)
+    bar_zero = all(p.get("bar_baseline_zero") is True if "bar_baseline_zero" in p else
+                   all(l.get("ymin")==0 or l.get("xmin")==0 for l in sequence(p.get("layers")) if l.get("geom") in {"GeomBar","GeomCol"}) for p in panels)
     labels_present = bool(panels) and all(p.get("x_label") and p.get("y_label") for p in panels)
     null = any(v in (0, 1) for l in layers if l.get("geom") == "GeomVline" for v in sequence(l.get("xintercept")))
     diagonal = any(1 in sequence(l.get("slope")) and 0 in sequence(l.get("intercept")) for l in layers if l.get("geom") == "GeomAbline")

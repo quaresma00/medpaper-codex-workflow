@@ -1,5 +1,67 @@
 # Clinical presentation, complete review closure and low-cost correction (v1.16)
 
+## Runtime retrospective follow-up (v1.17)
+
+This adopts verified defects from the local Kiro 1.12 implementation and its anonymized
+runtime retrospective, not the study itself. Existing v1.14-v1.16 soft writing budgets,
+clinical labels, complete finding dispositions, delta reviews, semantic heading roles and
+presentation amendments remain authoritative; do not add duplicate gates/agents/bundles.
+
+- Author text: `review_round.py ... --words-file <UTF8_FILE>` or `--words-b64` and the
+  equivalent `--why-file|--why-b64` (also in rework/wf) preserve the actual words. Alternatives
+  are mutually exclusive. UTF-8 with BOM is accepted; corrupt/replacement text is refused.
+  There is NO automatic mojibake correction or guessed approval. `decide` reads back stored
+  words before recording state approval. Generic continue remains insufficient.
+- `wf handoff` returns <=60 lines of local stage/version/check-history/revision/review
+  context, without running checks/network or creating a new handoff dossier. Previous-check
+  summaries are labelled historical, not fresh validation. `wf check` reuses only existing
+  pure content/rule/config-bound receipts; unknown/live/integrity checks still execute.
+  Engine version, recorded state version and completed-gate pin are shown separately.
+  Refreshing a modern engine does not trigger the old pre-v1.4 freeze migration/rewind.
+- Four longest S07/S20/S23/S25 cards are compact. Full details live once under
+  `reference/stage_details/`; read the applicable procedure on first use (`card --details`),
+  then reuse it. This reduces repeated context, not scientific scope or required checks.
+- Completed-stage `single_section_written` no longer rejects legitimate later review
+  files. Active-stage restrictions still apply. Captions need real explanatory text, not
+  a magic `abbrevi`/`footnote` word; actual S10 table structure verifies notes below EACH
+  bottom rule. Long notes are advisory at generation and reviewed for medical utility;
+  the 300-character BODY-cell guard must not be applied to notes.
+- Office `~$` files are excluded from broad artifact/check-cache globs. A required explicit
+  upload must still be real. An unreadable workbook remains IO-pending with an Excel-save/
+  close instruction; do not call it fabricated numbers, silently skip it or regenerate data.
+  Process logs already belong under `.wf/processes` (other logs may use `.wf/logs`), never
+  under scratch `temp/`; `temp_clean` remains strict and does not delete useful logs.
+- Explanatory rate units use the existing claim-bindings file, not a global numeric whitelist.
+  A row with `kind: unit_scale`, exact workbook `path/sheet/cell/text`, `reason`, real
+  `source_path` and verbatim `source_quote` may authorize an explicit `per N` unit ONLY in
+  a structurally identified header/note. The source is the actual protocol/producer.
+  Result-body counts, additional percentages/effect sizes and changed cell text still need
+  their executed fact bindings. For example a header's `per 1000 reports` never authorizes
+  an unrelated cohort size of 1000. Do not invent a source quote to pass the gate.
+- Managed R render and QC take the SAME per-figure exclusive task marker. Different figures
+  can proceed independently. QC encountering an active job returns PENDING/exit 3 and
+  preserves the previous report; it is never a warning-only PASS. Wait for the host's job
+  completion event then retry. An orphan from a crash requires checking the exact marker's
+  owner/process before removal; no timeout-based stale-marker deletion or PID killing.
+  This task marker is execution metadata, not a scientific output or author approval.
+- The managed process runner emits bounded stderr heartbeat at <=30 seconds while waiting,
+  so stdout remains machine-readable. Real exit codes, full UTF-8 logs and configured task
+  timeout remain intact; no external shell polling loop is required.
+- Bar baseline inspection handles connected stacks by category/orientation, including
+  negative stacks. A floating segment or value axis excluding zero still fails. R derives
+  this from actual built ggplot geometry/ranges, not user-written success metadata.
+- `reference_count.py show` can read the scientific full manuscript before a title page
+  exists, with its actual source identified; it never creates or edits one. `check/sync`
+  retain strict real integration inputs. Main-manuscript `target_journal.line_numbers`
+  is an optional actual boolean rule: continuous line numbering is built and audited in
+  every Word section; absent means no invented journal demand. Final Word visual QA remains.
+
+Keep the existing clinical-fact context when writing. Do not infer that every key `lower`
+means a 95% confidence limit, strip clinically relevant details indiscriminately, or silently
+omit unmapped results to create a superficially clean writer bundle. No extra default
+clinical-writing agent or full DOCX build on every round. The accepted evidence, low-cost
+prototypes and source-scoped vocabulary support concise medical prose without hiding science.
+
 Read at S06/S07, percentage reporting, review rounds and rework. This is an extension of
 existing readiness, medical-reader acceptance and source-owned revisions, not another
 orchestrator, report dossier or mandatory reviewer. Never copy another engine's finding

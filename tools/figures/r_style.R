@@ -45,6 +45,30 @@ medpaper_result <- function(relative_path) {
   jsonlite::fromJSON(file.path(Sys.getenv("MEDPAPER_PROJECT"), relative_path), simplifyVector = FALSE)
 }
 
+medpaper_bar_zero <- function(built, geom_names) {
+  groups <- list()
+  for (d in built$data[geom_names %in% c("GeomBar", "GeomCol")]) for (i in seq_len(nrow(d))) {
+    flip <- "flipped_aes" %in% names(d) && isTRUE(d$flipped_aes[i])
+    edge <- sort(if (flip) c(d$xmin[i], d$xmax[i]) else c(d$ymin[i], d$ymax[i]))
+    pos <- if (flip) d$y[i] else d$x[i]
+    panel <- as.integer(d$PANEL[i])
+    limits <- built$layout$panel_params[[panel]][[if (flip) "x.range" else "y.range"]]
+    if (length(edge) != 2L || any(!is.finite(edge)) || length(limits) != 2L || min(limits) > 1e-8 || max(limits) < -1e-8) return(FALSE)
+    key <- paste(panel, flip, round(pos, 8), sep = ":")
+    groups[[key]] <- rbind(groups[[key]], edge)
+  }
+  for (edges in groups) {
+    edges <- matrix(edges, ncol = 2L); edges <- edges[order(edges[, 1]), , drop = FALSE]
+    lo <- edges[1, 1]; hi <- edges[1, 2]
+    if (nrow(edges) > 1L) for (i in 2:nrow(edges)) {
+      if (edges[i, 1] > hi + 1e-8) return(FALSE)
+      hi <- max(hi, edges[i, 2])
+    }
+    if (lo > 1e-8 || hi < -1e-8) return(FALSE)
+  }
+  TRUE
+}
+
 medpaper_layers <- function(plot) {
   # Observe ggplot's built layers, not user-supplied booleans for mandatory elements.
   if (!inherits(plot, "ggplot")) return(NULL)
@@ -69,7 +93,7 @@ medpaper_layers <- function(plot) {
     if (is.null(x)) "" else paste(as.character(x), collapse = " ")
   }
   ranges <- lapply(built$layout$panel_params, function(x) list(x = x$x.range, y = x$y.range))
-  list(layers = summary, x_label = label("x"), y_label = label("y"),
+  list(layers = summary, bar_baseline_zero = medpaper_bar_zero(built, geom_names), x_label = label("x"), y_label = label("y"),
        legend = has_legend, ranges = ranges)
 }
 

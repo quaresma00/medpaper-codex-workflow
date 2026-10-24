@@ -133,6 +133,17 @@ def grey_regions(rgb: np.ndarray, lo: int = 100, hi: int = 200,
 
 # ---------------------------------------------------------------------------
 def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Path | None = None) -> dict:
+    from wfcore.figurejobs import job,FigureBusy
+    project=project or project_root()
+    try:
+        with job(project,str(entry.get("id","?")),"QC"):
+            return _qc_figure(entry,tgt,arch_reg,project)
+    except FigureBusy as exc:
+        return {"id":str(entry.get("id","?")),"pending":True,"ok":False,"visual_reviewed":False,
+                "checks":[{"name":"figure_job_pending","ok":False,"severity":"fail","detail":str(exc)}]}
+
+
+def _qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Path | None = None) -> dict:
     project = project or project_root()
     from wfcore.clinicalpresentation import profile
     journal=str(entry.get("file","")).startswith("08_submission/")
@@ -424,6 +435,10 @@ def main() -> int:
     results = []
     for e in entries:
         res = qc_figure(e, tgt, arch_reg)
+        if res.get("pending"):
+            print("PENDING: "+res["checks"][0]["detail"])
+            print("Previous QC report preserved; no new validation or visual acceptance recorded.")
+            return 3
         # a re-render invalidates a previous visual review
         old = previous.get(res["id"])
         same_render = (old and old.get("png_sha256") == res.get("png_sha256")) if res.get("engine") == "R" else (

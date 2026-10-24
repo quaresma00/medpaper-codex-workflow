@@ -529,8 +529,8 @@ def main() -> int:
     parser.add_argument("--sealed", action="store_true", help="user already asked to apply this complete batch now")
     parser.add_argument("--scope", choices=["full", "targeted"], default="targeted")
     parser.add_argument("--kind", choices=kinds)
-    parser.add_argument("--why",
-                        help="specific user-requested change and why this route owns it")
+    from wfcore.argtext import add
+    add(parser,"--why",help="specific user-requested change and why this route owns it")
     parser.add_argument("--plan", type=Path,
                         help="JSON plan for a new or extended multi-item revision round")
     parser.add_argument("--item", help="revision item id for mark")

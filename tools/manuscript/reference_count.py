@@ -48,6 +48,17 @@ def main() -> int:
         help="with sync, add 'Number of references' when the title page lacks it; use only if required")
     args = parser.parse_args()
     project = args.project.resolve() if args.project else project_root()
+    if args.command == "show":
+        manuscript,title_page=paths(project)
+        if not manuscript.is_file(): manuscript=project/"07_manuscript/full_manuscript.md"
+        if not manuscript.is_file():
+            print("reference count: manuscript not assembled yet; actual count unavailable")
+            return 0
+        actual=actual_reference_count(manuscript.read_text(encoding="utf-8"))
+        values=declared_reference_counts(title_page.read_text(encoding="utf-8")) if title_page.is_file() else []
+        print(f"actual distinct citations: {actual}; source: {manuscript.relative_to(project).as_posix()}")
+        print("title-page field: "+("not created" if not title_page.is_file() else "absent" if not values else str(values[0]) if len(values)==1 else "duplicate"))
+        return 0 if len(values)<=1 else 2
     try:
         _, title_page, _, title_text, actual = load(project)
     except (FileNotFoundError, OSError) as exc:
@@ -91,4 +102,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

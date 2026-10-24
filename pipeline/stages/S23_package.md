@@ -1,103 +1,33 @@
-# S23 - Build and visually verify the submission package
+# S23 - Build and verify only actual journal uploads
 
-Read `reference/source-aligned-validation.md`. Declare each real composed `build_entrypoint`
-and all `source_files`; managed builders supply actual receipts. Freeze sources, build,
-repair necessary layout, run `build_docx.py finalize`, render the resulting final bytes, then
-bind the content baseline/portal fields. Never capture a new baseline after a failed build.
-For separate main/supplementary legend uploads declare `legend_scope` and use that scope
-in both builder and manifest audit. Office lock files, previews and evidence are not uploads.
+Freeze content, author/blinding facts, official rules and the exact upload list before
+expensive builds. Keep one source/dependency path; compose from the real build entrypoint.
+Resolve routine medical prose, table/figure meaning and reference coverage before building.
+Build the necessary DOCX/supplements/figures once, then correct only affected dependants.
 
-## Purpose
-Produce the exact files required by the chosen journal. All uploadable prose is delivered
-as Word, with deterministic typography and no residual Pandoc/Word theme defects. This stage
-builds the package; S24 is the user's final content/format review and S25 is the independent
-journal-guideline audit.
+Use the managed R renderer and matching per-figure QC sequentially. A pending job or Excel
+IO lock is incomplete work, never a QC/provenance pass. Process logs belong in .wf/processes
+or .wf/logs, never inside the temporary scratch area that temp_clean must clear.
 
-## Procedure
-Read `reference/content-aware-amendments.md`. Prefer deterministic staged builds. A local
-`integration/csl_patch.json` changes only the derived CSL; test SAME real official-example
-records with `csl_check.py`, never alter verified reference metadata to get a style match.
-If the journal actually requires a Word reporting checklist, `checklist_docx.py` renders
-its real item/location rows with fixed widths and no internal paths. Do not create one otherwise.
-Use `preview.py` for a complete overview of Word-exported PDF pages; retain real detailed QA.
-Check double-blind supplements and document metadata, not only the main manuscript.
+Apply necessary layout repair -> final XML cleanup -> final rendering -> visible-content
+baseline and measured portal fields. Inspect a complete overview plus changed/critical
+pages. Preserve the user's full XML-control cleanup, black text, journal fonts/sizes, no
+manual soft breaks/hyperlinks, three-line tables, concise legends and separate supplementary
+tables. Sourced journal line_numbers is audited in actual main-manuscript XML.
 
-1. Freeze the journal-required item list from `guidelines_extract.md`; do not add generic
-   extras. Write the journal-specific cover letter source outside the bundle at
-   `project/08_submission/cover_letter.md`.
-2. Before building the title page, synchronize any existing reference-count field with the
-   distinct citekeys actually used in `08_submission/integration/full_manuscript.md`:
-```
-.\.venv\Scripts\python.exe tools/manuscript/reference_count.py sync
-```
-   Use `sync --add` only when the official title-page instructions require that field. Do not
-   derive it from the candidate literature-library size.
-3. Build every prose upload with `tools/manuscript/build_docx.py`. For each journal-required narrative role (do not add roles absent from the guide):
-```
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind manuscript --input project/08_submission/integration/full_manuscript.md --output project/08_submission/bundle/manuscript.docx --style-config project/08_submission/docx_style.json --bibliography project/06_refs/refs.bib --csl <journal.csl>
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind title_page --input project/08_submission/integration/title_page.md --output project/08_submission/bundle/title_page.docx --style-config project/08_submission/docx_style.json
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py build --kind cover_letter --input project/08_submission/cover_letter.md --output project/08_submission/bundle/cover_letter.docx --style-config project/08_submission/docx_style.json
-```
-   If supplementary Methods exists, build it (or the journal-mandated combined supplement)
-   as `.docx`. Convert every other narrative upload to `.docx`; do not leave cover letters,
-   methods supplements or declarations as Markdown in the bundle. A journal-supplied fixed
-   form may remain in the exact PDF/XLSX/DOCX format the journal requires.
-4. The builder applies journal-specified size and spacing, with the recorded fallback only
-   where the guide is silent. It forces all text black, removes hyperlinks, uses one
-   font family throughout, and maps Markdown section headings to the Normal-based
-   `SectionHeading` paragraph style. Across every Word XML part it removes `outlineLvl`,
-   `keepNext`, `keepLines` and `pageBreakBefore`; visible headings therefore have neither a
-   collapsible hierarchy marker nor the left-side black-square control indicator.
-   It also converts Shift+Enter/text-wrapping controls to ordinary paragraphs and rejects the
-   literal down-arrow character. Use blank lines for paragraph boundaries in Markdown and
-   natural wrapping within paragraphs; never pad layout with manual line breaks.
-5. Confirm manuscript order: Abstract then Keywords; explicit References heading before
-   the bibliography; concise Figure legends as the final section. There must be exactly one
-   `Figure legends` section title, exactly one heading per figure, and the legend body must
-   not repeat `Figure N` immediately after its heading. Build separate figure
-   legend Word files only when the journal explicitly asks, but the legends always remain
-   in the manuscript.
-6. Add figures and tables in the exact editable/separate forms required by the journal.
-   Never omit the supplementary file. Supplementary Methods must contain prose only and no
-   Markdown horizontal rules. Put every supplementary table in the separate three-line
-   workbook under `04_tables/supplementary/` and deliver it in the selected journal's required
-   table format (native three-line Word when required, otherwise XLSX); the
-   supplementary-Methods DOCX audit rejects embedded Word tables. Write
-   `08_submission/evidence/SUBMISSION_CHECKLIST.md` and `bundle/manifest.json`;
-   every bundle upload is listed with its role, exact guideline rule and `source_files`
-   dependency list. Keep renders and backstage QA outside the upload folder.
-7. After all affected DOCX files are final, derive portal text/counts from them:
-```
-.\.venv\Scripts\python.exe tools/manuscript/submission_fields.py
-```
-   This reads the final DOCX and unified administrative facts; it does not use Markdown word
-   counts. Check any journal-specific Word/portal counting convention before confirmation.
-   Run the structural Word audit:
-```
-.\.venv\Scripts\python.exe tools/manuscript/build_docx.py audit --manifest project/08_submission/bundle/manifest.json --style-config project/08_submission/docx_style.json
-```
-8. Read `reference/efficient-quality.md`. For a feedback batch, record the build scope with
-   `tools/rework.py build`; default to at most two full build cycles, then targeted correction.
-   Render every new/changed final DOCX with Microsoft Word or the Codex document workflow and inspect
-   the title/abstract, heading transitions, first/last pages, references, figure legends,
-   tables, symbols, page breaks and missing glyphs. Fix the source or builder and rebuild
-   only affected files.
-9. After visual corrections are complete and the manifest and all DOCX files are final, bind
-   their visible text to this legitimate S23 build:
-```
-.\.venv\Scripts\python.exe tools/package_content.py capture --project project
-```
-   When S23 is being rerun after a source-routed correction, use `--replace`. Capture is refused
-   outside S23. This baseline permits later Word layout edits while detecting any direct text
-   edit or an upstream source change that was not rebuilt.
-10. Write `submission_qc.md` with `Rendered files inspected`, `Citation and cross-reference
-   checks`, `Typography and hyperlinks`, `Tables and figures`, `Defects resolved`. Record
-   `submission_files_visually_confirmed YES`, then clean temporary/orphaned files.
-11. Run `tools/submission_qc.py measure` on final files. It updates only its marked measured
-    block in the internal evidence checklist, preserving manual visual findings. Run the same
-    receipt verification at S24/S25; unchanged file/rule hashes reuse real measurements.
-    Read `reference/review-rounds-and-word-tables.md` for native Word table sheets/ranges,
-    per-table orientation, continuous page numbers and truthful reading-copy handoffs.
+Only manifest-listed uploads enter the bundle/release. No directory-wide ZIP, previews,
+Office lock files or internal evidence. Do not draft AI-use disclosure text. S24 is actual
+author package review; this build creates no approval. Never recapture a failed baseline
+or fabricate successful independent/visual checks. Follow scoped revision rules for changes.
+
+Use full details for builder/finalize/preview commands, Word style and manifest schemas.
+
+## Full procedure, read once when needed
+`reference/stage_details/S23_package.md` (`tools/wf.py card S23_package --details`).
+On first execution read the applicable detailed procedure; later local corrections reuse
+already-read guidance and go directly to affected owner rules. After compaction use
+`tools/wf.py handoff`, then retrieve only missing context. The actual gates remain unchanged.
+`reference/structural-quality.md` v1.17 explains runtime fixes and preserved boundaries.
 
 ## Outputs
 At handoff list portal-only tasks separately: actual upload slots/article type, coauthor
@@ -116,42 +46,7 @@ merely because local files exist; never draft an AI-use disclosure without the e
 - `08_submission/submission_qc.md`
 - the journal-required Word, figure, table and supplementary upload files
 
-## Hard rules
-- Pipeline-authored bundle-facing narrative files are DOCX, never Markdown; journal-supplied
-  fixed forms retain their mandated non-Markdown format.
-- All text is black; no external hyperlinks; no Aptos/theme-font leakage when the selected
-  font is Times New Roman; no outline numbering, `outlineLvl`, `keepNext`, `keepLines`,
-  `pageBreakBefore`, paragraph-border residue or collapsible heading level in any Word XML.
-- `References` and `Figure legends` must be visible in the manuscript.
-- Any title-page reference count must equal the distinct citations actually used in the
-  journal integration manuscript; both the Markdown source and generated Word title page are checked.
-- Figure legends only identify and decode the display; they do not restate result direction
-  or numerical findings. Crowded abbreviation lists appear once under `Declarations and
-  Statements > Abbreviations`, unless an explicitly sourced journal rule requires them local.
-- Never invent reviewer contact information or an AI-use disclosure.
-- Do not infer final user approval from this build/QA stage. Present the complete package at
-  S24 and preserve any user edits made there.
-- Never recapture the visible-text baseline merely to accept a content edit made directly in
-  Word. Route content changes to their source; use the baseline only to permit format-only edits.
-- Every journal-adapted narrative upload is built from `08_submission/integration/`. Never
-  rebuild from or modify the frozen `07_manuscript` master for this journal's package.
-
 ## Close
-After final cleanup, rendering and cross-file QA, complete actual-upload executor acceptance:
-`tools/manuscript/benchmark.py accept --layer journal --final --review <findings.json>`.
-Inspect actual references/numbering, each main/supp legend, declarations and upload association.
-Do not present routine defects to the user as a finished package or call generation submission.
-
-```
-.\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "submission package built and visually verified; Word typography/link/heading audit passed; ready for user package review"
-```
-
-## Medical-reader presentation
-
-Read `reference/medical-reader-presentation.md`: check actual clinical labels, counting units,
-denominators, statistical marks and state distinctions, table footnotes and figure decoding.
-Retain necessary methods; do not imply prespecification or change counts by renaming units.
-Use the existing acceptance/review, not an additional audit. At S23 verify actual rendered
-Word pages and journal-directed legend/figure placement; don't reintroduce forbidden controls.
-
+Run `tools/wf.py check` (or the active scoped revision check). Fix actual failures before
+`tools/wf.py advance --note "<actual completed work>"`. Stages are not turn boundaries.
+Review stages still require the real author statement; generic continuation is not approval.

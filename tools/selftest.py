@@ -946,10 +946,14 @@ def run_codex_integration() -> None:
     package_human = next(s for s in pipe["stage"] if s["id"] == "S24_package_human_review")
     final_audit = next(s for s in pipe["stage"] if s["id"] == "S25_submission_audit")
     review_card = (ROOT / "pipeline/stages/S18_independent_review.md").read_text(encoding="utf-8")
-    package_card = (ROOT / "pipeline/stages/S23_package.md").read_text(encoding="utf-8")
+    def card_contract(name):
+        text=(ROOT/"pipeline/stages"/name).read_text(encoding="utf-8")
+        detail=ROOT/"reference/stage_details"/name
+        return text+"\n"+(detail.read_text(encoding="utf-8") if detail.is_file() else "")
+    package_card = card_contract("S23_package.md")
     package_human_card = (ROOT / "pipeline/stages/S24_package_human_review.md").read_text(encoding="utf-8")
     human_card = (ROOT / "pipeline/stages/S19_human_review.md").read_text(encoding="utf-8")
-    final_audit_card = (ROOT / "pipeline/stages/S25_submission_audit.md").read_text(encoding="utf-8")
+    final_audit_card = card_contract("S25_submission_audit.md")
     record("independent reviewer is singular, read-only, and before author intake",
            independent.get("needs_user", False) is False and human.get("needs_user") is True and
            authors.get("needs_user") is True and "exactly one independent subagent" in review_card and
@@ -1019,7 +1023,7 @@ def run_codex_integration() -> None:
                 "journal_workspace_ready")) and
            "tools/manuscript/scientific_freeze.py freeze" in human_card and
            "tools/manuscript/journal_workspace.py init" in
-           (ROOT / "pipeline/stages/S20_journal.md").read_text(encoding="utf-8"),
+           card_contract("S20_journal.md"),
            "S19 hash freeze -> immutable master -> per-journal integration sources")
     record("Word package contract covers reported defects",
            all(term in package_card for term in ("all text black", "external hyperlinks",
@@ -2383,6 +2387,10 @@ def main() -> int:
                                     capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("clinical-label review-closure numbering and percentage regressions",structural.returncode==0,
                (structural.stdout+structural.stderr)[-1500:].strip())
+        runtime = subprocess.run([sys.executable,str(ROOT/"tools/test_runtime_quality_117.py")],
+                                 capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("runtime retrospective Unicode IO stacks job-safety and compact-resume regressions",runtime.returncode==0,
+               (runtime.stdout+runtime.stderr)[-1800:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

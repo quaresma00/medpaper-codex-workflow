@@ -22,6 +22,12 @@ from wfcore.state import State
 
 
 def render(project, figure_id, timeout=180):
+    from wfcore.figurejobs import job
+    with job(project.resolve(),figure_id,"R render"):
+        return _render(project,figure_id,timeout)
+
+
+def _render(project, figure_id, timeout=180):
     project = project.resolve()
     guard_build(project)
     state = State(project).load()

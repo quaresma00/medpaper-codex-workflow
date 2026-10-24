@@ -133,6 +133,38 @@ def validate_prose(project, rel, text):
     return []
 
 
+def table_unit_constants(project,path,sheet,cell,value):
+    """Only a source-bound 'per N' unit in a real header/note, never result-cell amnesty."""
+    if not re.search(r"\bper\s+[1-9]\d*",str(value),re.I): return set()
+    from .packagefreeze import _safe_path
+    from . import xlsxlite
+    rel=path.relative_to(project).as_posix()
+    rows=[r for r in bindings(project,rel) if r.get("path")==rel and r.get("sheet")==sheet and r.get("cell")==cell and r.get("kind")=="unit_scale"]
+    if not rows: return set()
+    if len(rows)!=1: raise ValueError("Duplicate unit-scale binding")
+    row=rows[0]
+    if row.get("text")!=str(value) or len(str(row.get("reason","")))<20: raise ValueError("Unit constant needs exact cell text and scientific unit rationale")
+    book=xlsxlite.Workbook(path); sh=book.sheet(sheet)
+    target=next(c for c in sh.cells if c.ref==cell)
+    top=[c.row for c in sh.cells if book.border_of(c).top]
+    bottom=[c.row for c in sh.cells if book.border_of(c).bottom]
+    if not top or not bottom: raise ValueError("Unit constant needs a structured three-line table")
+    header=max(r for r in bottom if r<max(bottom)) if len(set(bottom))>1 else min(top)
+    if not (target.row<=header or target.row>max(bottom)): raise ValueError("Result-body cells cannot use a unit-constant exemption")
+    source_rel,source=_safe_path(project,row.get("source_path",""))
+    quote=row.get("source_quote","")
+    if not source_rel.startswith(("01_protocol/","03_analysis/code/")) or not isinstance(quote,str) or len(quote)<20 or quote not in source.read_text(encoding="utf-8"):
+        raise ValueError("Unit constant needs an exact source quote from the real protocol/producer")
+    allowed=set(re.findall(r"\bper\s+([1-9]\d*(?:,\d{3})*)\b",str(value),re.I))
+    source_units={v.replace(",","") for v in re.findall(r"\bper\s+([1-9]\d*(?:,\d{3})*)\b",quote,re.I)}
+    normalized={v.replace(",","") for v in allowed}
+    if not allowed or not normalized<=source_units: raise ValueError("Only explicit source-supported 'per N' unit scaling is permitted")
+    from .checks.numbers import _scrub,NUM_RE
+    remaining=re.sub(r"\bper\s+[1-9]\d*(?:,\d{3})*\b"," ",str(value),flags=re.I)
+    if NUM_RE.search(_scrub(remaining)): raise ValueError("A unit binding cannot exempt other reported numbers, even if the value equals its unit scale")
+    return allowed|normalized
+
+
 def validate_tables(project, paths):
     from . import xlsxlite
     from .checks.numbers import _offenders, _scrub, NUM_RE
@@ -145,8 +177,6 @@ def validate_tables(project, paths):
         if not cells:
             continue
         try:
-            if catalog is None:
-                catalog = facts(project)
             rows = [r for r in bindings(project, rel) if r.get("path") == rel]
             index = {(r.get("sheet"), r.get("cell")): r for r in rows}
             if len(index) != len(rows):
@@ -157,6 +187,11 @@ def validate_tables(project, paths):
                     row = index.get((sheet, cell))
                     if row is None or row.get("text") != str(value):
                         raise ValueError(f"{sheet}!{cell}: missing/stale exact-value binding")
+                    if row.get("kind")=="unit_scale":
+                        allowed=table_unit_constants(project,path,sheet,cell,value)
+                        if _offenders(str(value),set(),set(),allowed): raise ValueError("Unit binding cannot hide additional result values")
+                        continue
+                    if catalog is None: catalog=facts(project)
                     labels = " ".join(str(workbook[sheet][c].value or "") for c in row.get("label_cells", []))
                     floats, strings, p_values = claim_values({**row,"_project":project}, catalog, labels + " " + str(value))
                     if row.get("proportions"):

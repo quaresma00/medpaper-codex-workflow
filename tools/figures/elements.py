@@ -123,23 +123,28 @@ def baseline_zero(fig) -> tuple[bool, str]:
     offenders, notes = [], []
     checked = 0
     for ax in _axes(fig):
-        patches = [p for c in ax.containers if isinstance(c, BarContainer) for p in c.patches]
-        if not patches:
-            continue
+        containers=[c for c in ax.containers if isinstance(c,BarContainer)]
+        if not containers: continue
         checked += 1
-        y0s = {round(float(p.get_y()), 6) for p in patches}
-        x0s = {round(float(p.get_x()), 6) for p in patches}
-        if len(y0s) == 1 and len(x0s) > 1:
-            orient, lo, base = "vertical", ax.get_ylim()[0], next(iter(y0s))
-        elif len(x0s) == 1 and len(y0s) > 1:
-            orient, lo, base = "horizontal", ax.get_xlim()[0], next(iter(x0s))
-        else:
-            orient, lo, base = "vertical", ax.get_ylim()[0], min(y0s)
-        if lo > 0.01 or base > 0.01:
-            offenders.append(f"{orient} bars: value axis starts at {lo:.3g}, "
-                             f"bars start at {base:.3g}")
-        else:
-            notes.append(f"{orient} bars from {base:.3g}, axis from {lo:.3g}")
+        groups={}
+        for container in containers:
+            orient=container.orientation
+            limits=ax.get_ylim() if orient=="vertical" else ax.get_xlim()
+            if min(limits)>1e-9 or max(limits)<-1e-9:
+                offenders.append(f"{orient} value axis excludes zero")
+            for patch in container.patches:
+                pos,width,base,length=(patch.get_x(),patch.get_width(),patch.get_y(),patch.get_height()) if orient=="vertical" else (patch.get_y(),patch.get_height(),patch.get_x(),patch.get_width())
+                key=(orient,round(float(pos),8),round(float(width),8))
+                groups.setdefault(key,[]).append(sorted((float(base),float(base+length))))
+        for key,intervals in groups.items():
+            intervals.sort(); lo,hi=intervals[0]; components=[]
+            for start,end in intervals[1:]:
+                if start<=hi+1e-8: hi=max(hi,end)
+                else: components.append((lo,hi)); lo,hi=start,end
+            components.append((lo,hi))
+            if len(components)!=1 or not components[0][0]<=1e-8<=components[0][1]+1e-8:
+                offenders.append(f"{key[0]} bar/stack at {key[1]:.3g} has no continuous base at zero")
+        notes.append(f"{len(groups)} bar/stack positions checked")
     if not checked:
         return True, "no bar chart present"
     if offenders:

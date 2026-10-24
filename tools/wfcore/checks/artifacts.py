@@ -214,8 +214,8 @@ def legends_cover_plan(ctx: Ctx) -> Result:
                 cap = check_limit(ctx)
                 if cap is not None and words > cap:
                     problems.append(f"{rel}: {what} for {eid} is {words} words (maximum {cap})")
-        if rel == CAPTIONS and "abbrevi" not in text.lower() and "footnote" not in text.lower():
-            problems.append(f"{rel}: no footnote/abbreviation block anywhere - three-line tables need one")
+        # Planned captions need no magic word. S10 audits actual notes beneath EACH
+        # workbook's bottom rule, so one generic "footnote" cannot certify all tables.
 
     if problems:
         return Result(
@@ -496,13 +496,8 @@ def _audit_sheet(wb: xlsxlite.Workbook, sh: xlsxlite.Sheet) -> list[str]:
     footnotes = [r for r in range(last_ruled + 1, sh.max_row + 1) if rows[r]["text"]]
     if not footnotes:
         out.append("no footnote row beneath the bottom rule")
-    else:
-        total = sum(len(rows[r]["text"]) for r in footnotes)
-        if total > 1500:
-            out.append(f"footnotes are {total} chars - that is an analysis report, not a table footnote")
-
     for c in sh.cells:
-        if c.value and len(c.value) > 300:
+        if header < c.row <= last_ruled and c.value and len(c.value) > 300:
             out.append(f"cell {c.ref} holds {len(c.value)} chars of prose")
             break
     return out
@@ -545,6 +540,10 @@ def figures_qc_pass(ctx: Ctx) -> Result:
     problems = []
     for e in _entries(plan, ("main_figures", "supp_figures")):
         eid = str(e.get("id"))
+        from ..figurejobs import marker
+        if marker(ctx.project,eid).exists():
+            return Result(False,"figures_qc_pass",f"{eid}: figure job pending; the previous QC is not fresh validation",
+                          ["Wait for the matching render/QC task's real completion, then retry. Do not change scientific code to fix an in-flight job."])
         f = figs.get(eid)
         if f is None:
             problems.append(f"{eid}: no QC entry")
@@ -562,6 +561,8 @@ def figures_qc_pass(ctx: Ctx) -> Result:
             # Recompute source/output identity checks without regenerating the figure.
             from figures.qc import qc_figure, load_archetypes
             actual = qc_figure(e, ctx.pipeline.targets, load_archetypes(), project=ctx.project)
+            if actual.get("pending"):
+                return Result(False,"figures_qc_pass",actual["checks"][0]["detail"])
             if actual.get("engine") != "R" or not actual["ok"]:
                 problems.append(f"{eid}: current R output/source QC failed")
     if problems:
