@@ -171,7 +171,10 @@ def copy_for_journal(project):
     rows = json.loads(source.read_text(encoding="utf-8"))["claims"]
     rows = [{**r, "path": r["path"].replace("07_manuscript/", "08_submission/integration/", 1)}
             for r in rows if r.get("path") == "07_manuscript/full_manuscript.md"]
-    atomic_json(destination, {"schema_version": 1, "claims": rows})
+    original=json.loads(source.read_text(encoding="utf-8"))
+    external=[{**r,"path":r["path"].replace("07_manuscript/","08_submission/integration/",1)}
+              for r in original.get("source_claims",[]) if r.get("path")=="07_manuscript/full_manuscript.md"]
+    atomic_json(destination, {"schema_version": 1, "claims": rows,"source_claims":external})
 
 
 def assembled_bindings(project, text):
@@ -189,4 +192,6 @@ def assembled_bindings(project, text):
             if key not in seen:
                 assembled.append({**row, "path": "07_manuscript/full_manuscript.md"})
                 seen.add(key)
-    return {"schema_version": 1, "claims": original + assembled}
+    external=[r for r in payload.get("source_claims",[]) if r.get("path")!="07_manuscript/full_manuscript.md"]
+    derived=[{**r,"path":"07_manuscript/full_manuscript.md"} for r in external if r.get("text") and r["text"] in text]
+    return {**payload,"schema_version": 1, "claims": original + assembled,"source_claims":external+derived}

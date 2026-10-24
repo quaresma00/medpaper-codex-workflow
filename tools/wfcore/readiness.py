@@ -157,6 +157,12 @@ def reader_inputs(project: Path) -> dict[str, str]:
     for rel in ("01_protocol/study_facts.json", "07_manuscript/claim_bindings.json", "01_protocol/artifact_benchmark.md"):
         if (project / rel).is_file():
             files.add(rel)
+    binding_file=project/"07_manuscript/claim_bindings.json"
+    if binding_file.is_file():
+        for row in json.loads(binding_file.read_text(encoding="utf-8")).get("source_claims",[]):
+            rel=row.get("fulltext","")
+            if not rel.startswith("06_refs/fulltext/"): raise ValueError("Prior-study numeric evidence must remain a registered full-text source")
+            files.add(rel)
     optional = "07_manuscript/supplementary_methods.md"
     if (project / optional).is_file():
         files.add(optional)

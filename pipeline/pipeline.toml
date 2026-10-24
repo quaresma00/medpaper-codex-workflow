@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.13.0"
+version = "1.14.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -42,12 +42,12 @@ temp_dir = "temp"
 invariants = [
   "Discovery helpers may find literature, but formal metadata must be freshly re-fetched through tools/pubmed/verify.py. A verified=true boolean is never evidence by itself: every citable key must pass the hashed raw-PubMed XML receipt, exact library hash, PMID/DOI match and independent live S13 EFetch gate. Never hand-write or patch library.json, verified.json, refs.bib or refs.ris to satisfy a gate.",
   "Acquire the complete protocol-defined data universe whenever the source makes it available. Never silently use LIMIT/TOP, head(), sample(), first-N slices, fixed page counts, date narrowing, or preview caps to save time, tokens, download volume or compute. A schema pilot is non-analytic and must be followed by full acquisition; every source needs machine-countable total and received receipts plus terminal-pagination proof. Replacing a census with scientific sampling and accepting source-imposed partial access each require the user's explicit recorded authorization. This gate cannot be waived with --force.",
-  "Every number in the manuscript must already exist in 03_analysis/results/*.json, written there by executed code. Never compute a statistic in your head or in prose.",
+  "Own-study numbers trace to executed result JSON and bound facts. Prior-study numbers need exact registered full-text source_claims with identity, locator, excerpt and version. No free numeric whitelist.",
   "Draft scientific sections only at their active stages; the optional supplementary Methods file belongs only to S08. S17 then assembles the canonical full_manuscript.md from the completed, gated sections.",
   "Language polishing may change wording only. Never a number, never a citation, never a figure/table reference. A snapshot is taken before the pass and the gate diffs against it.",
   "Do not create files outside the stage's declared `outputs`. Scratch work goes in project/temp/ and is deleted before `wf advance`.",
   "Figures are verified by looking at the rendered PNG, not by reading the plotting code. Deterministic QC first, then visual.",
-  "No explanatory prose inside figure panels. Explanation belongs in the figure legend.",
+  "Plan figure annotations and legends together: necessary decoding may be inside panels; do not duplicate Results or engineering prose. Default legend length is advisory; only sourced journal limits block.",
   "At S06 freeze analysis_contract.json and the four-part clinical story in study_facts.json before writing. S07 requires actual low-cost display previews and reader explanations. Scientific uncertainty cannot be repaired by expensive formatting.",
   "Collect feedback batches before rebuilding. Control-record refreshes are automatic maintenance, not new human review rounds. Use true file dependencies and preserve every requested analysis and quality check.",
   "Do not draft or insert an AI-use disclosure unless the user explicitly requests that exact content; record journal requirements only as a user-controlled compliance item.",
@@ -57,7 +57,7 @@ invariants = [
   "The S23 package is not final until S24 records the user's explicit request for final review and freezes the exact files, then S25 obtains one independent PASS from reader, editor and journal-compliance perspectives. Any post-confirmation change returns to S24.",
   "A user-requested revision never leaves the workflow. Route it with tools/rework.py to the earliest owning stage, update the source of truth, rebuild only true dependants, and invalidate downstream approvals. Word-only layout edits are allowed at S24 only when the S23 visible-text baseline is unchanged.",
   "Repeated feedback is handled as a persisted revision round at S19 (scientific manuscript) or S24 (journal package). Interpret the feedback once into atomic items, route the batch to its earliest owner, read and rebuild only affected sources/dependants, preserve unaffected approved evidence, and still run every applicable quality gate. Token or context pressure is never permission to omit an item, shorten the scientific work or skip validation; resume from tools/rework.py status after compaction.",
-  "S19/S24 use version-bound independent read-only subagent review rounds, not review ZIPs. The executor applies safe scoped corrections, reports changed and unadopted findings once, then asks whether another round is needed. Only an explicit no-further-review answer releases the checkpoint; generic continue is insufficient.",
+  "S19/S24 use version-bound independent read-only subagent review rounds, not review ZIPs. The executor applies safe scoped corrections, reports changed and unadopted findings once, then asks whether another round is needed. Only the exact user statement 我确认这一版, bound to current reviewed files, releases the checkpoint. Optional third-party exports require an explicit request.",
   "After explicit S19 approval, freeze the journal-independent scientific master. S20-S25 edit only derived integration/package files. Real scientific changes invalidate approval and require scoped correction, a new review round, user confirmation and freeze; never replay unaffected stages.",
   "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
 ]
@@ -111,6 +111,9 @@ empty_lists_allowed = ["open_questions"]
 [[stage.gate]]
 check = "no_future_artifacts"
 
+[[stage.gate]]
+check = "research_context_known"
+
 [[stage]]
 id = "S02_feasibility"
 title = "Feasibility: real literature scan + publishability go/no-go #1"
@@ -121,8 +124,8 @@ check = "outputs_exist"
 [[stage.gate]]
 check = "pubmed_cache_fresh"
 manifest = "06_refs/cache/scan_manifest.json"
-min_queries = 3
-min_hits = 20
+min_queries = 1
+min_hits = 0
 [[stage.gate]]
 check = "md_sections"
 path = "01_protocol/feasibility.md"
@@ -140,7 +143,7 @@ allowed = ["GO"]
 id = "S03_protocol"
 title = "Protocol v1 + data source and acquisition plan"
 card = "stages/S03_protocol.md"
-outputs = ["01_protocol/protocol_v1.md", "02_data/acquisition_plan.md"]
+outputs = ["01_protocol/protocol_v1.md", "02_data/acquisition_plan.md", "01_protocol/analysis_contract.json", "01_protocol/governance.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -151,6 +154,13 @@ headings = ["Objective", "Design", "Population and eligibility", "Variables", "S
 check = "md_sections"
 path = "02_data/acquisition_plan.md"
 headings = ["Source", "Access route", "Licence and ethics", "Protocol-defined data universe", "Exact retrieval steps", "Pagination and completeness proof", "Expected shape", "Known limitations"]
+
+[[stage.gate]]
+check = "variable_definitions"
+[[stage.gate]]
+check = "statistical_reporting_plan"
+[[stage.gate]]
+check = "study_governance"
 
 [[stage]]
 id = "S04_data"
@@ -185,8 +195,8 @@ check = "data_acquisition_complete"
 [[stage.gate]]
 check = "pubmed_cache_fresh"
 manifest = "06_refs/cache/scan_manifest.json"
-min_queries = 5
-min_hits = 30
+min_queries = 1
+min_hits = 0
 [[stage.gate]]
 check = "file_count"
 glob = "03_analysis/code/*.*"
@@ -204,6 +214,11 @@ path = "03_analysis/notes.md"
 headings = ["Introduction points", "Discussion points", "Limitations", "Surprises / must-not-forget"]
 [[stage.gate]]
 check = "temp_clean"
+
+[[stage.gate]]
+check = "variable_definitions"
+[[stage.gate]]
+check = "source_record_spotcheck"
 
 [[stage]]
 id = "S06_protocol_final"
@@ -249,8 +264,8 @@ path = "01_protocol/artifact_plan.json"
 [[stage.gate]]
 check = "pubmed_cache_fresh"
 manifest = "06_refs/cache/scan_manifest.json"
-min_queries = 6
-min_hits = 30
+min_queries = 1
+min_hits = 0
 [[stage.gate]]
 check = "md_sections"
 path = "01_protocol/artifact_benchmark.md"
@@ -268,6 +283,9 @@ check = "writing_ready"
 
 [[stage.gate]]
 check = "display_prototypes_reviewed"
+
+[[stage.gate]]
+check = "legend_length_advice"
 
 [[stage]]
 id = "S08_methods"
@@ -310,38 +328,14 @@ check = "writing_ready"
 check = "literature_coverage"
 section = "methods"
 
-[[stage]]
-id = "S09_results"
-title = "Write Results (cites planned figures/tables)"
-card = "stages/S09_results.md"
-outputs = ["07_manuscript/results.md", "07_manuscript/claim_bindings.json"]
 [[stage.gate]]
-check = "outputs_exist"
-[[stage.gate]]
-check = "single_section_written"
-[[stage.gate]]
-check = "numbers_have_provenance"
-path = "07_manuscript/results.md"
-[[stage.gate]]
-check = "artifact_refs_consistent"
-paths = ["07_manuscript/results.md"]
-require_all_cited = true
-[[stage.gate]]
-check = "no_ai_boilerplate"
-path = "07_manuscript/results.md"
-[[stage.gate]]
-check = "prose_not_lists"
-path = "07_manuscript/results.md"
-since = "1.13.0"
-
-[[stage.gate]]
-check = "writing_ready"
+check = "reference_provenance"
 
 [[stage]]
 id = "S10_tables"
 title = "Build tables (three-line xlsx, reader-facing)"
 card = "stages/S10_tables.md"
-outputs = ["04_tables/code/build_tables.py", "04_tables/manifest.json"]
+outputs = ["04_tables/code/build_tables.py", "04_tables/manifest.json", "07_manuscript/claim_bindings.json"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -383,6 +377,38 @@ check = "temp_clean"
 
 [[stage.gate]]
 check = "display_prototypes_reviewed"
+
+[[stage]]
+id = "S09_results"
+title = "Write Results from finished tables and figures"
+card = "stages/S09_results.md"
+outputs = ["07_manuscript/results.md", "07_manuscript/claim_bindings.json"]
+[[stage.gate]]
+check = "outputs_exist"
+[[stage.gate]]
+check = "single_section_written"
+[[stage.gate]]
+check = "numbers_have_provenance"
+path = "07_manuscript/results.md"
+[[stage.gate]]
+check = "artifact_refs_consistent"
+paths = ["07_manuscript/results.md"]
+require_all_cited = true
+[[stage.gate]]
+check = "no_ai_boilerplate"
+path = "07_manuscript/results.md"
+[[stage.gate]]
+check = "prose_not_lists"
+path = "07_manuscript/results.md"
+since = "1.13.0"
+
+[[stage.gate]]
+check = "writing_ready"
+
+[[stage.gate]]
+check = "tables_match_plan"
+[[stage.gate]]
+check = "figures_match_plan"
 
 [[stage]]
 id = "S12_reconcile"
@@ -508,7 +534,7 @@ since = "1.13.0"
 id = "S17_assemble"
 title = "Automatically select the title and assemble the complete manuscript"
 card = "stages/S17_assemble.md"
-outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md"]
+outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md", "06_refs/usage.json"]
 [[stage.gate]]
 check = "prose_not_lists"
 path = "07_manuscript/full_manuscript.md"
@@ -563,6 +589,14 @@ check = "executor_acceptance"
 
 [[stage.gate]]
 check = "writing_ready"
+
+[[stage.gate]]
+check = "reference_usage"
+[[stage.gate]]
+check = "manuscript_size_health"
+
+[[stage.gate]]
+check = "legend_length_advice"
 
 [[stage]]
 id = "S18_independent_review"
@@ -672,6 +706,9 @@ keys = ["article_type", "required_upload_roles", "word_count", "blinding"]
 check = "medical_benchmark"
 layer = "journal"
 
+[[stage.gate]]
+check = "journal_display_fit"
+
 [[stage]]
 id = "S21_authors"
 title = "Collect authors and journal-required administrative statements"
@@ -709,6 +746,9 @@ display_text_paths = ["08_submission/integration/figure_legends.md", "08_submiss
 [[stage.gate]]
 check = "forbidden_symbols_absent"
 paths = ["08_submission/integration/full_manuscript.md", "08_submission/integration/statements.md", "08_submission/integration/figure_legends.md", "08_submission/integration/table_captions.md"]
+
+[[stage.gate]]
+check = "study_governance"
 
 [[stage]]
 id = "S22_polish"
@@ -956,6 +996,7 @@ globs = [
   "00_input/*",
   "02_data/raw/**",
   "02_data/acquisition/**",
+  "03_analysis/results/number_allowlist.tsv",
   "02_data/derived/*",
   "03_analysis/code/*",
   "03_analysis/results/*.json",

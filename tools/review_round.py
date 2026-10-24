@@ -13,7 +13,7 @@ from wfcore.state import State
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["start", "attach", "close", "decide", "status", "reader-copies", "restart"])
+    parser.add_argument("command", choices=["start", "attach", "close", "decide", "status", "reader-copies", "restart", "export"])
     parser.add_argument("--project", type=Path)
     parser.add_argument("--scope", choices=list(rounds.SCOPES), required=True)
     parser.add_argument("--delta", action="store_true")
@@ -25,6 +25,7 @@ def main() -> int:
     parser.add_argument("--answer", choices=["another_round", "no_further_review"])
     parser.add_argument("--words")
     parser.add_argument("--why")
+    parser.add_argument("--author-decisions",type=Path)
     args = parser.parse_args()
     project = (args.project or paths.project_dir()).resolve()
     try:
@@ -36,7 +37,7 @@ def main() -> int:
             raise ValueError("S18 only obtains the independent report; corrections/closure/user decision belong to S19")
         if args.command == "start":
             record = rounds.start(project, args.scope, delta=args.delta)
-            copies = rounds.reader_copies(project, record["before"], f".wf/review_copies/{record['id']}")
+            copies = {}  # independent reviewers read originals; extra reading copies are opt-in
             record["reader_copies"] = copies
             rounds.save(project, record)
             print(json.dumps({"round": record["id"], "mode": record["mode"], "reader_copies": copies,
@@ -44,7 +45,7 @@ def main() -> int:
                               "deleted_since_previous": record["deleted_since_previous"]}, ensure_ascii=False, indent=2))
         elif args.command == "restart":
             record = rounds.restart(project, args.scope, args.why or "")
-            record["reader_copies"] = rounds.reader_copies(project, record["before"], f".wf/review_copies/{record['id']}")
+            record["reader_copies"] = {}
             rounds.save(project, record)
             print(json.dumps({"round": record["id"], "reviewed_artifacts": record["reviewed_artifacts"]}, indent=2))
         elif args.command == "attach":
@@ -52,15 +53,21 @@ def main() -> int:
                 raise ValueError("--report must name the actual independent review")
             record = rounds.attach(project, args.scope, args.report, revalidation=args.revalidation)
         elif args.command == "close":
-            record = rounds.close(project, args.scope, args.change, args.kept, args.unresolved)
+            decisions=json.loads(args.author_decisions.read_text(encoding="utf-8")) if args.author_decisions else None
+            record = rounds.close(project, args.scope, args.change, args.kept, args.unresolved,decisions)
         elif args.command == "decide":
             if not args.answer or not args.words:
                 raise ValueError("--answer and --words are required")
             record = rounds.decide(project, args.scope, args.answer, args.words)
         elif args.command == "reader-copies":
+            if not args.why or len(args.why.strip())<8: raise ValueError("Extra reader copies require the actual explicit request in --why; they are not default deliverables")
             print(json.dumps(rounds.reader_copies(project, rounds.inputs(project, args.scope),
                                                   f".wf/review_copies/{args.scope}"), ensure_ascii=False, indent=2))
             return 0
+        elif args.command == "export":
+            if not args.words or len(args.words.strip())<8: raise ValueError("Preserve the user's explicit request for an external reviewer copy in --words")
+            from wfcore.reviewexport import export
+            print(export(project,args.scope,args.words)); return 0
         else:
             record = rounds.latest(project, args.scope)
             print(json.dumps(record, ensure_ascii=False, indent=2))

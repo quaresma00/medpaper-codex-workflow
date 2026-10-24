@@ -91,9 +91,15 @@ def _allowlist(ctx: Ctx) -> set[str]:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            token = line.split("\t")[0].strip()
-            if token:
-                allowed.add(token)
+            columns=line.split("\t")
+            if len(columns)!=4 or columns[1]!="constant" or len(columns[3].strip())<20:
+                continue  # old free-number allowlists cannot authorize invented evidence
+            from ..packagefreeze import _safe_path
+            try:
+                _,source=_safe_path(ctx.project,columns[2])
+                if source.is_file() and columns[0] in source.read_text(encoding="utf-8"):
+                    allowed.add(columns[0])
+            except (OSError,ValueError): pass
     return allowed
 
 
@@ -181,7 +187,7 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
             f"no result files under {RESULTS_GLOB}",
             ["Analysis code must dump every reported statistic to JSON before any prose is written."],
         )
-    allowed = _allowlist(ctx)
+    allowed = _allowlist(ctx) if source != "tables" and rel.endswith(("methods.md","supplementary_methods.md")) else set()
     if source == "tables":
         offenders = []
         for p in ctx.glob("04_tables/main/*.xlsx") + ctx.glob("04_tables/supplementary/*.xlsx"):
@@ -208,7 +214,11 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
         return Result(True, "numbers_have_provenance", f"all table values trace to {len(sources)} result file(s)")
 
     from ..journalspec import admin_scrub
-    bad = _offenders(admin_scrub(ctx.read(rel), ctx.project, rel), floats, strings, allowed)
+    from ..sourceclaims import mask
+    masked, external_problems = mask(ctx.project,rel,ctx.read(rel))
+    if external_problems:
+        return Result(False,"numbers_have_provenance","; ".join(external_problems[:8]))
+    bad = _offenders(admin_scrub(masked, ctx.project, rel), floats, strings, allowed)
     if bad:
         shown = "; ".join(f"line {ln}: {tok}" for ln, tok in bad[:10])
         return Result(
@@ -217,7 +227,7 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
             f"{rel}: {len(bad)} number(s) with no provenance -> {shown}",
             [
                 "Every statistic must already exist in 03_analysis/results/*.json, written by executed code.",
-                f"For genuine constants (thresholds, conventions), add them to {ALLOWLIST} as 'value<TAB>reason'.",
+                "Own findings require executed facts; cited numbers require exact full-text source_claims. Only documented Methods constants use the typed allowlist.",
                 "Do not fix this by rounding differently. Re-run the analysis and dump the value.",
             ],
         )
@@ -254,7 +264,7 @@ def numbers_cross_match(ctx: Ctx) -> Result:
     if not table_files:
         return Result(False, "numbers_cross_match", "no rendered tables found to cross-match against")
 
-    allowed = _allowlist(ctx)
+    allowed = set()  # crossmatched Results cannot borrow a Methods constant exemption
     text = FENCE_RE.sub(" ", ctx.read(rel))
     sentences = re.split(r"(?<=[.;])\s+", text)
     problems: list[str] = []

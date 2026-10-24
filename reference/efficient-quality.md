@@ -185,7 +185,7 @@ not a generic list of every possible submission asset.
 At S21 collect only required administrative facts in one request, reusing answers already given.
 `00_input/author_info.json` is the sole administrative source; do not duplicate it as a second
 editable submission-facts file. Derive title page, declarations, cover letter and portal fields
-from it. Missing/unknown ethics, funding, author or conflict information must not be inferred.
+from it. Derive supported declarations from the study governance assessment. Only genuinely missing institutional decisions, funding, author or conflict facts need targeted questions.
 AI disclosure remains user-controlled under the standing instruction.
 
 At S23 write `bundle/manifest.json` with each upload's `role`, `file`, `required_by` and
@@ -232,3 +232,10 @@ without allowing a fabricated boolean or stale record to become evidence.
 Technical format references: NCBI PubMed XML DTD (retrieved 2026-09-26)
 https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_250101.dtd and CSL name variables (checked 2026-09-25)
 https://docs.citationstyles.org/en/stable/specification.html#name-variables .
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

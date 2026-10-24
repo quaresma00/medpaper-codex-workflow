@@ -30,7 +30,7 @@ INPUTS = {
                             "08_submission/integration/**/*", "08_submission/bundle/**/*"),
     "md_sections": (), "md_wordcount": (), "no_ai_boilerplate": (),
     "supplementary_methods_clean": ("07_manuscript/supplementary_methods.md",),
-    "numbers_have_provenance": ("03_analysis/results/*", "04_tables/**/*.xlsx",
+    "numbers_have_provenance": ("06_refs/library.json", "06_refs/verified.json", "06_refs/fulltext/*", "06_refs/cache/*.xml", "01_protocol/protocol*.md", "03_analysis/results/*", "04_tables/**/*.xlsx",
                                 "01_protocol/study_facts.json", "07_manuscript/claim_bindings.json",
                                 "08_submission/integration/claim_bindings.json"),
     "manuscript_structure": ("01_protocol/artifact_plan.json", "07_manuscript/title.md",

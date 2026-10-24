@@ -44,7 +44,7 @@ class ReviewRoundTests(unittest.TestCase):
         text = "# Synthetic reviewer fixture\n\n" + "\n".join(
             "## " + heading + "\n\n" + ("Test-only review findings for controlled synthetic content, not actual independent scientific review. " * 2)
             for heading in headings)
-        text += "\n```json\n" + json.dumps({"reviewed_artifacts": selection}) + "\n```\n"
+        text += "\n```json\n" + json.dumps({"reviewed_artifacts": selection,"findings":[{"id":"C1","category":"preference","affects_science":False}]}) + "\n```\n"
         return self.text("temp/actual-test-review.md", text)
 
     def ready(self, scope="manuscript"):
@@ -65,7 +65,7 @@ class ReviewRoundTests(unittest.TestCase):
         self.assertEqual(json.loads((self.project/rr.ROOT/"M001.json").read_text())["user_decision"]["value"], "abandoned")
 
     def test_round_freeze_has_no_zip_and_survives_package_round(self):
-        self.ready(); rr.decide(self.project, "manuscript", "no_further_review", "无需继续审阅")
+        self.ready(); rr.decide(self.project, "manuscript", "no_further_review", "我确认这一版")
         _, payload, _ = sf.write(self.project, "1.12.0")
         self.assertEqual(payload["schema_version"], 5)
         self.assertEqual(payload["review_round_id"], "M001")
@@ -77,12 +77,12 @@ class ReviewRoundTests(unittest.TestCase):
 
     def test_post_closure_drift_blocks_user_answer(self):
         self.ready(); self.text("05_figures/legends.md", "Changed legend")
-        with self.assertRaises(ValueError): rr.decide(self.project, "manuscript", "no_further_review", "无需继续审阅")
+        with self.assertRaises(ValueError): rr.decide(self.project, "manuscript", "no_further_review", "我确认这一版")
 
     def test_generic_continue_and_missing_history_cannot_approve(self):
         self.ready()
         with self.assertRaises(ValueError): rr.decide(self.project, "manuscript", "no_further_review", "继续")
-        rr.decide(self.project, "manuscript", "no_further_review", "无需继续审阅")
+        rr.decide(self.project, "manuscript", "no_further_review", "我确认这一版")
         record = rr.latest(self.project, "manuscript")
         self.text(record["report"]["path"], "Tampered synthetic review")
         with self.assertRaises(ValueError): rr.approved(self.project, "manuscript")
@@ -91,7 +91,7 @@ class ReviewRoundTests(unittest.TestCase):
         record = rr.start(self.project, "manuscript")
         rr.attach(self.project, "manuscript", self.report(record))
         rr.close(self.project, "manuscript", [], [["C1", "Missing actual author-owned fact"]], 1)
-        with self.assertRaises(ValueError): rr.decide(self.project, "manuscript", "no_further_review", "无需继续审阅")
+        with self.assertRaises(ValueError): rr.decide(self.project, "manuscript", "no_further_review", "我确认这一版")
         rr.decide(self.project, "manuscript", "another_round", "再审一轮")
         self.assertEqual(rr.start(self.project, "manuscript")["id"], "M002")
 
@@ -116,7 +116,7 @@ class ReviewRoundTests(unittest.TestCase):
         self.assertEqual(record["reviewed_artifacts"], record["before"])
 
     def test_new_round_invalidates_old_approval(self):
-        self.ready(); rr.decide(self.project, "manuscript", "no_further_review", "无需继续审阅")
+        self.ready(); rr.decide(self.project, "manuscript", "no_further_review", "我确认这一版")
         rr.start(self.project, "manuscript")
         self.assertIsNone(State(self.project).load().decision("manuscript_human_reviewed"))
         with self.assertRaises(ValueError): rr.approved(self.project, "manuscript")
@@ -130,7 +130,7 @@ class ReviewRoundTests(unittest.TestCase):
         self.package(); self.text("08_submission/guidelines_extract.md", "Current synthetic rule")
         self.ready("package")
         self.text("08_submission/guidelines_extract.md", "Changed synthetic rule")
-        with self.assertRaises(ValueError): rr.decide(self.project, "package", "no_further_review", "无需继续审阅")
+        with self.assertRaises(ValueError): rr.decide(self.project, "package", "no_further_review", "我确认这一版")
 
     def test_empty_manifest_is_not_a_reviewable_package(self):
         self.data("08_submission/bundle/manifest.json", {"items": []})

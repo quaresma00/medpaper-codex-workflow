@@ -81,6 +81,14 @@ class State:
         current = str(self.data.get("current", ""))
         aliases = stage_aliases or {}
         changed = old_version != pipeline_version
+        if (changed and current=="S09_results" and version_tuple(old_version)<(1,14,0)
+                and version_tuple(pipeline_version)>=(1,14,0) and not self.data.get("active_revision_round")):
+            for prerequisite in ("S10_tables","S11_figures"):
+                if prerequisite in valid_stage_ids and not self.is_done(prerequisite):
+                    self.data["current"]=prerequisite
+                    self.stage_info(prerequisite)["status"]="active"
+                    self.event("display_first_migration","Preserved existing Results draft and history; finish missing displays before Results acceptance")
+                    break
         if current not in valid_stage_ids:
             replacement = aliases.get(current)
             if not replacement or replacement not in valid_stage_ids:

@@ -262,9 +262,9 @@ def citation_count(ctx: Ctx) -> Result:
     n = len(set(citekeys(ctx.read(rel))))
     lo, hi = ctx.spec_bound("min"), ctx.spec_bound("max")
     if lo is not None and n < lo:
-        return Result(False, "citation_count", f"{rel}: {n} distinct references, target >= {lo}")
+        return Result(False, "citation_count", f"{rel}: {n} distinct references, advisory >= {lo}; judge coverage, never pad",severity="warn")
     if hi is not None and n > hi:
-        return Result(False, "citation_count", f"{rel}: {n} distinct references, target <= {hi}")
+        return Result(False, "citation_count", f"{rel}: {n} distinct references, advisory <= {hi}; only official journal caps are mandatory",severity="warn")
     return Result(True, "citation_count", f"{rel}: {n} distinct references (target {lo}-{hi})")
 
 

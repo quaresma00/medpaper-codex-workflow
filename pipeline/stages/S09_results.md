@@ -4,9 +4,8 @@ Read `reference/numeric-claims.md`. Save exact short finding bindings alongside 
 `07_manuscript/claim_bindings.json`; source facts come from executed analysis, not the prose.
 
 ## Purpose
-Write the Results section against the approved artifact plan, before the artifacts are
-rendered. The plan fixes what each display contains, so the prose can be written from the
-result JSONs and then reconciled at S12 once the files exist.
+Write Results only after S10 tables and S11 rendered figures are accepted. Read those actual
+displays alongside source JSON; S12 does crosschecks, not a planned rewrite of text/tables/figures.
 
 ## Inputs
 - `01_protocol/artifact_plan.json` - the display items and what each one shows
@@ -44,10 +43,17 @@ result JSONs and then reconciled at S12 once the files exist.
 - Every figure/table citation matches `artifact_plan.json` exactly, including
   supplementary numbering.
 - No claim about a result you did not compute. If a reviewer would ask "where is the
-  test for that", either run it (loop to S05) or do not claim it.
+  test for that", either make a scoped owner-stage correction or do not claim it.
 
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "results drafted; primary: <estimate, CI, p>; all <n> display items cited"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

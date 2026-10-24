@@ -77,3 +77,10 @@ No gratuitous 3-D/gridlines or unplanned figures. Missing inspection is pending,
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "Declared R/Python outputs rendered; measured QC and actual visual review completed; unresolved items stated."
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

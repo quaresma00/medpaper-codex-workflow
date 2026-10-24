@@ -88,3 +88,10 @@ write_table(
 ```
 .\.venv\Scripts\python.exe tools/wf.py advance --note "K main + M supp tables built; all values traced to results JSON"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

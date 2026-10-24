@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.13.0"
+  version: "1.14.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -99,3 +99,7 @@ Keep patient/private data local unless external transfer is explicitly authorize
 
 Use selective rebuilding and valid check reuse, never reduced evidence or skipped review.
 Ask only for a material missing decision/authorization/source; otherwise finish unblocked work.
+
+For current sequencing, source-specific declarations, prior-study numeric evidence, soft size budgets,
+optional third-party copies and exact-version approval, read `reference/quality-before-writing.md`.
+

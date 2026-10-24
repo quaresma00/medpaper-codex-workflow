@@ -226,10 +226,24 @@ def main() -> int:
     ap.add_argument("--years", type=int, help="restrict searches to the last N years")
     ap.add_argument("--export", action="store_true", help="regenerate refs.bib and refs.ris")
     ap.add_argument("--report", action="store_true", help="audit the current library")
+    ap.add_argument("--uncited-reason", nargs=2, action="append", default=[], metavar=("CITEKEY","REASON"), help="record why a genuine library entry is not cited; does not modify metadata")
     ap.add_argument("--drop", action="append", default=[], help="remove a citekey")
     args = ap.parse_args()
 
     lib = load_library()
+    if args.uncited_reason:
+        if args.topic or args.add_query or args.add_ids or args.drop or args.export:
+            raise ValueError("Record usage separately from metadata acquisition/export")
+        from wfcore.readiness import atomic_json
+        usage=eu.project_root()/"06_refs/usage.json"
+        record=json.loads(usage.read_text(encoding="utf-8")) if usage.is_file() else {"uncited_reasons":{}}
+        for key,reason in args.uncited_reason:
+            if key not in {e["citekey"] for e in lib["entries"]} or len(reason.strip())<20:
+                raise ValueError("Uncited reason needs an existing citekey and concrete explanation")
+            record["uncited_reasons"][key]=reason
+        atomic_json(usage,record)
+        print("Uncited usage explanations recorded; verified bibliographic metadata unchanged")
+        return 0
 
     for key in args.drop:
         before = len(lib["entries"])

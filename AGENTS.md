@@ -3,6 +3,15 @@
 This repository is a gated medical-paper workflow. The pipeline CLI, not the conversation
 history and not another skill, determines the current stage, allowed outputs, and gate.
 
+## Current quality policy (v1.14)
+
+Read `reference/quality-before-writing.md` for S01-S09, assembly, journal adaptation and review.
+It supersedes old pre-display Results, numeric quota, blanket author-question and automatic
+reading-copy text below. S10 -> S11 -> S09 -> S12; stable IDs are not execution order.
+Only 我确认这一版 releases a NEW current-version author approval. Third-party reading copies
+are opt-in; independent review and freezes remain required. Judge declarations from actual
+source/design/policy evidence; ask only the unresolved material fact, never invent decisions.
+
 ## Start and resume
 
 Before doing project work, run:
@@ -78,7 +87,7 @@ confirmation of the exact registered file; an identifier in its references is in
   S19/S24 use independent subagent review rounds, not review ZIPs. The main executor applies
   safe scoped corrections, reports changes and unadopted reasons once, then asks whether
   another round is wanted. Show exact artifact/report paths. Stay until the user explicitly says
-  no further review is needed; do not infer approval from delivery, silence, thanks, completion
+  我确认这一版; do not infer approval from delivery, silence, thanks, completion
   of one revision, or a generic instruction to continue.
   Use the document/PDF workflows at S23 to render and inspect submission files.
   At S24, present the actual upload package for the user's content/format edits and explicit
@@ -108,7 +117,7 @@ confirmation of the exact registered file; an identifier in its references is in
    raw PubMed XML and the exact library hash, match PMID/DOI/metadata on recomputation, and
    pass independent live PubMed gates from S13 through the final audit. Never write the four reference-library files
    with an ad-hoc script; their integrity gates cannot be bypassed with `--force`.
-3. Every manuscript number must already exist in `project/03_analysis/results/*.json`,
+3. Every own-study result number must already exist in `project/03_analysis/results/*.json`,
    produced by executed analysis code. Never calculate a result in prose. Read
    `reference/numeric-claims.md` at S05/S06 and when writing or revising reported findings:
    bind Results/Abstract claims and table cells to specific source facts; a matching number
@@ -151,8 +160,7 @@ confirmation of the exact registered file; an identifier in its references is in
     visible-text baseline passes.
 13. S19/S24 are explicit repeatable review stops. Use `tools/review_round.py` to start a
     version-bound round, attach the genuine read-only subagent report before edits, correct
-    safe findings through scoped owner rules, close and report once. Ask only whether another
-    round is needed. Record no-further-review only from the actual explicit user answer,
+    safe findings through scoped owner rules, close and report once. Ask for the exact statement 我确认这一版 or further changes/review. Record acceptance only from the actual explicit user answer,
     bound to this round/current files. No review ZIP is created. Missing independent review
     remains pending, unresolved objective defects cannot be dismissed as preferences, and
     private data stays local. Legacy archives and freezes remain intact and verifiable.

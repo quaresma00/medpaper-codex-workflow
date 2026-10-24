@@ -273,7 +273,9 @@ def run_checks(proj: Path) -> None:
                        ("Repeated implementation detail that belongs in supplementary Methods. " * 35),
                        encoding="utf-8")
     r = run("legends_cover_plan", "S07_artifacts")
-    record("overlong figure legend is rejected", not r.ok, r.detail[:110])
+    record("default legend length does not discard necessary information", r.ok, r.detail[:110])
+    advice=run("legend_length_advice","S07_artifacts")
+    record("overlong default legend produces a nonblocking advisory",not advice.ok and not advice.blocking,advice.detail[:110])
     legends.write_text(legend_good, encoding="utf-8")
 
     legends.write_text(
@@ -2034,7 +2036,7 @@ def run_manuscript_docx(proj: Path) -> None:
         "\n\n```json\n" + json.dumps({"reviewed_artifacts": test_round["reviewed_artifacts"]}) + "\n```\n", encoding="utf-8")
     reviewrounds.attach(proj, "package", fixture_report)
     reviewrounds.close(proj, "package", [], [])
-    reviewrounds.decide(proj, "package", "no_further_review", "Test fixture user explicitly said no further review needed.")
+    reviewrounds.decide(proj, "package", "no_further_review", "我确认这一版")
     state.load()
     frozen = subprocess.run(
         [sys.executable, str(freezer), "freeze", "--project", str(proj)],
@@ -2368,6 +2370,10 @@ def main() -> int:
                (migration.stdout + migration.stderr)[-1800:].strip())
         if args.online:
             run_online(proj)
+        quality = subprocess.run([sys.executable, str(ROOT / "tools/test_quality_114.py")],
+                                  capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("source-first quality and explicit-version acceptance regressions",quality.returncode==0,
+               (quality.stdout+quality.stderr)[-1500:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

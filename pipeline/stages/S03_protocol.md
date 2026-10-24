@@ -81,3 +81,10 @@ a local protocol does not imply public preregistration.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "local analysis plan fixed; primary model=<y>; data route=<z>"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

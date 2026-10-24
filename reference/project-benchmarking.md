@@ -113,3 +113,10 @@ with article-specific status/value/source like other journal rules. Unspecified 
 Use unchanged evidence and targeted dependency checks; do not reacquire/replay clinical data
 for this editorial work. Report file generation, content acceptance, visual acceptance and
 actual submission as different states. A routine executable error stops dependent capture/build.
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

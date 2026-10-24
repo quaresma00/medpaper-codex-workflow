@@ -41,7 +41,7 @@ class NewMigrationTests(unittest.TestCase):
             f"\n## {heading}\n\n" + "This is controlled test evidence for synthetic artifacts, not a real independent scientific audit. "*2 for heading in headings) +
             "\n```json\n"+json.dumps({"reviewed_artifacts":record["reviewed_artifacts"]})+"\n```\n")
         reviewrounds.attach(self.project,"manuscript",report); reviewrounds.close(self.project,"manuscript",[],[])
-        reviewrounds.decide(self.project,"manuscript","no_further_review","无需继续审阅（测试）")
+        reviewrounds.decide(self.project,"manuscript","no_further_review","我确认这一版")
         return scientificfreeze.write(self.project,"1.12.0")[1]
 
     def round(self):

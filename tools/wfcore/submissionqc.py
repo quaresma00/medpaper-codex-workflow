@@ -12,7 +12,7 @@ RECEIPT = ".wf/submission_measurements.json"
 CHECKLIST = "08_submission/evidence/SUBMISSION_CHECKLIST.md"
 BEGIN, END = "<!-- medpaper measured begin -->", "<!-- medpaper measured end -->"
 RULE_FILES = [Path(__file__), *(Path(__file__).with_name(name + ".py") for name in
-    ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch")),
+    ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch", "qualitylimits")),
     Path(__file__).parents[1]/"manuscript/build_docx.py"]
 
 

@@ -54,7 +54,7 @@ changed science. Unknown equivalence is not automatically presentation.
    remaining/unadopted items and reasons. Offer manuscript, supplement, tables, figures and
    review report directly. Do not ask for author administration here. Ask one question:
 
-   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“无需继续审阅”。
+   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“我确认这一版”。
 
 6. Preserve the actual user answer; generic “继续”, silence or file delivery is not approval:
 ```
@@ -81,3 +81,10 @@ changed science. Unknown equivalence is not automatically presentation.
 - Additional user-requested review rounds are unlimited. Do not launch extra unchanged
   reviews without such a request or a material defect. Save tokens by delta reading and
   dependency-based work, never by reducing analysis, sources, medical judgment or QA.
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

@@ -87,7 +87,7 @@ def start(project: Path, scope: str, *, delta: bool = False) -> dict:
         except (OSError, ValueError, TypeError, KeyError):
             mode = "full (dependency uncertainty)"
     number = int(previous["id"][1:]) + 1 if previous else 1
-    record = {"schema_version": 1, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
+    record = {"schema_version": 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
               "started_at": now(), "mode": mode, "before": current,
               "reviewed_artifacts": selection, "changed_since_previous": differences,
               "deleted_since_previous": [rel for rel in differences if rel not in current],
@@ -145,6 +145,7 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     destination.write_text(text, encoding="utf-8")
     record["report"] = {"path": relative, "sha256": _sha256(destination), "attached_at": now()}
     history.append(record["report"])
+    record["findings"] = evidence[0].get("findings", [])
     if revalidation:
         record["reviewed_after"] = current
         record["reviewed_artifacts"] = selection
@@ -152,7 +153,7 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     return record
 
 
-def close(project: Path, scope: str, changes: list, kept: list, unresolved: int = 0) -> dict:
+def close(project: Path, scope: str, changes: list, kept: list, unresolved: int = 0, author_decisions: dict | None = None) -> dict:
     record = latest(project, scope)
     if not record or record.get("closed_at") or not record.get("report"):
         raise ValueError("attach the actual independent report before closing an open round")
@@ -168,11 +169,21 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
         if any(len(entry) != 2 or not all(str(value).strip() for value in entry) for entry in entries):
             raise ValueError("every change or unadopted finding needs a location/ID and concrete reason")
     current = inputs(project, scope)
+    findings={r.get("id"):r for r in record.get("findings",[])}
+    for key,reason in kept:
+        finding=findings.get(key,{})
+        # Unknown/untyped findings cannot be self-dismissed as personal preferences.
+        if finding.get("category")=="preference" and finding.get("affects_science") is False:
+            continue
+        decision=(author_decisions or {}).get(key,{})
+        if (decision.get("report_sha256")!=report["sha256"] or decision.get("inputs")!=current
+                or len(str(decision.get("author_words","")))<8 or len(str(decision.get("rationale","")))<20):
+            raise ValueError(f"{key}: numerical/grouping/conclusion-strength or untyped findings require correction or actual version-bound author adjudication, not executor preference")
     missing = set(changed(record["before"], current)) - {entry[0] for entry in changes}
     if missing:
         raise ValueError("record each changed/removed review artifact: " + ", ".join(sorted(missing)))
     from .determinism import content_sha256
-    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved,
+    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved, author_decisions=author_decisions or {},
                   container_inputs={rel: content_sha256(project / rel) for rel in current})
     save(project, record)
     summary(project, record)
@@ -185,9 +196,8 @@ def decide(project: Path, scope: str, answer: str, words: str) -> dict:
         raise ValueError("a closed round awaiting the actual user answer is required")
     if answer not in {"another_round", "no_further_review"} or len(words.strip()) < 2:
         raise ValueError("preserve the explicit user answer; generic continuation is not approval")
-    if answer == "no_further_review" and words.strip().strip("。.!！").casefold() in {
-            "继续", "好的", "好", "ok", "okay", "thanks", "谢谢", "continue", "looks fine"}:
-        raise ValueError("generic continuation/acknowledgment is not explicit no-further-review approval")
+    if answer == "no_further_review" and words.strip() != "我确认这一版":
+        raise ValueError("Ask for exactly 我确认这一版, referring to this displayed round and current files; do not infer approval from phrasing")
     if input_drift(project, record["after"], inputs(project, scope), record.get("container_inputs")):
         raise ValueError("review files/context changed after closure; do not reuse this approval")
     if answer == "no_further_review" and record.get("unresolved"):
@@ -198,7 +208,8 @@ def decide(project: Path, scope: str, answer: str, words: str) -> dict:
     if answer == "no_further_review":
         from .state import State
         state = State(project).load()
-        state.record_decision(SCOPES[scope][1], SCOPES[scope][2], f"{record['id']}: {words}")
+        state.record_decision(SCOPES[scope][1], SCOPES[scope][2],
+                              f"{record['id']}: Actual author statement: {words}. Acceptance binds this closed review round and its exact current files; it is not inferred from continuation.")
     return record
 
 

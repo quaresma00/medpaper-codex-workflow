@@ -72,3 +72,10 @@ Everything the Introduction and Discussion say about the literature comes from h
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> fresh-PubMed-proven entries with abstracts; independent live gate passed; coverage gaps: <...>"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

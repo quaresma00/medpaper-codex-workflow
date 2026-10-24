@@ -53,7 +53,7 @@ Each reported numeric finding in Results and Abstract needs an entry with:
 Do not bind a whole section or use all facts as a global whitelist. The guard verifies signed
 numbers, rounded values and P thresholds against the claim's own facts. Common CI confidence
 levels and figure/table labels are not findings; small numbers and P values are not exempt.
-Constants in Methods need a justified existing number-allowlist entry, not fabricated results.
+Constants in Methods need the typed source-bound constant entry specified by quality-before-writing.md, not a free number allowlist or fabricated results.
 
 At S10 the table builder appends cell bindings to the same file: `path`, `sheet`, `cell`,
 `text` (exact string value returned by the workbook reader), `fact_ids`, and `label_cells`
@@ -78,3 +78,10 @@ Missing bindings fail with an actionable message; they are not silently bypassed
 them from actual executed results, never from manuscript numbers. Keep the review checkpoint
 and use scoped source updates. If an already-frozen scientific source must change, obtain the
 normal renewed S19 approval; do not silently rewrite a frozen master or restart the stage tail.
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

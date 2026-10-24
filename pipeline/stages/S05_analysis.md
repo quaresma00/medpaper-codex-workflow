@@ -89,3 +89,10 @@ When the analysis has converged (no further analysis would change the conclusion
 .\.venv\Scripts\python.exe tools/wf.py advance --note "primary result: <effect, CI, p>; K result files; open: <...>"
 ```
 To iterate again later from a downstream stage: `.\.venv\Scripts\python.exe tools/wf.py loop --to S05_analysis --why "..."`
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

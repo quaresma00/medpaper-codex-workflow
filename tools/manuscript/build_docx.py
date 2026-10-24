@@ -72,13 +72,9 @@ def planned_figure_ids(project: Path | None = None, scope: str = "all") -> list[
             for item in plan.get(group, []) if str(item.get("id", "")).strip()]
 
 
-def figure_legend_cap() -> int:
-    try:
-        data = tomllib.loads((ROOT / "pipeline/pipeline.toml").read_text(encoding="utf-8"))
-        return int(data.get("targets", {}).get("figure_legend_words_max", 180))
-    except (OSError, ValueError, tomllib.TOMLDecodeError):
-        return 180
-
+def figure_legend_cap() -> int | None:
+    from wfcore.qualitylimits import legend_limit
+    return legend_limit(project_root())
 
 def load_style(path: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -463,7 +459,7 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
         chars, words = blocks[key]
         if chars < 40:
             problems.append(f"{display} legend is only {chars} characters")
-        if words > cap:
+        if cap is not None and words > cap:
             problems.append(f"{display} legend is {words} words (maximum {cap})")
     extras = sorted(set(blocks) - set(wanted))
     if extras:
@@ -473,7 +469,7 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
 
 def audit_docx(path: Path, style: dict, kind: str = "",
                planned_figures: list[str] | None = None,
-               legend_cap: int = 180) -> list[str]:
+               legend_cap: int | None = None) -> list[str]:
     problems: list[str] = []
     if not path.is_file():
         return [f"missing DOCX: {path}"]
@@ -736,6 +732,7 @@ def build(args) -> int:
         plan = project/"01_protocol/artifact_plan.json"
     observed = [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,*profile_inputs,Path(__file__),
                 ROOT/"tools/wfcore/journalspec.py",ROOT/"tools/wfcore/determinism.py",
+                ROOT/"tools/wfcore/qualitylimits.py",
                 ROOT/"tools/wfcore/cslpatch.py",
                 ROOT/"tools/wfcore/wordtables.py",
                 project.parent/"pipeline/pipeline.toml", plan if plan.is_file() else None]

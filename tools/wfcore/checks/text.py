@@ -95,16 +95,18 @@ def md_wordcount(ctx: Ctx) -> Result:
     if not ctx.p(rel).exists():
         return Result(False, "md_wordcount", f"{rel} missing")
     n = _wordcount(ctx.read(rel))
+    soft = not ctx.stage.id.startswith(("S20_","S21_","S22_","S23_","S24_","S25_"))
     lo = ctx.spec_bound("min")
     hi = ctx.spec_bound("max")
     if lo is not None and n < lo:
-        return Result(False, "md_wordcount", f"{rel}: {n} words, target >= {lo}")
+        return Result(False, "md_wordcount", f"{rel}: {n} words, target >= {lo}",severity="warn" if soft else "fail")
     if hi is not None and n > hi:
         return Result(
             False,
             "md_wordcount",
             f"{rel}: {n} words, target <= {hi}",
             ["Cut, do not compress into denser jargon. Adjust the target with `wf config set` if the journal differs."],
+            severity="warn" if soft else "fail",
         )
     return Result(True, "md_wordcount", f"{rel}: {n} words (target {lo}-{hi})")
 

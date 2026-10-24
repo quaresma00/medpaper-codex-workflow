@@ -47,6 +47,7 @@ NON_OVERRIDABLE_GATES = {
     "reader_review_coverage",
     "medical_benchmark", "literature_coverage", "executor_acceptance",
     "numbers_have_provenance", "numbers_cross_match",
+    "research_context_known", "study_governance", "variable_definitions", "statistical_reporting_plan", "source_record_spotcheck", "reference_usage",
     "dependent_checks_pending",
 }
 
@@ -380,6 +381,8 @@ def cmd_advance(args) -> int:
         print(f"S19 approval verified; resumed {round_id} at S24 without resetting S20-S23. Read rework.py status.")
         return 0
     nxt = pipe.next_of(stage.id)
+    while nxt is not None and st.is_done(nxt.id):
+        nxt = pipe.next_of(nxt.id)  # reordered upgrades do not replay completed outputs
     st.complete(stage.id, nxt.id if nxt else None)
     if nxt:
         print(f"{stage.id} closed. now at {nxt.id} - {nxt.title}")

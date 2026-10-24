@@ -12,8 +12,7 @@ actual content/meaning/guide/format/changed-page evidence and report the delta o
 science or an explicitly requested additional independent reading still follows below.
 
 1. Start with `tools/review_round.py start --scope package` (later rounds use `--delta`).
-   Give one independent read-only subagent actual uploads in `bundle/manifest.json`, generated
-   hash-bound text copies, rendered page images/figures, current official guideline snapshot
+   Give one independent read-only subagent actual uploads in `bundle/manifest.json`, actual source documents (extra text copies only when explicitly requested), rendered page images/figures, current official guideline snapshot
    and typed article-specific requirements. Text copies do not replace visual inspection.
    Do not transfer patient data/credentials. Missing delegation means independent review pending.
 2. The reviewer reads as a first-time reader and screening editor, then checks files,
@@ -43,7 +42,7 @@ science or an explicitly requested additional independent reading still follows 
 6. Report once with exact upload/checklist/preview/report paths, corrections and unadopted
    reasons. Ask ONLY:
 
-   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“无需继续审阅”。
+   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“我确认这一版”。
 
    Preserve the answer using `tools/review_round.py decide --scope package --answer
    another_round|no_further_review --words "<actual words>"`. Only explicit no-further-review
@@ -62,3 +61,10 @@ This does not replace S25 on the confirmed freeze. The reviewer reports only; th
 corrects outside immutable releases. New uploads need renewed approval/freeze. Preserve old
 rounds, releases and legacy archives. Review cannot create clinical facts, citations, private
 data transfer authority or actual journal submission. The portal remains user-controlled.
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

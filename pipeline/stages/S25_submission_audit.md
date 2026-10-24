@@ -21,8 +21,9 @@ prepare|record|check|finish`. Original independent PASS remains required; the te
 is explicitly AUTHOR_FINAL_COPY handoff, not submission or a new independent PASS. Missing
 facts, scientific changes and unresolved objective defects cannot be waived.
 
-Generate current hash-bound reading copies with `tools/review_round.py reader-copies --scope
-package`. They aid reading, not actual page/figure inspection. Run `tools/submission_qc.py
+Read actual current source documents; do not generate extra reading copies by default.
+If explicitly requested, `reader-copies --why <actual request>` creates local extracts, never
+a substitute for page/figure inspection. Run `tools/submission_qc.py
 verify` for the same final-file measurements used at S23/S24.
 
 1. Before delegation, verify that the package still matches the user's freeze:
@@ -130,3 +131,10 @@ replace the release.
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "independent final submission audit=PASS; frozen package unchanged; remaining portal-only user tasks=<none or list>"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+

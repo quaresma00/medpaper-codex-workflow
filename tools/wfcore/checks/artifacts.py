@@ -1,5 +1,6 @@
 """Artifact-plan, table and figure structural checks."""
 from __future__ import annotations
+from ..qualitylimits import check_limit
 
 import json
 import re
@@ -210,8 +211,8 @@ def legends_cover_plan(ctx: Ctx) -> Result:
                 problems.append(f"{rel}: {what} for {eid} is only {len(blocks[key].strip())} chars")
             elif rel == LEGENDS:
                 words = len(re.findall(r"\b[A-Za-z][A-Za-z0-9'-]*\b", blocks[key]))
-                cap = int(ctx.target("figure_legend_words_max", 180))
-                if words > cap:
+                cap = check_limit(ctx)
+                if cap is not None and words > cap:
                     problems.append(f"{rel}: {what} for {eid} is {words} words (maximum {cap})")
         if rel == CAPTIONS and "abbrevi" not in text.lower() and "footnote" not in text.lower():
             problems.append(f"{rel}: no footnote/abbreviation block anywhere - three-line tables need one")

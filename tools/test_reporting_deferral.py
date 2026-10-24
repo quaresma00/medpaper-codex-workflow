@@ -37,6 +37,7 @@ class ReportingDeferralTests(unittest.TestCase):
               "comparator":{"name":"reference group"},"outcomes":{"primary":[{"name":"outcome"}]},
               "claimed_novelty":"Test fixture scientific question",
               "data_source_candidates":[{"name":"Existing institutional retrospective cohort","access":"institutional"}],
+              "research_context":{"sources":[{"name":"Synthetic existing cohort","type":"existing_records"}]},
               "open_questions":[]}
         self.write("01_protocol/idea.json",json.dumps(idea))
         self.write("03_analysis/notes.md","# Notes\n\nSynthetic study notes.\n")
@@ -54,9 +55,18 @@ class ReportingDeferralTests(unittest.TestCase):
         self.protocol("S03_protocol","01_protocol/protocol_v1.md")
         spec=self.spec("S03_protocol","02_data/acquisition_plan.md")
         self.write(spec["path"],"\n\n".join("## "+h+"\n\nComplete fixture acquisition instructions." for h in spec["headings"]))
+        # Supply the newly required real-shape synthetic design/source/analysis contracts;
+        # absence of registration/checklist paperwork must still not block valid research.
+        from test_quality_114 import QualityTests
+        from wfcore.studypolicy import save
+        fixture=QualityTests(); fixture.project=self.project; fixture.public_context()
+        base={"source_field":"test_field","definition":"Synthetic source codebook definition","unit":"participant","coding":"Recorded binary source code","time_window":"Baseline observation","missing_rule":"Keep missing as missing","source_locator":"Synthetic codebook field"}
+        contract={"variable_definitions":[{**base,"role":"eligibility"},{**base,"role":"outcome"}],
+                  "statistical_reporting":{"primary_comparisons":1,"multiplicity":"One primary comparison; secondary tests are exploratory.","effect_measures":"Report the actual relative effect estimate.","intervals":"Two-sided 95% confidence intervals.","exploratory_labeling":"Secondary comparisons explicitly exploratory."}}
+        self.write("01_protocol/analysis_contract.json",json.dumps(contract)); save(self.project)
         results=gates.run_stage(self.pipe,self.state,self.project,self.pipe.stage("S03_protocol"))
         self.assertFalse(any(r.blocking for r in results),[(r.check,r.detail) for r in results])
-        self.assertEqual({p.name for p in (self.project/"01_protocol").iterdir()},{"protocol_v1.md"})
+        self.assertEqual({p.name for p in (self.project/"01_protocol").iterdir()},{"protocol_v1.md","idea.json","analysis_contract.json","governance.json"})
 
     def test_final_protocol_without_reporting_heading_passes_section_gate(self):
         stage="S06_protocol_final"; rel="01_protocol/protocol_final.md"

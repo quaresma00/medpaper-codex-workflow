@@ -12,8 +12,10 @@ been assembled, independently reviewed, user-reviewed and matched to a journal.
 Reuse already supplied facts and ask once for only journal-required missing items. Keep
 `00_input/author_info.json` as the single administrative source for every consuming file.
 Ask for the exact author order and names, affiliations, ORCIDs, corresponding-author
-details, funding/grants, conflicts, ethics/consent, data/code availability,
-acknowledgements, CRediT roles, preprint and prior presentation. Never infer a missing item.
+details, funding/grants and conflicts only when missing. Derive supported ethics/consent and
+data availability from the existing source/design governance assessment; ask only unresolved facts.
+Collect journal-required missing
+acknowledgements, CRediT roles, preprint and prior presentation. Never invent author-owned facts or institutional decisions.
 
 Write the response faithfully to `project/00_input/author_info.json`, then create:
 - `project/08_submission/integration/title_page.md` using the already selected title without offering
@@ -72,3 +74,10 @@ requires local definitions, retain them only when `target_journal.json` records
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "author/admin facts supplied; title page and required statements assembled; missing user-owned fields=<none or list>"
 ```
+
+## v1.14 execution update
+
+Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
+declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
+supersede older conflicting instructions. Do not create external-review materials by default.
+
