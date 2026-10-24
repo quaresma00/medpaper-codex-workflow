@@ -22,6 +22,16 @@ Use existing executor acceptance with concrete per-display medical checks and re
 layout observations; do not add another audit/agent/document or inspect an absent manuscript.
 Keep centralized abbreviations, journal-specific legend placement and Word-control prohibitions.
 
+## Structural quality (v1.16)
+
+Read `reference/structural-quality.md` at S06/S07, percentage reporting, review and rework.
+Use one source-scoped clinical display dictionary and reversible physical production profile
+inside the existing artifact plan. New review rounds inventory/close every actionable point,
+not only the priority list. Later rounds use actual deltas; neutral instructions and full
+current context remain available. Preview revision scope before editing; scientific approval
+renewal needs explicit authorization, never an inferred numbered-label change. Keep the
+user's centralized abbreviations, Word cleanup and independent review/freeze boundaries.
+
 ## Start and resume
 
 Before doing project work, run:

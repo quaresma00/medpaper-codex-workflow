@@ -27,6 +27,8 @@ def text(path: Path) -> str:
 
 def canonical(value: str, project: Path) -> str:
     from .journalspec import spelling, aliases, load
+    from .displayrefs import normalize
+    value=normalize(value,load(project))
     for original, label in aliases(load(project)).items():
         value = re.sub(r"(?mi)^(#{1,6}\s+)" + re.escape(label) + r"\s*$", r"\g<1>" + original, value)
     value = spelling(value, "american").replace("\u2212", "-")
@@ -81,7 +83,8 @@ def classify(project: Path, revision: dict) -> dict:
             reasons.append(f"{rel}: cell identities, values, units or number formats changed"); continue
         from .checks.numbers import NUM_RE
         from collections import Counter
-        nums = lambda value: NUM_RE.findall(re.sub(r"(?<=\d),(?=\d{3}(?:\D|$))", "", value))
+        from .displayrefs import scrub
+        nums = lambda value: NUM_RE.findall(scrub(re.sub(r"(?<=\d),(?=\d{3}(?:\D|$))", "", value)))
         cites = lambda value: re.findall(r"@[\w:./-]+", value)
         def clinical_qualifiers(value):
             mapping = {"higher":"UP", "increased":"UP", "elevated":"UP", "lower":"DOWN", "decreased":"DOWN", "reduced":"DOWN", "not":"NEGATION", "no":"NEGATION", "without":"NEGATION"}

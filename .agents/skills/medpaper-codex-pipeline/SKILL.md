@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.15.0"
+  version: "1.16.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -106,5 +106,9 @@ optional third-party copies and exact-version approval, read `reference/quality-
 At S07-S11/S17 and journal acceptance use `reference/medical-reader-presentation.md`.
 Keep clinical meaning and legitimate method terminology; decode actual tables/figures and
 bind final Word-rendered layout observations inside the existing acceptance, not another audit.
+
+Read `reference/structural-quality.md` for S07 clinical vocabulary/production profile,
+percentage denominators, all-finding review closure and read-only revision preview.
+
 
 

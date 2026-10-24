@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.15.0"
+version = "1.16.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 

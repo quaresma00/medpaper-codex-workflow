@@ -104,7 +104,7 @@ def audit_svg(path, metadata):
         "equal_axes_limits": element(equal, "Built panel x/y ranges compared"),
         "connected_pairs": element(any(l.get("geom") in {"GeomLine", "GeomPath"} and any(n >= 2 for n in sequence(l.get("group_sizes"))) for l in layers), "Observed within-group connected observations; pairing semantics still reviewed"),
     }
-    return {"engine": "R", "schema_version": 1, "min_font_pt": min(fonts) if fonts else None,
+    return {"engine": "R", "schema_version": 1, "min_font_pt": min(fonts) if fonts else None,"max_font_pt":max(fonts) if fonts else None,
             "min_line_pt": min(strokes) if strokes else None, "figure_text": sorted(set(texts)),
             "text_clipped_at_edge": clipped, "r_text_box_collisions": collisions,
             "measurement_limits": unsupported + ["Text height/overlap are conservative estimates; PDF font fallback, clipping paths, glyph coverage and complex grid layout require visual inspection."],

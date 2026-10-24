@@ -284,7 +284,7 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
     if any(update.get("feedback_sha256") == plan["feedback_sha256"] for update in revision["feedback_updates"]):
         print("identical feedback already recorded; no duplicate items or rebuild")
         if args.sealed and revision.get("status") == "collecting":
-            return _seal_round(state, pipe, args.why or plan["feedback_verbatim"])
+            return _seal_round(state, pipe, args.why or plan["feedback_verbatim"],getattr(args,"confirm_scientific_route",False))
         return 0
     revision["status"] = "collecting"
     first_new = len(revision["items"]) + 1
@@ -311,10 +311,10 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
     if not args.sealed:
         print("When the user has finished this feedback batch, run seal --why <their instruction>.")
         return 0
-    return _seal_round(state, pipe, args.why or plan["feedback_verbatim"])
+    return _seal_round(state, pipe, args.why or plan["feedback_verbatim"],getattr(args,"confirm_scientific_route",False))
 
 
-def _seal_round(state: State, pipe, why: str) -> int:
+def _seal_round(state: State, pipe, why: str, confirm_scientific_route: bool = False) -> int:
     if len(why.strip()) < 10:
         raise ValueError("seal requires the user's end-of-batch or apply-now instruction")
     round_path, revision = _load_round(state)
@@ -330,6 +330,8 @@ def _seal_round(state: State, pipe, why: str) -> int:
     if revision.get("review_stage") in {"S24_package_human_review", "S25_submission_audit"} and not revision["presentation_candidate"] and any(
             any(s.startswith(("01_protocol/", "02_data/", "03_analysis/", "04_tables/", "05_figures/", "06_refs/", "07_manuscript/"))
                 for s in item["affected_sources"]) for item in revision["items"]):
+        if not confirm_scientific_route:
+            raise ValueError("Scientific approval would be invalidated: run preview and obtain actual authorization, then seal --confirm-scientific-route --why <specific instruction>. State/approvals remain unchanged.")
         science = [i for i in revision["items"] if any(not s.startswith(("00_input/", "08_submission/"))
                                                     for s in i["affected_sources"])]
         if any(any(s.startswith("08_submission/") for s in i["affected_sources"]) for i in science):
@@ -516,7 +518,8 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "preview", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("--confirm-scientific-route",action="store_true",help="actual author authorization to renew scientific approval; never inferred from a numbered label")
     parser.add_argument("--input", help="known affected input for a discovered dependency")
     parser.add_argument("--output", help="newly discovered project-relative consumer")
     parser.add_argument("--checked-file",action="append",default=[],help="inspected but unchanged source")
@@ -542,6 +545,15 @@ def main() -> int:
     try:
         pipe = registry.load()
         state = State(project, pipe.layout.get("state_dir", ".wf")).load()
+        if args.command=="preview":
+            if not args.plan: raise ValueError("preview needs the proposed --plan; it never writes or invalidates state")
+            plan=_read_batch_plan(args.plan.resolve(),kinds,state.current,pipe)
+            record={"items":plan["items"],"review_stage":state.current,"baseline":scoped.snapshot(project),"baseline_documents":{}}
+            scoped.plan_scope(project,pipe,record)
+            print(json.dumps({"read_only":True,"owners":[i["owning_stage"] for i in record["items"]],
+                              "candidate_dependants":record["rebuild_files"],"scientific_items":[i["request"] for i in record["items"] if i["change_type"]=="scientific"],
+                              "meaning":"Planned scope, not a verdict about unmade edits. check classifies actual before/after bytes; no automatic scientific rewind."},ensure_ascii=False))
+            return 0
         if args.command == "status":
             return _cmd_status(state, args.full)
         if args.command == "depend":
@@ -560,7 +572,7 @@ def main() -> int:
             _write_round(path, revision)
             return _cmd_status(state)
         if args.command == "seal":
-            return _seal_round(state, pipe, args.why or "")
+            return _seal_round(state, pipe, args.why or "",args.confirm_scientific_route)
         if args.command == "check":
             path, revision = _load_round(state)
             if args.meaning_review:

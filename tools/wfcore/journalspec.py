@@ -20,7 +20,7 @@ def load(project: Path) -> dict:
 
 def aliases(target: dict) -> dict:
     value = target.get("main_text_headings", {})
-    if not isinstance(value, dict) or any(key not in {"Introduction", "Methods", "Results", "Discussion", "Conclusion"}
+    if not isinstance(value, dict) or any(key not in {"Abstract", "Introduction", "Methods", "Results", "Discussion", "Conclusion", "Declarations and Statements", "References", "Figure legends"}
                                          or not isinstance(label, str) or not label.strip() for key, label in value.items()):
         raise ValueError("main_text_headings must map canonical body sections to actual journal labels")
     if len({label.casefold() for label in value.values()}) != len(value):
@@ -74,7 +74,10 @@ def label_text(text: str, project: Path) -> str:
     from .state import State
     state = State(project)
     system = target.get("spelling") or state.config().get("targets", {}).get("spelling", "")
-    return number_text(spelling(text, system), target.get("number_format", {}))
+    from .clinicalpresentation import label,profile
+    journal=(project/"08_submission/integration/artifact_plan.json").is_file() and state.exists() and state.load().current.startswith(("S20_","S21_","S22_","S23_","S24_","S25_"))
+    text=label(text,project,journal=journal)
+    return number_text(spelling(text, system), target.get("number_format") or profile(project,journal).get("number_format", {}))
 
 
 def admin_scrub(text: str, project: Path, rel: str) -> str:
@@ -146,6 +149,7 @@ def docx_problems(path: Path, target: dict, project: Path, role: str) -> list[st
     if role == "manuscript":
         actual = {paragraph.text.strip() for paragraph in doc.paragraphs}
         for canonical, label in aliases(target).items():
+            if canonical not in {"Introduction","Methods","Results","Discussion","Conclusion"}: continue
             if label not in actual: problems.append(f"journal body heading missing: {label}")
         for paragraph in doc.paragraphs:
             if paragraph.text.strip().casefold().startswith("keywords:"):

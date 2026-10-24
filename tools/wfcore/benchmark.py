@@ -204,6 +204,8 @@ def coverage(project: Path, section=None, *, library_only=False, layer="science"
 def display_fit(project: Path, layer="science"):
     plan_rel = "01_protocol/artifact_plan.json" if layer == "science" else "08_submission/integration/artifact_plan.json"
     plan = load(project, plan_rel); problems = []; purposes = {}
+    from .clinicalpresentation import verify_plan
+    problems.extend(verify_plan(project,layer=="journal"))
     for group in ("main_figures", "main_tables", "supp_figures", "supp_tables"):
         for entry in plan.get(group, []):
             key = entry["id"]; contract = entry.get("reader_contract", {})

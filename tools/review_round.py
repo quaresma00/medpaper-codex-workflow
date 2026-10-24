@@ -16,7 +16,9 @@ def main() -> int:
     parser.add_argument("command", choices=["start", "attach", "close", "decide", "status", "reader-copies", "restart", "export"])
     parser.add_argument("--project", type=Path)
     parser.add_argument("--scope", choices=list(rounds.SCOPES), required=True)
-    parser.add_argument("--delta", action="store_true")
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument("--delta",action="store_true",default=None)
+    mode.add_argument("--full",action="store_true",help="explicit full reread; later rounds otherwise use actual delta")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--revalidation", action="store_true", help="attach actual post-scientific-fix independent revalidation; retains original report")
     parser.add_argument("--change", nargs=2, action="append", default=[])
@@ -26,6 +28,7 @@ def main() -> int:
     parser.add_argument("--words")
     parser.add_argument("--why")
     parser.add_argument("--author-decisions",type=Path)
+    parser.add_argument("--resolutions",type=Path,help="complete finding-ID disposition map for the existing review report")
     args = parser.parse_args()
     project = (args.project or paths.project_dir()).resolve()
     try:
@@ -36,7 +39,7 @@ def main() -> int:
         if args.scope == "manuscript" and args.command in {"close", "decide"} and state.current != "S19_human_review":
             raise ValueError("S18 only obtains the independent report; corrections/closure/user decision belong to S19")
         if args.command == "start":
-            record = rounds.start(project, args.scope, delta=args.delta)
+            record = rounds.start(project, args.scope, delta=False if args.full else args.delta)
             copies = {}  # independent reviewers read originals; extra reading copies are opt-in
             record["reader_copies"] = copies
             rounds.save(project, record)
@@ -54,7 +57,8 @@ def main() -> int:
             record = rounds.attach(project, args.scope, args.report, revalidation=args.revalidation)
         elif args.command == "close":
             decisions=json.loads(args.author_decisions.read_text(encoding="utf-8")) if args.author_decisions else None
-            record = rounds.close(project, args.scope, args.change, args.kept, args.unresolved,decisions)
+            resolutions=json.loads(args.resolutions.read_text(encoding="utf-8")) if args.resolutions else None
+            record = rounds.close(project, args.scope, args.change, args.kept, args.unresolved,decisions,resolutions)
         elif args.command == "decide":
             if not args.answer or not args.words:
                 raise ValueError("--answer and --words are required")

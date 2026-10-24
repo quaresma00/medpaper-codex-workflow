@@ -15,6 +15,11 @@ from wfcore.packagefreeze import _safe_path, _sha256
 from wfcore.readiness import atomic_json
 
 
+def is_scientific_input(rel: str) -> bool:
+    value=rel.replace("\\","/")
+    return not value.startswith(("04_tables/","05_figures/","07_manuscript/","08_submission/","01_protocol/prototypes/")) and value not in {"01_protocol/artifact_plan.json","01_protocol/display_review.json","01_protocol/artifact_benchmark.md"}
+
+
 def set_seed(seed: int) -> None:
     if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
         raise ValueError("seed must be a nonnegative integer")
@@ -66,7 +71,7 @@ def write_results(name: str, payload: dict, *, seed: int, inputs: list[str]) -> 
     hashes = {}
     for rel in inputs:
         normalized, file = _safe_path(project, rel)
-        if not file.is_file() or normalized == script_rel:
+        if not file.is_file() or normalized == script_rel or not is_scientific_input(normalized):
             raise ValueError(f"Missing or invalid scientific input: {rel}")
         hashes[normalized] = _sha256(file)
     # No permissive stringification: NaN/Infinity/unsupported values are errors.

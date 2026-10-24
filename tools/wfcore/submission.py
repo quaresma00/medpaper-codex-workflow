@@ -19,7 +19,8 @@ SECTIONS = ("Abstract", "Keywords", "Introduction", "Methods", "Results", "Discu
             "Conclusion", "Declarations and Statements", "References", "Figure legends")
 ALIASES = {"materials and methods": "Methods", "patients and methods": "Methods",
            "statistical methods": "Methods", "conclusions": "Conclusion",
-           "declarations": "Declarations and Statements", "statements": "Declarations and Statements"}
+           "declarations": "Declarations and Statements", "statements": "Declarations and Statements",
+           "statements and declarations": "Declarations and Statements"}
 
 
 def word_count(text: str) -> int:

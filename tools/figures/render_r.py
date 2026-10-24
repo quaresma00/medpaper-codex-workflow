@@ -62,7 +62,15 @@ def render(project, figure_id, timeout=180):
     recipes = ROOT / "tools/figures/r_recipes.R"
     from wfcore.journalspec import load
     profile = load(project)
-    policy = {"spelling": profile.get("spelling") or State(project).config().get("targets", {}).get("spelling", ""), "number_format": profile.get("number_format", {})}
+    from wfcore.clinicalpresentation import profile as production_profile,vocabulary
+    production=production_profile(project,journal_mode)
+    labels={}
+    for row in vocabulary(project,journal_mode):
+        labels[row["key"]]=row["label"]
+    internal={}
+    for row in vocabulary(project,journal_mode): internal.setdefault(row["internal"],set()).add(row["label"])
+    labels.update({key:next(iter(values)) for key,values in internal.items() if len(values)==1})
+    policy = {**production,"labels":labels,"spelling": profile.get("spelling") or State(project).config().get("targets", {}).get("spelling", ""), "number_format": profile.get("number_format") or production.get("number_format", {})}
     policy_files = [path for path in (project/"08_submission/target_journal.json", project/".wf/config.toml") if path.is_file()]
     before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values(), *policy_files]}
     (project / "temp").mkdir(exist_ok=True)
@@ -100,7 +108,8 @@ def render(project, figure_id, timeout=180):
         report["render_hashes"] = {p.relative_to(project).as_posix(): _sha256(p) for p in destinations.values()}
         atomic_json(sidecar, report)
         for output in [*destinations.values(), sidecar]:
-            record_build(project, output, [script, helper, recipes, *sources.values(), *policy_files, ROOT/"tools/wfcore/determinism.py"], parameters={"label_policy":policy})
+            record_build(project, output, [script, helper, recipes, plan_path, *sources.values(), *policy_files,
+                                          ROOT/"tools/wfcore/clinicalpresentation.py", ROOT/"tools/wfcore/determinism.py"], parameters={"label_policy":policy})
     return {"figure": figure_id, "engine": "R", "png": str(png), "pdf": str(pdf), "audit": str(sidecar)}
 
 

@@ -685,8 +685,8 @@ def run_qc(proj: Path) -> None:
     for line in out.splitlines():
         if line.strip().startswith("[") or "pass deterministic" in line:
             print("  " + line.strip())
-    record("all deterministic figure QC checks pass", "1/1 figure(s) pass" in out,
-           "" if "1/1 figure(s) pass" in out else "see output above")
+    record("all deterministic figure QC checks pass", p.returncode == 0 and "1/1 figure(s) pass" in out,
+           "" if p.returncode == 0 else out[-2500:])
     rep = proj / "05_figures/qc/qc_report.json"
     record("qc_report.json written", rep.exists())
     if rep.exists():
@@ -1196,7 +1196,7 @@ def run_codex_integration() -> None:
     batch_env = {**os.environ, "MEDPAPER_PROJECT": str(batch_project),
                  "MEDPAPER_ROOT": str(ROOT), "PYTHONIOENCODING": "utf-8"}
     opened = subprocess.run(
-        [sys.executable, str(ROOT / "tools/rework.py"), "batch", "--sealed", "--plan", str(plan_path),
+        [sys.executable, str(ROOT / "tools/rework.py"), "batch", "--sealed", "--confirm-scientific-route", "--plan", str(plan_path),
          "--project", str(batch_project)], capture_output=True, text=True, env=batch_env,
         encoding="utf-8", errors="replace")
     batch_state = State(batch_project, ".wf").load()
@@ -2033,7 +2033,8 @@ def run_manuscript_docx(proj: Path) -> None:
     fixture_report.write_text("# Synthetic lifecycle review fixture\n\n" + "\n\n".join(
         f"## {heading}\n\n" + "Controlled synthetic reviewer response for lifecycle regression testing only. " * 3
         for heading in ("Reader comprehension", "Editorial screening and low-level errors", "Guideline compliance")) +
-        "\n\n```json\n" + json.dumps({"reviewed_artifacts": test_round["reviewed_artifacts"]}) + "\n```\n", encoding="utf-8")
+        "\n\n```json\n" + json.dumps({"reviewed_artifacts": test_round["reviewed_artifacts"],"finding_inventory_complete":True,"findings":[],
+                                      "section_verdicts":{h:"no_actionable_findings" for h in ("Reader comprehension","Editorial screening and low-level errors","Guideline compliance")}}) + "\n```\n", encoding="utf-8")
     reviewrounds.attach(proj, "package", fixture_report)
     reviewrounds.close(proj, "package", [], [])
     reviewrounds.decide(proj, "package", "no_further_review", "我确认这一版")
@@ -2378,6 +2379,10 @@ def main() -> int:
                                  capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("medical-reader prose tables figures and layout regressions",medical.returncode==0,
                (medical.stdout+medical.stderr)[-1500:].strip())
+        structural = subprocess.run([sys.executable,str(ROOT/"tools/test_structural_quality_116.py")],
+                                    capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("clinical-label review-closure numbering and percentage regressions",structural.returncode==0,
+               (structural.stdout+structural.stderr)[-1500:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

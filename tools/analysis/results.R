@@ -19,6 +19,8 @@ medpaper_write_results <- function(name, payload, seed, inputs) {
   validate(payload)
   if (!length(inputs) || anyDuplicated(inputs)) stop("Declare every actual input once")
   safe <- function(rel) {
+    normalized <- gsub("\\\\", "/", rel)
+    if (grepl("^(04_tables/|05_figures/|07_manuscript/|08_submission/|01_protocol/prototypes/)", normalized) || normalized %in% c("01_protocol/artifact_plan.json", "01_protocol/display_review.json", "01_protocol/artifact_benchmark.md")) stop("Presentation/manuscript files are not scientific analysis inputs; declare actual data/protocol inputs.")
     if (grepl("^(/|[A-Za-z]:)|(^|[/\\\\])\\.\\.([/\\\\]|$)",rel)) stop("Unsafe relative input")
     p <- normalizePath(file.path(project, rel), winslash="/", mustWork=TRUE)
     if (!startsWith(tolower(p),tolower(prefix)) || dir.exists(p) || identical(p,script)) stop("Invalid input")

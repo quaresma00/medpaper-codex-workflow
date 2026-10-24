@@ -11,6 +11,7 @@ from .packagefreeze import _safe_path, _sha256
 from .readiness import load
 
 RULES = {
+    "revision_history": (r"\b(?:after internal review|added after review|review round\s+[MP]\d+|after rerunning the pipeline)\b", "Keep orchestration/revision history backstage, but preserve actual post-hoc status and scientific timing."),
     "runtime_count": (r"\b[\d,]+\s+(?:[A-Za-z-]+\s+){0,3}lines?\s+read\b", "Reading-log count: establish clinical counting unit; never relabel file lines as patients/reports."),
     "implementation_detail": (r"\b(?:Unicode normalization|concatenated legacy records|first\s+\d+\s+alphanumeric characters|vocabulary frozen)\b", "Assess scientific necessity in main Methods; move implementation detail, not validity-critical definitions, to supplement when appropriate."),
     "processing_label": (r"\b(?:collapse step|strict(?:\s+[A-Za-z-]+){0,4}\s+contrasts?|publications collapsed|near-duplicates and clusters removed)\b", "Replace/define internal processing labels in clinical terms without changing the procedure or source-specific model."),

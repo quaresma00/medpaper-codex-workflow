@@ -43,6 +43,9 @@ def identity(project, rel, value):
     inputs = env.get("inputs")
     if not isinstance(inputs, dict) or not inputs:
         raise ValueError(f"{rel}: no scientific inputs declared")
+    from analysis.results import is_scientific_input
+    if any(not is_scientific_input(source) for source in inputs):
+        raise ValueError(f"{rel}: downstream manuscript/display was incorrectly declared as analysis input; correct the actual producer dependency instead of replaying prose changes")
     hashes = {r: _sha256(_safe_path(project, r)[1]) for r in inputs}
     if hashes != inputs:
         raise ValueError(f"{rel}: input changed; run only the affected producer and true dependents")

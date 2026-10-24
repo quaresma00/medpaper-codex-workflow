@@ -69,8 +69,11 @@ def input_drift(project: Path, before: dict, after: dict, containers: dict | Non
     return result
 
 
-def start(project: Path, scope: str, *, delta: bool = False) -> dict:
+def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
     previous = latest(project, scope)
+    from .state import State,version_tuple
+    version=str(State(project).load().data.get("pipeline_version","0"))
+    if delta is None: delta=bool(previous)
     if previous and (not previous.get("closed_at") or not previous.get("user_decision")):
         raise ValueError("finish this review round and obtain its user answer before starting another")
     current = inputs(project, scope)
@@ -87,7 +90,7 @@ def start(project: Path, scope: str, *, delta: bool = False) -> dict:
         except (OSError, ValueError, TypeError, KeyError):
             mode = "full (dependency uncertainty)"
     number = int(previous["id"][1:]) + 1 if previous else 1
-    record = {"schema_version": 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
+    record = {"schema_version": 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
               "started_at": now(), "mode": mode, "before": current,
               "reviewed_artifacts": selection, "changed_since_previous": differences,
               "deleted_since_previous": [rel for rel in differences if rel not in current],
@@ -138,6 +141,14 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
         match = re.search(r"(?mi)^#{1,3}\s+" + re.escape(heading) + r"\s*$\n(.*?)(?=^#{1,3}\s|\Z)", text, re.S | re.M)
         if not match or len(match.group(1).strip()) < 80:
             raise ValueError(f"review needs substantive {heading} findings")
+    if record.get("schema_version",1)>=3:
+        from .reviewfindings import catalogue
+        catalogue(text,evidence[0],headings)
+        if revalidation:
+            previous_findings={r["id"]:r for r in record.get("findings",[])}
+            for row in evidence[0].get("findings",[]):
+                if row["id"] in previous_findings and row["text"]!=previous_findings[row["id"]]["text"]:
+                    raise ValueError("A revalidation cannot reuse an old finding ID for a different issue")
     history = record.setdefault("reports", [])
     relative = f"{ROOT}/{record['id']}.review{len(history) + 1}.md"
     destination = project / relative
@@ -145,7 +156,11 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     destination.write_text(text, encoding="utf-8")
     record["report"] = {"path": relative, "sha256": _sha256(destination), "attached_at": now()}
     history.append(record["report"])
-    record["findings"] = evidence[0].get("findings", [])
+    incoming=evidence[0].get("findings", [])
+    if revalidation and record.get("schema_version",1)>=3:
+        merged={r["id"]:r for r in record.get("findings",[])}
+        merged.update({r["id"]:r for r in incoming}); incoming=list(merged.values())
+    record["findings"] = incoming
     if revalidation:
         record["reviewed_after"] = current
         record["reviewed_artifacts"] = selection
@@ -153,7 +168,7 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     return record
 
 
-def close(project: Path, scope: str, changes: list, kept: list, unresolved: int = 0, author_decisions: dict | None = None) -> dict:
+def close(project: Path, scope: str, changes: list, kept: list, unresolved: int = 0, author_decisions: dict | None = None, resolutions: dict | None = None) -> dict:
     record = latest(project, scope)
     if not record or record.get("closed_at") or not record.get("report"):
         raise ValueError("attach the actual independent report before closing an open round")
@@ -169,6 +184,9 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
         if any(len(entry) != 2 or not all(str(value).strip() for value in entry) for entry in entries):
             raise ValueError("every change or unadopted finding needs a location/ID and concrete reason")
     current = inputs(project, scope)
+    if record.get("schema_version",1)>=3:
+        from .reviewfindings import close as close_findings
+        resolutions=close_findings(record,current,changes,kept,resolutions,project)
     findings={r.get("id"):r for r in record.get("findings",[])}
     for key,reason in kept:
         finding=findings.get(key,{})
@@ -183,7 +201,7 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
     if missing:
         raise ValueError("record each changed/removed review artifact: " + ", ".join(sorted(missing)))
     from .determinism import content_sha256
-    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved, author_decisions=author_decisions or {},
+    record.update(after=current, closed_at=now(), changes=changes, kept=kept, unresolved=unresolved, author_decisions=author_decisions or {}, finding_resolutions=resolutions or {},
                   container_inputs={rel: content_sha256(project / rel) for rel in current})
     save(project, record)
     summary(project, record)

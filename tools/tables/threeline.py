@@ -61,10 +61,12 @@ def _check(spec: dict) -> None:
                     "place for prose - move it to the footnote or the manuscript."
                 )
     total = sum(len(str(f)) for f in spec["footnotes"])
+    if any(len(str(note))>32767 for note in spec["footnotes"]): raise ValueError("A footnote exceeds Excel's actual per-cell capacity; move technical detail without silently truncating")
     if total > MAX_FOOTNOTE_CHARS:
-        raise ValueError(
-            f"'{spec['sheet']}': footnotes total {total} chars (limit {MAX_FOOTNOTE_CHARS}). "
-            "That is an analysis report, not a table footnote."
+        import warnings
+        warnings.warn(
+            f"'{spec['sheet']}': footnotes total {total} chars (advisory threshold {MAX_FOOTNOTE_CHARS}). "
+            "Advisory: retain decoding information and move unnecessary technical detail to Methods; do not split each sentence merely to satisfy a character limit."
         )
     if not re.match(r"^\s*(table|supplementary table)\s+S?\d+[.:]", spec["title"], re.I):
         raise ValueError(
@@ -157,6 +159,8 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
     # Apply display language from the actual study, never to raw data or model values.
     import os
     project_value = os.environ.get("MEDPAPER_PROJECT")
+    if not project_value:
+        project_value=next((str(parent) for parent in Path(path).resolve().parents if (parent/".wf/state.json").is_file()),None)
     if project_value:
         from wfcore.journalspec import label_text
         project = Path(project_value)

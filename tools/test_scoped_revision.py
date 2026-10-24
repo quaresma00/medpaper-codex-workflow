@@ -57,7 +57,7 @@ class ScopedTests(unittest.TestCase):
                 "affected_sources": sources, "acceptance_criteria": ["Only intended outputs change", "Actual checks pass"]}
         plan = self.data("temp/plan.json", {"feedback_verbatim": "Please apply this focused correction while retaining all unaffected work.",
                     "interpretation": "Update the canonical source and only its real consumers.", "items": [item] + (extra or [])})
-        result = self.command("batch", "--sealed", "--plan", str(plan))
+        result = self.command("batch", "--sealed", "--confirm-scientific-route", "--plan", str(plan))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.state.load()
         return revision.active(self.project)

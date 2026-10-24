@@ -20,6 +20,8 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.image as mpimg  # noqa: E402
@@ -132,6 +134,10 @@ def grey_regions(rgb: np.ndarray, lo: int = 100, hi: int = 200,
 # ---------------------------------------------------------------------------
 def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Path | None = None) -> dict:
     project = project or project_root()
+    from wfcore.clinicalpresentation import profile
+    journal=str(entry.get("file","")).startswith("08_submission/")
+    production=profile(project,journal)
+    tgt={**tgt,**{k:v for k,v in production.items() if k not in {"basis","number_format"}}}
     fid = str(entry.get("id", "?"))
     checks: list[dict] = []
 
@@ -149,7 +155,7 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pat
     h_px, w_px = rgb.shape[:2]
 
     width_class = entry.get("width", "single")
-    target_mm = WIDTHS_MM.get(width_class, 90.0)
+    target_mm = float(tgt.get("column_width_mm_"+width_class,WIDTHS_MM.get(width_class,90.0)))
     eff_dpi = w_px / (target_mm / MM_PER_IN)
     dpi_min = float(tgt.get("figure_dpi_min", 300))
     add("effective_dpi", eff_dpi >= dpi_min,
@@ -231,6 +237,9 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pat
             mf, ml = art.get("min_font_pt"), art.get("min_line_pt")
             add("min_font_size", mf is not None and mf >= float(tgt.get("figure_font_pt_min", 6)),
                 f"SVG measured minimum font {mf} pt")
+            if tgt.get("figure_font_pt_max") is not None:
+                maximum=art.get("max_font_pt")
+                add("max_font_size",maximum is not None and maximum<=float(tgt["figure_font_pt_max"]),f"Measured maximum font {maximum} pt")
             add("min_line_width", ml is not None and ml >= float(tgt.get("figure_line_pt_min", .5)),
                 f"SVG measured minimum stroke {ml} pt")
             add("r_text_canvas_bounds", not art.get("text_clipped_at_edge"),
@@ -251,6 +260,9 @@ def qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pat
         mf, ml = art.get("min_font_pt"), art.get("min_line_pt")
         add("min_font_size", mf is None or mf >= font_min,
             f"smallest text {mf} pt (floor {font_min} pt)")
+        if tgt.get("figure_font_pt_max") is not None:
+            maximum=art.get("max_font_pt")
+            add("max_font_size",maximum is not None and maximum<=float(tgt["figure_font_pt_max"]),f"Measured maximum font {maximum} pt")
         add("min_line_width", ml is None or ml >= line_min,
             f"thinnest line {ml} pt (floor {line_min} pt)")
         ov = art.get("axes_tightbbox_overlaps", [])
@@ -320,6 +332,7 @@ def _archetype_checks(archetype: str, found: dict, reg: dict) -> list[dict]:
             "detail": f"{archetype}: {spec.get('label', '')}"}]
 
     universal = (reg.get("meta") or {}).get("universal_requires", [])
+    universal=[key for key in universal if key not in spec.get("universal_exempt",[])]
     for key in list(dict.fromkeys(list(universal) + list(spec.get("requires", [])))):
         rec = found.get(key)
         if rec is None:

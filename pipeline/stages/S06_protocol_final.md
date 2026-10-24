@@ -70,3 +70,14 @@ Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, s
 declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
 supersede older conflicting instructions. Do not create external-review materials by default.
 
+## Structural quality and bounded rework
+
+Read `reference/structural-quality.md`. Use clinical display names and physical-size assumptions
+before production. Percentage claims bind numerator, denominator and source percentage basis.
+Every actionable point in every review section needs a stable ID and disposition, not only
+the must-fix subset. Review neutral actual artifacts; don't prime with the writer's conclusion.
+Use read-only rework preview and actual scoped checks; never infer scientific change from a
+publication label number or silently invalidate author approval. Existing privacy, freezes,
+centralized abbreviations, Word cleanup and final actual-page inspection remain in force.
+
+

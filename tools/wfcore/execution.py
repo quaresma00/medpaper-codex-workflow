@@ -11,6 +11,7 @@ from .readiness import atomic_json
 
 
 def run_logged(command, *, project, timeout=180, cwd=None, env=None):
+    env={**os.environ,**(env or {}),"PYTHONIOENCODING":"utf-8","PYTHONUTF8":"1"}
     project=Path(project).resolve();job=uuid.uuid4().hex
     log=project/".wf/processes"/(job+".log");log.parent.mkdir(parents=True,exist_ok=True)
     record=project/".wf/processes"/(job+".json")

@@ -125,6 +125,8 @@ def _matches(token: str, floats: set[float], strings: set[str]) -> bool:
 
 
 def _scrub(text: str) -> str:
+    from ..displayrefs import scrub
+    text = scrub(text)
     text = FENCE_RE.sub(" ", text)
     text = CITE_RE.sub(" ", text)
     text = ARTIFACT_RE.sub(" ", text)

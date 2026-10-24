@@ -92,4 +92,15 @@ Retain necessary methods; do not imply prespecification or change counts by rena
 Use the existing acceptance/review, not an additional audit. At S23 verify actual rendered
 Word pages and journal-directed legend/figure placement; don't reintroduce forbidden controls.
 
+## Structural quality and bounded rework
+
+Read `reference/structural-quality.md`. Use clinical display names and physical-size assumptions
+before production. Percentage claims bind numerator, denominator and source percentage basis.
+Every actionable point in every review section needs a stable ID and disposition, not only
+the must-fix subset. Review neutral actual artifacts; don't prime with the writer's conclusion.
+Use read-only rework preview and actual scoped checks; never infer scientific change from a
+publication label number or silently invalidate author approval. Existing privacy, freezes,
+centralized abbreviations, Word cleanup and final actual-page inspection remain in force.
+
+
 

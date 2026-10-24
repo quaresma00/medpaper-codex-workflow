@@ -5,7 +5,7 @@ medpaper_require <- function(packages) {
                             ". Restore the study's renv environment; do not switch languages silently.")
 }
 
-medpaper_theme <- function(base_size = 9, family = "Arial") {
+medpaper_theme <- function(base_size = 10, family = "Arial") {
   medpaper_require("ggplot2")
   ggplot2::theme_classic(base_size = base_size, base_family = family) +
     ggplot2::theme(text = ggplot2::element_text(colour = "black"),
@@ -22,6 +22,7 @@ medpaper_palette <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#5
 medpaper_label <- function(value) {
   if (!is.character(value)) return(value)
   policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
+  if (!is.null(policy$labels)) for (key in names(policy$labels)) value[which(!is.na(value) & value == key)] <- policy$labels[[key]]
   if (!is.null(policy$spelling) && grepl("^american|^en-us$|^us$", policy$spelling, ignore.case = TRUE)) policy$spelling <- "american"
   if (!is.null(policy$spelling) && grepl("^british|^en-gb$|^uk$", policy$spelling, ignore.case = TRUE)) policy$spelling <- "british"
   pairs <- c(colour="color", colours="colors", centre="center", centres="centers", tumour="tumor", randomised="randomized", analysed="analyzed", modelling="modeling")
@@ -86,6 +87,9 @@ medpaper_save <- function(plot, stem, width = "single", height_mm = 75, dpi = 60
   if (!nzchar(output)) stop("Use tools/figures/render_r.py; a managed staging directory is required.")
   if (basename(stem) != basename(output)) stop("Figure script stem differs from the requested plan entry.")
   widths <- c(single = 90, `1.5` = 140, double = 180)
+  policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
+  if (!is.null(policy$column_width_mm_single)) widths["single"] <- policy$column_width_mm_single
+  if (!is.null(policy$column_width_mm_double)) widths["double"] <- policy$column_width_mm_double
   if (!width %in% names(widths) || !is.finite(height_mm) || height_mm <= 0 || dpi < 300)
     stop("Invalid publication dimensions/resolution")
   if (!inherits(plot, c("ggplot", "grob", "gTree", "gtable")))

@@ -66,7 +66,7 @@ LIGHT_GREY = "#BFBFBF"
 FONT_STACK = ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"]
 
 
-def apply_style(base_pt: float = 7.0, palette: str = "okabe_ito") -> list[str]:
+def apply_style(base_pt: float = 8.0, palette: str = "okabe_ito") -> list[str]:
     """Call once at the top of every plotting script.
 
     `palette`: okabe_ito (default, colour-blind safe) | nejm | lancet | jama | jco | nature.

@@ -113,10 +113,13 @@ class QualityTests(unittest.TestCase):
         self.data("01_protocol/artifact_plan.json",{"main_figures":[],"main_tables":[]})
         for rel in ("07_manuscript/full_manuscript.md","05_figures/legends.md","04_tables/table_captions.md"): self.text(rel,"Synthetic content only.")
         record=rr.start(self.project,"manuscript")
-        report=self.text("temp/review.md","# Synthetic reviewer\n\n## Reader comprehension\n\n"+"Synthetic substantive review content. "*5+"\n\n## Medical presentation\n\n"+"Synthetic substantive review content. "*5+"\n```json\n"+json.dumps({"reviewed_artifacts":record["reviewed_artifacts"],"findings":[{"id":"N1","category":"numbers","affects_science":True}]})+"\n```\n")
+        report=self.text("temp/review.md","# Synthetic reviewer\n\n## Reader comprehension\n\n[finding:N1] "+"Synthetic substantive review content. "*5+"\n\n## Medical presentation\n\n"+"Synthetic substantive review content. "*5+"\n```json\n"+json.dumps({"reviewed_artifacts":record["reviewed_artifacts"],"finding_inventory_complete":True,
+              "section_verdicts":{"Reader comprehension":"findings_listed","Medical presentation":"no_actionable_findings"},
+              "findings":[{"id":"N1","section":"Reader comprehension","text":"Synthetic numerical disagreement requiring actual resolution.","locator":"Test sentence","category":"numbers","affects_science":True}]})+"\n```\n")
         rr.attach(self.project,"manuscript",report)
         with self.assertRaises(ValueError): rr.close(self.project,"manuscript",[],[["N1","Prefer the current number"]])
-        rr.close(self.project,"manuscript",[],[],1)
+        rr.close(self.project,"manuscript",[],[["N1","Author-owned numerical adjudication remains unresolved"]],1,
+                 author_decisions={"N1":{"report_sha256":rr.latest(self.project,"manuscript")["report"]["sha256"],"inputs":rr.inputs(self.project,"manuscript"),"author_words":"This is synthetic author fixture evidence only.","rationale":"No real numerical error is waived; unresolved=1 must still block confirmation."}})
         with self.assertRaises(ValueError): rr.decide(self.project,"manuscript","no_further_review","我确认这一版")
 
     def test_external_copy_is_optional_readonly_and_excludes_engine_facts(self):

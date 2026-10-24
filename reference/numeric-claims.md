@@ -85,3 +85,9 @@ Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, s
 declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
 supersede older conflicting instructions. Do not create external-review materials by default.
 
+For source-scoped labels, early physical production assumptions, all-observation review
+closure, percentage denominator-basis checks and safe trial routing, also use
+`reference/structural-quality.md`. Existing completed stages/evidence remain historical;
+new scoped work does not imply a complete analysis or manuscript rebuild.
+
+

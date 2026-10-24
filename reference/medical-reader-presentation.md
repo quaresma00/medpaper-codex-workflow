@@ -117,3 +117,9 @@ Clinical naming, statistic meaning and counting-unit corrections are not automat
 Use scoped source/dependency revisions and existing meaning/freeze checks. A wording-only
 change does not refit models or recreate all figures; a misleading measure requires actual
 scientific resolution. Finished pinned stages/old reports aren't silently rewritten at upgrade.
+
+For source-scoped labels, early physical production assumptions, all-observation review
+closure, percentage denominator-basis checks and safe trial routing, also use
+`reference/structural-quality.md`. Existing completed stages/evidence remain historical;
+new scoped work does not imply a complete analysis or manuscript rebuild.
+

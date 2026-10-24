@@ -68,7 +68,9 @@ def claim_values(claim, catalog, label_text):
     for key in ids:
         fact = catalog[key]
         # Require the source's actual outcome label, not an unrelated endpoint sharing a number.
+        from .clinicalpresentation import label as clinical_label
         label = fact["context"]["outcome"]
+        if claim.get("_project") is not None: label=clinical_label(label,claim["_project"])
         if label.casefold() not in label_text.casefold():
             raise ValueError(f"{key}: outcome label {label!r} missing from the bound text/label cells")
         _walk(fact["values"], strings)
@@ -111,7 +113,12 @@ def validate_prose(project, rel, text):
             quote = row.get("text", "")
             if not isinstance(quote, str) or not quote.strip() or quote not in body:
                 raise ValueError("claim text is missing or changed; update the affected binding")
-            floats, strings, p_values = claim_values(row, catalog, quote)
+            floats, strings, p_values = claim_values({**row,"_project":project}, catalog, quote)
+            from .state import State,version_tuple
+            from .proportions import validate as validate_proportions
+            strict=version_tuple(str(State(project).load().data.get("pipeline_version","0")))>=(1,16,0)
+            proportion_errors=validate_proportions(row,catalog,quote,required=strict)
+            if proportion_errors: raise ValueError("; ".join(proportion_errors))
             bad = _offenders(quote, floats, strings, set(), p_values)
             if bad:
                 raise ValueError(f"claim contains values absent from its own fact(s): {bad[:5]}")
@@ -151,7 +158,11 @@ def validate_tables(project, paths):
                     if row is None or row.get("text") != str(value):
                         raise ValueError(f"{sheet}!{cell}: missing/stale exact-value binding")
                     labels = " ".join(str(workbook[sheet][c].value or "") for c in row.get("label_cells", []))
-                    floats, strings, p_values = claim_values(row, catalog, labels + " " + str(value))
+                    floats, strings, p_values = claim_values({**row,"_project":project}, catalog, labels + " " + str(value))
+                    if row.get("proportions"):
+                        from .proportions import validate as validate_proportions
+                        issues=validate_proportions(row,catalog,str(value),required="%" in str(value))
+                        if issues: raise ValueError("; ".join(issues))
                     if _offenders(str(value), floats, strings, set(), p_values):
                         raise ValueError(f"{sheet}!{cell}: value not from its own fact(s)")
             finally:

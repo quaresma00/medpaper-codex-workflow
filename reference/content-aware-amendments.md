@@ -129,3 +129,9 @@ presentation transforms route to source rather than silently becoming approved s
 
 At S23 list remaining portal-only tasks (file slots, article type, coauthor approval, user-owned
 disclosure/compliance choices and final submit). Never claim submission from file generation.
+
+For source-scoped labels, early physical production assumptions, all-observation review
+closure, percentage denominator-basis checks and safe trial routing, also use
+`reference/structural-quality.md`. Existing completed stages/evidence remain historical;
+new scoped work does not imply a complete analysis or manuscript rebuild.
+
