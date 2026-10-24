@@ -62,11 +62,14 @@ class BenchmarkTests(unittest.TestCase):
         self.text(b.SCIENCE if layer == "science" else b.JOURNAL, "# Internal benchmark\n```json\n" + json.dumps(self.doc) + "\n```\n")
     def report(self):
         contract = self.plan["main_figures"][0]["reader_contract"]
-        return {"reviewer": "Primary executor, honest synthetic reader simulation", "inputs": b.acceptance_inputs(self.project), "final_outputs": False,
+        return {"medical_style_version":1,"reviewer": "Primary executor, honest synthetic reader simulation", "inputs": b.acceptance_inputs(self.project), "final_outputs": False,
                 "findings": {k: {"verdict": "PASS", "observation": "Inspected actual current specimen and resolved the specific " + k} for k in b.DIMENSIONS},
                 "unresolved": [], "range_deviations": {}, "display_findings": {"Figure 1": {"contract_hash": hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest(),
                                                                                      "reviewed_file": "05_figures/out/Figure1.png",
-                                                                                     "observation": "The actual single panel explains the denominator without mixing clinical groups."}}}
+                                                                                     "observation": "The actual single panel explains the denominator without mixing clinical groups.",
+                                                                                     "medical_checks":{"title_and_labels":"The synthetic single panel labels its clinical comparison explicitly.",
+                                                                                                       "statistic_and_encodings":"The synthetic fixture has no plotted estimate; production semantics are not claimed.",
+                                                                                                       "population_and_denominators":"The synthetic fixture has no patient counts and is only a controlled interface test."}}}}
 
     def test_full_text_and_locked_project_adaptation_pass(self):
         self.assertEqual(b.verify_benchmark(self.project), []); self.assertEqual(b.display_fit(self.project), [])

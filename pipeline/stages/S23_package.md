@@ -146,3 +146,12 @@ Do not present routine defects to the user as a finished package or call generat
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "submission package built and visually verified; Word typography/link/heading audit passed; ready for user package review"
 ```
+
+## Medical-reader presentation
+
+Read `reference/medical-reader-presentation.md`: check actual clinical labels, counting units,
+denominators, statistical marks and state distinctions, table footnotes and figure decoding.
+Retain necessary methods; do not imply prespecification or change counts by renaming units.
+Use the existing acceptance/review, not an additional audit. At S23 verify actual rendered
+Word pages and journal-directed legend/figure placement; don't reintroduce forbidden controls.
+

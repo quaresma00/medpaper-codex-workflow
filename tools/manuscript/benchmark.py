@@ -11,14 +11,23 @@ from wfcore.paths import project_dir
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["verify", "seal", "metrics", "accept"])
+    parser.add_argument("command", choices=["verify", "seal", "metrics", "accept", "style"])
     parser.add_argument("--project", type=Path)
     parser.add_argument("--layer", choices=["science", "journal"], default="science")
     parser.add_argument("--review", type=Path, help="Executor-authored findings, not automatically generated PASS")
     parser.add_argument("--final", action="store_true", help="Bind actual final journal uploads, not only integration prose")
+    parser.add_argument("--limit",type=int,default=12,help="style diagnostics to show; full reading remains mandatory")
+    parser.add_argument("--offset",type=int,default=0)
     args = parser.parse_args(); project = (args.project or project_dir()).resolve()
     try:
-        if args.command == "seal": benchmark.seal(project, args.layer); print("Benchmark plan sealed before writing/production")
+        if args.command=="style":
+            from wfcore.medicalstyle import scan
+            if args.limit<1 or args.offset<0: raise ValueError("Use positive limit and nonnegative offset")
+            issues=scan(project,args.layer,args.final)
+            selected=issues[args.offset:args.offset+args.limit]
+            print(json.dumps({"total":len(issues),"shown":len(selected),"offset":args.offset,"issues":selected,
+                              "meaning":"Risk prompts, not a blacklist or semantic/visual PASS; inspect actual figures."},ensure_ascii=False))
+        elif args.command == "seal": benchmark.seal(project, args.layer); print("Benchmark plan sealed before writing/production")
         elif args.command == "metrics": print(json.dumps(benchmark.citation_metrics(project)))
         elif args.command == "verify":
             problems = benchmark.verify_benchmark(project, args.layer)
@@ -33,7 +42,7 @@ def main():
             if not args.review: raise ValueError("Supply actual executor review findings with --review")
             if args.final and args.layer != "journal": raise ValueError("--final is journal upload acceptance only")
             row = json.loads(args.review.read_text(encoding="utf-8"))
-            row.update(inputs=benchmark.acceptance_inputs(project, args.layer, final=args.final), final_outputs=args.final)
+            row.update(inputs=benchmark.acceptance_inputs(project, args.layer, final=args.final,report=row), final_outputs=args.final)
             destination = project / benchmark.acceptance_rel(args.layer, args.final); guard_outputs(project, [destination])
             # Validate in memory; failure cannot overwrite a prior acceptance receipt.
             defects = benchmark.verify_acceptance(project, args.layer, final=args.final, report=row)

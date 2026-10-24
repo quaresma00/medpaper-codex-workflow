@@ -12,6 +12,16 @@ Only 我确认这一版 releases a NEW current-version author approval. Third-pa
 are opt-in; independent review and freezes remain required. Judge declarations from actual
 source/design/policy evidence; ask only the unresolved material fact, never invent decisions.
 
+## Medical reader presentation (v1.15)
+
+At S07/S08/S10/S11/S17 and S22/S23 read `reference/medical-reader-presentation.md`.
+S18/S25 reviewers apply it to actual prose, tables and rendered images. Necessary statistical
+terms/software versions are not banned. Preserve prespecification timing, clinical counting
+units, source-specific models, and missing/nonestimable/unbounded distinctions when editing.
+Use existing executor acceptance with concrete per-display medical checks and real final-page
+layout observations; do not add another audit/agent/document or inspect an absent manuscript.
+Keep centralized abbreviations, journal-specific legend placement and Word-control prohibitions.
+
 ## Start and resume
 
 Before doing project work, run:

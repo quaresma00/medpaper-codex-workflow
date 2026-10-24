@@ -2374,6 +2374,10 @@ def main() -> int:
                                   capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("source-first quality and explicit-version acceptance regressions",quality.returncode==0,
                (quality.stdout+quality.stderr)[-1500:].strip())
+        medical = subprocess.run([sys.executable,str(ROOT/"tools/test_medical_presentation.py")],
+                                 capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("medical-reader prose tables figures and layout regressions",medical.returncode==0,
+               (medical.stdout+medical.stderr)[-1500:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

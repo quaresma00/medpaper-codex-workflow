@@ -82,3 +82,12 @@ Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, s
 declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
 supersede older conflicting instructions. Do not create external-review materials by default.
 
+## Medical-reader presentation
+
+Read `reference/medical-reader-presentation.md`: check actual clinical labels, counting units,
+denominators, statistical marks and state distinctions, table footnotes and figure decoding.
+Retain necessary methods; do not imply prespecification or change counts by renaming units.
+Use the existing acceptance/review, not an additional audit. At S23 verify actual rendered
+Word pages and journal-directed legend/figure placement; don't reintroduce forbidden controls.
+
+

@@ -233,7 +233,7 @@ def display_source(project, entry, layer, final):
     raise ValueError(f"{entry['id']}: actual render or explicit preproduction preview/source_file required; no guessed role source")
 
 
-def acceptance_inputs(project, layer="science", *, final=False):
+def acceptance_inputs(project, layer="science", *, final=False, report=None):
     from .readiness import reader_inputs
     if layer == "science": files = set(reader_inputs(project)) | {SCIENCE}
     else:
@@ -248,7 +248,13 @@ def acceptance_inputs(project, layer="science", *, final=False):
             files.add("08_submission/bundle/manifest.json"); files.update(item["file"] for item in manifest["items"])
     files.update({"06_refs/library.json", "06_refs/refs.bib"})
     files.update(row["fulltext"] for row in dossier(project, layer)["comparators"])
-    return {rel: _sha256(_safe_path(project, rel)[1]) for rel in sorted(files)}
+    result={rel: _sha256(_safe_path(project, rel)[1]) for rel in sorted(files)}
+    if report is None and (project/acceptance_rel(layer,final)).is_file():
+        report=load(project,acceptance_rel(layer,final))
+    if report and final:
+        from .medicalstyle import layout_inputs
+        result.update(layout_inputs(project,report))
+    return result
 
 
 def verify_acceptance(project, layer="science", *, final=False, report=None):
@@ -256,7 +262,7 @@ def verify_acceptance(project, layer="science", *, final=False, report=None):
     problems = []
     problems.extend(coverage(project, layer=layer))
     problems.extend(display_fit(project, layer))
-    expected = acceptance_inputs(project, layer, final=final)
+    expected = acceptance_inputs(project, layer, final=final,report=report)
     if report.get("inputs") != expected or report.get("final_outputs") is not final: problems.append("Executor acceptance is missing/stale for actual current outputs")
     if not substantive(report.get("reviewer")): problems.append("Identify actual executor review; do not claim a human or independent reviewer")
     for dimension in DIMENSIONS:
@@ -288,4 +294,6 @@ def verify_acceptance(project, layer="science", *, final=False, report=None):
         for key, actual in metrics.items():
             if not ranges[key][0] <= actual <= ranges[key][1] and not substantive(deviations.get(key)):
                 problems.append(f"{key} observed {actual}, benchmark range {ranges[key]}: justify coverage, never pad or lower the locked range")
+    from .medicalstyle import verify as verify_medical_style
+    problems.extend(verify_medical_style(project,report,layer,final))
     return problems

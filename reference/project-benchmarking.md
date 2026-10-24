@@ -120,3 +120,15 @@ Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, s
 declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
 supersede older conflicting instructions. Do not create external-review materials by default.
 
+## v1.15 medical-reader acceptance
+
+Read `reference/medical-reader-presentation.md` before display production and acceptance.
+Extend the existing per-display findings with concrete `medical_checks` and set
+`medical_style_version: 1`. Run `benchmark.py style` for bounded risk prompts; diagnose, don't
+blindly replace statistical terms or change the scientific meaning. Final journal acceptance
+also binds existing Word-rendered page observations (`document_layout`) to current upload and
+render hashes. The checks cannot certify clinical understanding or replace inspecting images.
+No extra agent, review round, dossier or full reconstruction is introduced. Completed pinned
+acceptances remain historical; active/new acceptance uses the current criteria.
+
+
