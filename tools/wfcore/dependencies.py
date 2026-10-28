@@ -198,6 +198,9 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
 
 
 def guard_build(project: Path) -> None:
+    from .engineintegrity import verify_engine
+    from .paths import repo_root
+    verify_engine(repo_root())
     state = project / ".wf/state.json"
     if not state.exists():
         return

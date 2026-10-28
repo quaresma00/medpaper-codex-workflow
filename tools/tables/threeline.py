@@ -165,9 +165,16 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
         from wfcore.journalspec import label_text
         project = Path(project_value)
         for sheet in wb:
+            spec=next(t for t in tables if t["sheet"]==sheet.title)
+            ids=spec.get("identifier_columns") or []
+            indices=set()
+            for value in ids:
+                index=value if type(value) is int else spec["header"].index(value) if value in spec["header"] else -1
+                if not 0<=index<len(spec["header"]): raise ValueError("identifier_columns uses actual header names or zero-based column indices")
+                indices.add(index+1)
             for row in sheet:
                 for cell in row:
-                    if isinstance(cell.value, str): cell.value = label_text(cell.value, project)
+                    if isinstance(cell.value, str): cell.value = label_text(cell.value,project,format_numbers=not (cell.row>=3 and cell.row<3+len(spec["rows"]) and cell.column in indices))
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     wb.save(p)
@@ -179,11 +186,11 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
 
 def write_table(path: str | Path, sheet: str, title: str, header: list,
                 rows: list, footnotes: list, align: list | None = None,
-                col_widths: list | None = None) -> Path:
+                col_widths: list | None = None, identifier_columns: list | None = None) -> Path:
     """One workbook holding one table. Use this for each main table."""
     return write_workbook(path, [{
         "sheet": sheet, "title": title, "header": header, "rows": rows,
-        "footnotes": footnotes, "align": align, "col_widths": col_widths,
+        "footnotes": footnotes, "align": align, "col_widths": col_widths,"identifier_columns":identifier_columns,
     }])
 
 

@@ -114,6 +114,8 @@ replace the release.
 
 ## Hard rules
 - The independent subagent is read-only and audits exactly the user-confirmed frozen files.
+  It may write only the designated audit report outside the frozen uploads. If unavailable,
+  return the complete report for verbatim parent persistence; never scrape other sessions.
 - Earlier S18 publishability review and S23 automated/visual QA do not substitute for this
   journal-specific final audit.
 - A checklist assertion is not evidence; inspect the actual file and official rule.

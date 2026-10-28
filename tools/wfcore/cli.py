@@ -56,6 +56,8 @@ NON_OVERRIDABLE_GATES = {
 # helpers
 # ---------------------------------------------------------------------------
 def _load(need_state: bool = True):
+    from .engineintegrity import verify_engine
+    verify_engine(paths.repo_root())
     tmp_state = State(paths.project_dir({}), ".wf")
     overrides = tmp_state.config() if tmp_state.config_file.exists() else {}
     pipe = registry.load(overrides)

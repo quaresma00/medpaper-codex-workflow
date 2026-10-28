@@ -28,7 +28,9 @@ finding. Follow S19 for close, one report, one question and the actual user answ
    inspects tables; if its tools cannot read them, mark the review incomplete, not PASS.
    Do not change them while the reviewer is working.
 2. Spawn exactly one independent subagent. Give it the frozen paths and ask it to review
-   only; it must not edit files or rewrite the paper. The reviewer must judge whether the
+   only; it must not edit files or rewrite the paper except writing its designated
+   `report_destination`. If that write is unavailable, return the full report for verbatim
+   parent persistence; never scrape other sessions or substitute an excerpt. The reviewer must judge whether the
    study could be published in a legitimate current SCIE journal, including a realistic
    low-impact/Q3/Q4 venue, rather than whether it belongs in a top journal.
 3. Require the reviewer to check scientific validity, internal consistency, reporting

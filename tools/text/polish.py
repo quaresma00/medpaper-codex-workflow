@@ -142,8 +142,8 @@ SPELLING_PAIRS = [
     (r"\bmodel(ed|ing)\b", r"\bmodell(ed|ing)\b", "modeling/modelling"),
     (r"\bag(e)?ing\b", r"\bageing\b", "aging/ageing"),
     (r"\brandomi[z]\w+\b", r"\brandomi[s]\w+\b", "randomize/randomise"),
-    (r"\banaly[z]\w+\b", r"\banaly[s]e\w*\b", "analyze/analyse"),
-    (r"\bcharacteri[z]\w+\b", r"\bcharacteri[s]\w+\b", "characterize/characterise"),
+    (r"\banalyz(?:e[sd]?|ing)\b", r"\banalys(?:e|ed|ing)\b", "analyze/analyse"),
+    (r"\bcharacteriz(?:e[sd]?|ing|ations?)\b", r"\bcharacteris(?:e[sd]?|ing|ations?)\b", "characterize/characterise"),
     (r"\bhospitali[z]\w+\b", r"\bhospitali[s]\w+\b", "hospitalize/hospitalise"),
     (r"\bfavor(able|ably)?\b", r"\bfavour(able|ably)?\b", "favor/favour"),
     (r"\bbehavior(al)?\b", r"\bbehaviour(al)?\b", "behavior/behaviour"),
@@ -386,7 +386,8 @@ def lint_style(rel: str, text: str) -> list[dict]:
     if spaced_pct and tight_pct:
         flag("percent_spacing", f"'5 %' ({spaced_pct}) and '5%' ({tight_pct}) both used")
 
-    m = re.search(r"(?:(?<=[.!?])\s+|(?<=\n\n))(\d[\w.,]*(?:\s+\S+){0,3})", b)
+    sentence_scan=re.sub(r"\b(?:No|Nos|Fig|Figs|Eq|Eqs|Dr|Prof|vs)\.\s*(?=\d)",lambda m:m[0].replace(".",""),b,flags=re.I)
+    m = re.search(r"(?:(?<=[.!?])\s+|(?<=\n\n))(\d[\w.,]*(?:\s+\S+){0,3})", sentence_scan)
     if m:
         flag("sentence_starts_with_numeral",
              f"a sentence begins with a numeral ({m.group(1)[:30]!r}) - spell it out or restructure")

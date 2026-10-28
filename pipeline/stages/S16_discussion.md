@@ -12,7 +12,7 @@ Interpret the finding against the literature you actually read. One file, this s
 - `06_refs/library.json` - abstracts for the wider context
 - `03_analysis/notes.md` -> `Discussion points`, `Limitations`, `Surprises`
 - `07_manuscript/results.md` - what you may interpret (and nothing beyond it)
-- `01_protocol/protocol_diff.md` - deviations that must be owned as limitations
+- `01_protocol/protocol_diff.md` - internal context for material scientific limitations, not a manuscript change log
 
 ## Procedure
 1. A useful narrative route, not mandatory subheadings or an inflexible order:
@@ -24,9 +24,12 @@ Interpret the finding against the literature you actually read. One file, this s
    3. **Interpretation / mechanism** - clearly labelled as inference, not as demonstrated.
    4. **Clinical or research implications** - proportionate to the evidence. A single
       observational study does not change practice.
-   5. **Strengths and limitations** - specific and quantified. Include every protocol
-      deviation from `protocol_diff.md`, residual confounding, generalisability limits,
+   5. **Strengths and limitations** - specific and quantified. Include scientifically
+      material limitations, residual confounding, generalisability limits,
       power, and measurement error. State the direction each bias would push the estimate.
+      Keep internal plan revisions in `01_protocol`; do not narrate every deviation or
+      announce an unregistered protocol for ordinary retrospective mining. Preserve true
+      post-hoc/exploratory status and any specifically applicable protocol reporting.
    6. **Conclusion** - two or three sentences, no stronger than the Results support.
 2. Write `project/07_manuscript/discussion.md` with pandoc citations `[@key]`.
 3. Complete Discussion argument/passages in the sealed benchmark, including contrary evidence

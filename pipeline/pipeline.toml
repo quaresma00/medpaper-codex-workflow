@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.17.0"
+version = "1.18.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -172,6 +172,7 @@ check = "outputs_exist"
 [[stage.gate]]
 check = "file_count"
 glob = "02_data/raw/**"
+include_data_sources = true
 min = 1
 [[stage.gate]]
 check = "json_keys"

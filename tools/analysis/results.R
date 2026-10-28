@@ -19,6 +19,7 @@ medpaper_write_results <- function(name, payload, seed, inputs) {
   validate(payload)
   if (!length(inputs) || anyDuplicated(inputs)) stop("Declare every actual input once")
   safe <- function(rel) {
+    if (startsWith(rel, "data:")) return(medpaper_data_path(rel))
     normalized <- gsub("\\\\", "/", rel)
     if (grepl("^(04_tables/|05_figures/|07_manuscript/|08_submission/|01_protocol/prototypes/)", normalized) || normalized %in% c("01_protocol/artifact_plan.json", "01_protocol/display_review.json", "01_protocol/artifact_benchmark.md")) stop("Presentation/manuscript files are not scientific analysis inputs; declare actual data/protocol inputs.")
     if (grepl("^(/|[A-Za-z]:)|(^|[/\\\\])\\.\\.([/\\\\]|$)",rel)) stop("Unsafe relative input")
@@ -56,10 +57,18 @@ medpaper_write_results <- function(name, payload, seed, inputs) {
     if(status!=0) stop("Atomic result replacement failed")
   } else if (!file.rename(temporary,out)) stop("Atomic result replacement failed")
   if (file.exists(file.path(project,".wf/state.json"))) {
-    code <- "import pathlib,sys; from wfcore.revision import record_build; p=pathlib.Path(sys.argv[1]); record_build(p,pathlib.Path(sys.argv[2]),[p/r for r in sys.argv[3:]])"
+    code <- "import pathlib,sys; from wfcore.revision import record_build; from wfcore.datasources import input_path; p=pathlib.Path(sys.argv[1]); record_build(p,pathlib.Path(sys.argv[2]),[input_path(p,r) for r in sys.argv[3:]])"
     if(system2(python,c("-c",shQuote(code),shQuote(project),shQuote(out),shQuote(substring(script,nchar(prefix)+1)),shQuote(inputs)))!=0) stop("Result build receipt failed")
   }
   invisible(out)
+}
+medpaper_data_path <- function(reference) {
+  python <- Sys.getenv("MEDPAPER_PYTHON")
+  if (!nzchar(python) || !startsWith(reference, "data:")) stop("Use an authorized data reference through the managed analysis runner")
+  code <- "import pathlib,sys; from wfcore.datasources import resolve; print(resolve(pathlib.Path(sys.argv[1]),sys.argv[2]).as_posix())"
+  answer <- system2(python,c("-c",shQuote(code),shQuote(Sys.getenv("MEDPAPER_PROJECT")),shQuote(reference)),stdout=TRUE)
+  if (!is.null(attr(answer,"status")) || length(answer)!=1L || !file.exists(answer)) stop("Data reference is missing or outside its authorized root")
+  answer
 }
 # Baseline output contains every level; never infer the other sex/category in prose.
 baseline_counts <- function(values, groups = NULL, levels = NULL) {

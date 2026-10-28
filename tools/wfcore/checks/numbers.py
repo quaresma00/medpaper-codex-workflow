@@ -30,6 +30,12 @@ NUM_RE = re.compile(r"(?<![\w.])([+\-−]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+\-]?\d
 P_RE = re.compile(r"\b[Pp]\s*([<>=≤≥])\s*(0?\.\d+(?:[eE][+-]?\d+)?)\b")
 
 
+def normalize_grouping(text):
+    # Strict three-digit groups only: never merge a comma-separated list or round a value.
+    pattern=r"(?<![\w.,])([+\-−]?\d{1,3}(?:[,\u00a0\u2009\u202f]\d{3})+(?:\.\d+)?)(?![\w.,])"
+    return re.sub(pattern,lambda m:re.sub(r"[,\u00a0\u2009\u202f]","",m[0]),text)
+
+
 # ---------------------------------------------------------------------------
 # building the pool of legitimate values
 # ---------------------------------------------------------------------------
@@ -40,7 +46,7 @@ def _walk(obj, sink: set[str]) -> None:
         sink.add(_norm(obj))
         return
     if isinstance(obj, str):
-        for m in NUM_RE.finditer(obj):
+        for m in NUM_RE.finditer(normalize_grouping(obj)):
             sink.add(_norm(m.group(1)))
         return
     if isinstance(obj, dict):
@@ -125,6 +131,7 @@ def _matches(token: str, floats: set[float], strings: set[str]) -> bool:
 
 
 def _scrub(text: str) -> str:
+    text=normalize_grouping(text)
     from ..displayrefs import scrub
     text = scrub(text)
     text = FENCE_RE.sub(" ", text)

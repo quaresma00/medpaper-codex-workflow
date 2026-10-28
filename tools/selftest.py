@@ -2391,6 +2391,10 @@ def main() -> int:
                                  capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("runtime retrospective Unicode IO stacks job-safety and compact-resume regressions",runtime.returncode==0,
                (runtime.stdout+runtime.stderr)[-1800:].strip())
+        isolation = subprocess.run([sys.executable,str(ROOT/"tools/test_isolation_118.py")],
+                                   capture_output=True,text=True,encoding="utf-8",errors="replace")
+        record("isolated data references exact replay engine drift and review-decision regressions",isolation.returncode==0,
+               (isolation.stdout+isolation.stderr)[-1800:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

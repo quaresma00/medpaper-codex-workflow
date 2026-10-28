@@ -11,11 +11,13 @@ from .packagefreeze import _safe_path, _sha256
 from .readiness import load
 
 RULES = {
+    "internal_plan_history": (r"\b(?:unregistered protocol|archived.{0,15}protocol|protocol.{0,25}(?:archived|not registered|unregistered)|departures from (?:the |our )?protocol|protocol deviations? (?:are|were) (?:reported|listed)|initial (?:analysis )?plan (?:changed|was revised))\b", "Ordinary retrospective mining does not need internal plan/registration history in the paper. Keep the backstage log; preserve actual exploratory/post-hoc status and any genuinely required protocol reporting."),
     "revision_history": (r"\b(?:after internal review|added after review|review round\s+[MP]\d+|after rerunning the pipeline)\b", "Keep orchestration/revision history backstage, but preserve actual post-hoc status and scientific timing."),
     "runtime_count": (r"\b[\d,]+\s+(?:[A-Za-z-]+\s+){0,3}lines?\s+read\b", "Reading-log count: establish clinical counting unit; never relabel file lines as patients/reports."),
     "implementation_detail": (r"\b(?:Unicode normalization|concatenated legacy records|first\s+\d+\s+alphanumeric characters|vocabulary frozen)\b", "Assess scientific necessity in main Methods; move implementation detail, not validity-critical definitions, to supplement when appropriate."),
     "processing_label": (r"\b(?:collapse step|strict(?:\s+[A-Za-z-]+){0,4}\s+contrasts?|publications collapsed|near-duplicates and clusters removed)\b", "Replace/define internal processing labels in clinical terms without changing the procedure or source-specific model."),
     "opaque_endpoint": (r"\bComposite\s+[A-Z]\b", "Use the clinical endpoint name or decode components at the display; a letter is not a clinical definition."),
+    "opaque_procedure": (r"\b(?:same-transmitter screen|first-author keys|first receipt|original rule|second rule|record review)\b", "Explain the actual clinical purpose, source unit and population at point of use; a coined processing label is not an explanation. Update the shared clinical vocabulary when appropriate."),
     "ambiguous_antecedent": (r"\bpost\s+hoc\s*:\s*same\b", "Describe the actual post-hoc population/comparison; preserve its timing, not an unexplained 'same'."),
     "software_state": (r"\b(?:NaN|Undefined|Not fitted)\b", "Check missing/not applicable/not fitted/not estimable/unbounded separately; never automatically replace all states with a dash."),
 }
@@ -75,6 +77,8 @@ def scan(project,layer="science",final=False):
     plan=load(project,"01_protocol/artifact_plan.json" if layer=="science" else "08_submission/integration/artifact_plan.json")
     folder="07_manuscript" if layer=="science" else "08_submission/integration"
     files={f"{folder}/full_manuscript.md"}
+    for name in ("methods.md","results.md","discussion.md","supplementary_methods.md"):
+        if (project/folder/name).is_file(): files.add(f"{folder}/{name}")
     for rel in (("05_figures/legends.md","04_tables/table_captions.md") if layer=="science" else
                 (f"{folder}/figure_legends.md",f"{folder}/table_captions.md")):
         if (project/rel).is_file(): files.add(rel)

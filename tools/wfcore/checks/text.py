@@ -165,6 +165,11 @@ def no_ai_boilerplate(ctx: Ctx) -> Result:
             ["Resolve every placeholder from real data or delete the sentence."],
         )
     soft = [ph for ph in AI_TELLS if ph in low]
+    from ..medicalstyle import diagnose
+    risks=diagnose(raw,rel)
+    if risks:
+        return Result(False,"no_ai_boilerplate",f"{rel}: medical-reader review needed: "+"; ".join(sorted({r['kind'] for r in risks})),
+                      ["Review this section now, including clinical labels and real post-hoc status. These are context-sensitive prompts, not forbidden medical terms or permission to weaken science."],severity="warn")
     if soft:
         return Result(
             False,

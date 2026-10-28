@@ -69,7 +69,7 @@ def number_text(text: str, config: dict) -> str:
     return text
 
 
-def label_text(text: str, project: Path) -> str:
+def label_text(text: str, project: Path, *, format_numbers=True) -> str:
     target = load(project)
     from .state import State
     state = State(project)
@@ -77,7 +77,8 @@ def label_text(text: str, project: Path) -> str:
     from .clinicalpresentation import label,profile
     journal=(project/"08_submission/integration/artifact_plan.json").is_file() and state.exists() and state.load().current.startswith(("S20_","S21_","S22_","S23_","S24_","S25_"))
     text=label(text,project,journal=journal)
-    return number_text(spelling(text, system), target.get("number_format") or profile(project,journal).get("number_format", {}))
+    text=spelling(text,system)
+    return number_text(text,target.get("number_format") or profile(project,journal).get("number_format", {})) if format_numbers else text
 
 
 def admin_scrub(text: str, project: Path, rel: str) -> str:

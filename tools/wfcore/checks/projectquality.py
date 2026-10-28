@@ -59,7 +59,8 @@ def source_record_spotcheck(ctx):
             for field in ("record_locator","source_file","source_sha256","derived_file","derived_sha256","comparisons"):
                 if not case.get(field): raise ValueError(f"Spotcheck needs actual {field}")
             for prefix in ("source","derived"):
-                _,path=_safe_path(ctx.project,case[prefix+"_file"])
+                from ..datasources import input_path
+                path=input_path(ctx.project,case[prefix+"_file"]) if prefix=="source" else _safe_path(ctx.project,case[prefix+"_file"])[1]
                 if not path.is_file(): raise ValueError("Source/derived record-check file missing")
                 if path not in digests: digests[path]=_sha256(path)
                 if digests[path].casefold()!=case[prefix+"_sha256"].casefold(): raise ValueError("Source/derived record-check evidence drifted")

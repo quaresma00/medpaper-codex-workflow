@@ -45,6 +45,7 @@ def main() -> int:
             record["reader_copies"] = copies
             rounds.save(project, record)
             print(json.dumps({"round": record["id"], "mode": record["mode"], "reader_copies": copies,
+                              "report_destination":record.get("report_destination"),
                               "reviewed_artifacts": record["reviewed_artifacts"],
                               "deleted_since_previous": record["deleted_since_previous"]}, ensure_ascii=False, indent=2))
         elif args.command == "restart":

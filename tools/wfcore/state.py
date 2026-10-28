@@ -56,6 +56,9 @@ class State:
             "handoff": [],
             "events": [{"at": _now(), "kind": "init", "detail": first_stage}],
         }
+        from .paths import repo_root
+        from .engineintegrity import BASELINE
+        self.data["engine_integrity_required"]=(repo_root()/BASELINE).is_file()
         self.save()
         if "spelling" not in self.config().get("targets", {}):
             self.set_config("spelling", "american")

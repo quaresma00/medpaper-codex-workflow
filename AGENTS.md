@@ -44,6 +44,15 @@ No modern engine refresh may silently rewind a journal-tail project or mark pend
 
 ## Start and resume
 
+For v1.18 intake/data/analysis/replay and repeat review, read
+`reference/data-and-review-isolation.md`. User-supplied datasets are registered/read in
+place, not duplicated or aliased; full-data proof still applies. Follow declared producer
+dependencies, local replay budget and owned cleanup. Installed engine drift stops managed
+execution; study executors never repair public engine/state ad hoc. Internal plan history
+stays backstage while real post-hoc status remains. Reuse only genuine unchanged optional
+proposal adjudications; objective/new scientific issues are never waived. Classify actual
+source edits before expensive package rebuilding, then complete existing scoped checks.
+
 Before doing project work, run:
 
 ```powershell

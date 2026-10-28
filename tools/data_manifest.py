@@ -70,7 +70,8 @@ def _skeleton() -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="manage the medpaper acquisition proof")
     parser.add_argument("command", choices=["init", "sync", "verify"])
-    parser.add_argument("--project", type=Path, default=Path("project"))
+    from wfcore.paths import project_dir
+    parser.add_argument("--project", type=Path, default=project_dir())
     args = parser.parse_args()
     project = args.project.resolve()
     manifest_path = project / dataproof.MANIFEST_REL

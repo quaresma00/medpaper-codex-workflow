@@ -39,6 +39,20 @@ def canonical(value: str, project: Path) -> str:
     return " ".join(re.findall(r"[@\w]+(?:[.\-/][\w]+)*|[+\-<>≤≥%]", value.casefold()))
 
 
+def without_adjacent_duplicates(value):
+    # Comparison only, never rewrite prose. Only identical adjacent whole sentences or
+    # paragraphs: nonadjacent numbers/clauses and changed qualifiers remain protected.
+    paragraphs=[]
+    for paragraph in re.split(r"\n\s*\n",value):
+        sentences=re.split(r"(?<=[.!?])\s+(?=[A-Z])",paragraph.strip())
+        compact=[]
+        for sentence in sentences:
+            if not compact or sentence!=compact[-1]: compact.append(sentence)
+        paragraph=" ".join(compact)
+        if not paragraphs or paragraph!=paragraphs[-1]: paragraphs.append(paragraph)
+    return "\n\n".join(paragraphs)
+
+
 def snapshot(project: Path, files: dict) -> dict:
     output = {}
     for rel, digest in files.items():
@@ -76,6 +90,7 @@ def classify(project: Path, revision: dict) -> dict:
             uncertain.append(rel); continue
         new = text(path)
         if canonical(old["text"], project) == canonical(new, project): continue
+        if path.suffix.lower() in {".md",".txt"} and canonical(without_adjacent_duplicates(old["text"]),project)==canonical(without_adjacent_duplicates(new),project): continue
         if path.suffix.lower() == ".docx":
             # A digest cannot determine scientific equivalence of rewritten Word text.
             uncertain.append(rel); continue

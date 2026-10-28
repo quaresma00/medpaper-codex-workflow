@@ -1,4 +1,7 @@
 # S08 - Methods
+Read `reference/data-and-review-isolation.md`: write actual methods and true post-hoc status,
+not internal plan-change/registration history for ordinary retrospective mining. Review
+supplementary prose too; no clinician/second-reviewer work is invented.
 
 ## Purpose
 Write a concise, journal-native main Methods section. Create a supplementary Methods file

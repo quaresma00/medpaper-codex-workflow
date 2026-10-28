@@ -92,6 +92,9 @@ def file_count(ctx: Ctx) -> Result:
     lo = ctx.spec.get("min")
     hi = ctx.spec.get("max")
     n = len(ctx.glob(pattern))
+    if ctx.spec.get("include_data_sources"):
+        from ..datasources import files
+        n+=sum(1 for _ in files(ctx.project))
     if lo is not None and n < lo:
         return Result(False, "file_count", f"{pattern}: found {n}, need >= {lo}")
     if hi is not None and n > hi:

@@ -40,6 +40,11 @@ def run_logged(command, *, project, timeout=180, cwd=None, env=None, heartbeat=2
         stdout,stderr=process.communicate();log.write_text(stdout+stderr,encoding="utf-8")
         atomic_json(record,{**metadata,"status":"timeout","returncode":process.returncode})
         raise ValueError(f"Task process timed out; previous deliverable preserved; full log: {log}")
+    except BaseException:
+        if process.poll() is None: process.kill()  # Only our own immediate child.
+        stdout,stderr=process.communicate(); log.write_text(stdout+stderr,encoding="utf-8")
+        atomic_json(record,{**metadata,"status":"interrupted","returncode":process.returncode})
+        raise
     log.write_text(stdout+stderr,encoding="utf-8")
     atomic_json(record,{**metadata,"status":"complete" if process.returncode==0 else "failed","returncode":process.returncode})
     result=subprocess.CompletedProcess(command,process.returncode,stdout,stderr)

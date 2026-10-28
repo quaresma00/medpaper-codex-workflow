@@ -97,6 +97,7 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
               "previous_round": previous["id"] if previous else None,
               "report": None, "closed_at": None, "after": {}, "changes": [], "kept": [],
               "user_decision": None}
+    record["report_destination"]=f".wf/review_inbox/{record['id']}.md"
     save(project, record)
     # Old approval cannot silently release a newly opened round, even with identical files.
     from .state import State
@@ -188,12 +189,17 @@ def close(project: Path, scope: str, changes: list, kept: list, unresolved: int 
         from .reviewfindings import close as close_findings
         resolutions=close_findings(record,current,changes,kept,resolutions,project)
     findings={r.get("id"):r for r in record.get("findings",[])}
+    author_decisions=dict(author_decisions or {})
     for key,reason in kept:
         finding=findings.get(key,{})
         # Unknown/untyped findings cannot be self-dismissed as personal preferences.
         if finding.get("category")=="preference" and finding.get("affects_science") is False:
             continue
         decision=(author_decisions or {}).get(key,{})
+        if decision.get("reuse_from"):
+            from .reviewdecisions import reuse
+            decision=reuse(project,{**record,"after":current},finding,decision)
+            author_decisions[key]=decision
         if (decision.get("report_sha256")!=report["sha256"] or decision.get("inputs")!=current
                 or len(str(decision.get("author_words","")))<8 or len(str(decision.get("rationale","")))<20):
             raise ValueError(f"{key}: numerical/grouping/conclusion-strength or untyped findings require correction or actual version-bound author adjudication, not executor preference")

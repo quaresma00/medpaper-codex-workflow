@@ -35,8 +35,11 @@ never round statistics for storage or silently discard missing observations.
 
 ## Reuse without redoing the whole study
 
-Replay copies the complete declared inputs and one producer into a temporary isolated
-project, executes that producer, and compares actual output values, counts, seeds and
+Read the data/replay sections of `reference/data-and-review-isolation.md`. Register existing
+authorized originals once with `data_sources.py` and declare `data:` inputs in Python/R;
+they are read in place without data copying or writable hard links. Replay copies only
+complete declared LOCAL inputs and one producer, under its explicit 200 MiB copy budget,
+into a task-owned project-local sandbox. It executes that producer and compares actual output values, counts, seeds and
 environment exactly. It ignores only the receipt's write time, not scientific timestamps.
 It retains matched replay evidence under `.wf/`, not in the manuscript or submission bundle.
 The writing-readiness gate rechecks source/output hashes and actual retained comparison;

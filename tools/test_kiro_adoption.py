@@ -58,7 +58,7 @@ write_results("{name}.json", {{"n":len(values),"values":values,"clinical_timesta
 
     def test_targeted_change_and_unaffected_proof(self):
         self.execute(); replay(self.project)
-        b = self.project / ".wf/reproduction/b.json"
+        b = self.project / json.loads((self.project/".wf/analysis_reproduction.json").read_text())["03_analysis/results/b.json"]["replayed"]
         before = b.read_bytes()
         code = self.project / "03_analysis/code/a.py"
         code.write_text(code.read_text() + "\n# Focused producer correction\n")
@@ -77,7 +77,7 @@ write_results("{name}.json", {{"n":len(values),"values":values,"clinical_timesta
 
     def test_retained_replay_tampering_rejected(self):
         self.execute(); replay(self.project)
-        retained = self.project / ".wf/reproduction/a.json"
+        retained = self.project / json.loads((self.project/".wf/analysis_reproduction.json").read_text())["03_analysis/results/a.json"]["replayed"]
         value = json.loads(retained.read_text()); value["n"] = 99
         atomic_json(retained,value)
         self.assertTrue(verify(self.project))

@@ -80,13 +80,14 @@ def _safe_rel(value: object, prefix: str) -> str | None:
 
 def inventory(project: Path, base_rel: str) -> list[dict]:
     base = project / base_rel
-    if not base.exists():
-        return []
     found: list[dict] = []
-    for path in sorted(p for p in base.rglob("*") if p.is_file() and p.name != ".gitkeep"):
+    for path in sorted(p for p in base.rglob("*") if p.is_file() and p.name != ".gitkeep") if base.exists() else []:
         rel = path.relative_to(project).as_posix()
         size = path.stat().st_size
         found.append({"path": rel, "sha256": file_sha256(path), "bytes": size})
+    if base_rel=="02_data/raw":
+        from .datasources import inventory as referenced
+        found.extend(referenced(project))
     return found
 
 
@@ -133,10 +134,12 @@ def _json_pointer(payload: object, pointer: str) -> object:
 def evidence_count(project: Path, spec: object, raw_paths: set[str]) -> int:
     if not isinstance(spec, dict):
         raise ValueError("evidence must be an object")
-    rel = _safe_rel(spec.get("path"), "02_data/raw")
+    raw=spec.get("path")
+    rel = raw if isinstance(raw,str) and raw.startswith("data:") else _safe_rel(raw, "02_data/raw")
     if not rel or rel not in raw_paths:
-        raise ValueError("evidence path must name an inventoried file under 02_data/raw/")
-    path = project / rel
+        raise ValueError("evidence must name an inventoried 02_data/raw/ file or authorized data: reference")
+    from .datasources import input_path
+    path = input_path(project,rel)
     kind = spec.get("kind")
     if kind == "delimited_rows":
         delimiter = spec.get("delimiter")

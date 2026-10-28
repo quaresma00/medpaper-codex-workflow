@@ -4,6 +4,12 @@
 Get the real data in place with an auditable trail, and describe it before analysing it.
 
 ## Procedure
+For an already supplied local dataset read `reference/data-and-review-isolation.md` first.
+Register the exact authorized original via `tools/data_sources.py add`; use `data:` inputs
+and hash/count them in place. No implicit copy, hard link, junction, sibling-study template
+reuse or wider-root search. The following raw/receipt paths apply to new retrievals and
+small local receipts; existing original payloads may stay in the registered source.
+
 1. Execute the full retrieval from `02_data/acquisition_plan.md`. Retrieval scripts and exact
    queries live under `project/02_data/acquisition/`; raw payloads and source count/page
    receipts land in `project/02_data/raw/` and are then treated as read-only. Never edit a

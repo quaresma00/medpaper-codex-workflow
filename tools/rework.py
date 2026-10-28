@@ -518,7 +518,7 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "preview", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "preview", "classify", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
     parser.add_argument("--confirm-scientific-route",action="store_true",help="actual author authorization to renew scientific approval; never inferred from a numbered label")
     parser.add_argument("--input", help="known affected input for a discovered dependency")
     parser.add_argument("--output", help="newly discovered project-relative consumer")
@@ -556,6 +556,13 @@ def main() -> int:
             return 0
         if args.command == "status":
             return _cmd_status(state, args.full)
+        if args.command=="classify":
+            from wfcore.presentationdelta import classify
+            _,record=_load_round(state)
+            if args.meaning_review: record["meaning_review"]=json.loads(args.meaning_review.read_text(encoding="utf-8"))
+            result=classify(project,record)
+            print(json.dumps({"read_only":True,**result},ensure_ascii=False))
+            return 0 if result["class"]=="presentation" else 3 if result["class"]=="needs_executor_meaning_review" else 2
         if args.command == "depend":
             if not args.input or not args.output or not args.why:
                 raise ValueError("depend requires --input, --output and --why")

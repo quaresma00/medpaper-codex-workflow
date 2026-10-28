@@ -70,7 +70,9 @@ def write_results(name: str, payload: dict, *, seed: int, inputs: list[str]) -> 
         raise ValueError("Declare all actual inputs once")
     hashes = {}
     for rel in inputs:
-        normalized, file = _safe_path(project, rel)
+        from wfcore.datasources import input_path
+        normalized=rel if rel.startswith("data:") else _safe_path(project,rel)[0]
+        file=input_path(project,normalized)
         if not file.is_file() or normalized == script_rel or not is_scientific_input(normalized):
             raise ValueError(f"Missing or invalid scientific input: {rel}")
         hashes[normalized] = _sha256(file)
@@ -92,5 +94,5 @@ def write_results(name: str, payload: dict, *, seed: int, inputs: list[str]) -> 
         guard_outputs(project, [out])
     atomic_json(out, {**payload, "environment": environment})
     if (project / ".wf/state.json").exists():
-        record_build(project, out, [script, *(_safe_path(project, r)[1] for r in inputs)])
+        record_build(project, out, [script, *(input_path(project, r) for r in inputs)])
     return out
