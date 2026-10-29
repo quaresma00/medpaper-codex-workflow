@@ -660,6 +660,20 @@ def submission_audit_matches_freeze(ctx: Ctx) -> Result:
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         return Result(False, "submission_audit_matches_freeze", f"audit/freeze unreadable: {exc}")
     freeze_id = str(freeze.get("freeze_id", "")).strip()
+    from ..state import version_tuple
+    from ..reviewfindings import sections
+    version=ctx.state.data.get("engine_pin",ctx.state.data.get("pipeline_version","0"))
+    current_reader_rules=version_tuple(str(version)) >= (1,19,0)
+    bodies={}
+    if current_reader_rules:
+        try:
+            bodies=sections(audit)
+        except ValueError as exc:
+            return Result(False,"submission_audit_matches_freeze",str(exc))
+        verdicts=re.findall(r"(?mi)^\s*(PASS|REVISE|BLOCKED)\s*$",bodies.get("Verdict",""))
+        if verdicts != ["PASS"]:
+            return Result(False,"submission_audit_matches_freeze",
+                          "The genuine audit Verdict must explicitly PASS; missing/ambiguous/REVISE/BLOCKED cannot inherit a PASS from state or presentation lineage")
     amendment = freeze.get("presentation_approval", {})
     inherited = False
     if freeze_id not in audit and amendment:
@@ -682,6 +696,12 @@ def submission_audit_matches_freeze(ctx: Ctx) -> Result:
                                                          and amendment.get("current_audit_context") == evidence["audit_context_id"]):
         return Result(False, "submission_audit_matches_freeze",
                       "audit context changed or is missing; recheck changed journal requirements without asking the user to reapprove unchanged uploads")
+    if not inherited and current_reader_rules:
+        required=("Reader comprehension","Medical presentation","Editorial screening and low-level errors")
+        missing=[heading for heading in required if len(bodies.get(heading,""))<80]
+        if missing:
+            return Result(False,"submission_audit_matches_freeze",
+                          "Final reading needs concrete observations of actual medical prose, tables and figures: "+", ".join(missing))
     return Result(True, "submission_audit_matches_freeze", f"{'prior audit + validated presentation amendment; not a new independent reading' if inherited else 'audit identifies freeze'} {freeze_id[:12]}...")
 
 

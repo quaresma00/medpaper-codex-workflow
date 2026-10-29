@@ -77,6 +77,7 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
         observed[output]={"inputs":inputs,"entrypoints":receipt.get("entrypoints",[]),"parameters":receipt.get("parameters",{})}
     payload = {"files": {r: h for r, h in files.items() if not renewable(r)},
                "engine": engine, "decisions": state.data.get("decisions", {}),
+               "pipeline_version": state.data.get("pipeline_version"), "engine_pin": state.data.get("engine_pin"),
                "config": state.config(), "scope": revision.get("allowed_files", []),
                "checks": revision.get("checks", []), "stages": revision.get("validation_stages", []),"observed_build_inputs":observed}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -265,16 +266,9 @@ def add_dependency(project: Path, pipeline, path: Path, revision: dict, source: 
     atomic_json(path,revision)
 
 
-def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str, dict]:
-    from . import checks
-    from .checks import Ctx, Result
-    checks.load_all()
-    files = snapshot(project)
-    problems = scope_problems(project, revision, files)
-    results = [Result(not problems, "revision_scope_unchanged", "; ".join(problems[:10]) or "unaffected files preserved")]
+def _selected_checks(state, revision):
+    """The same pinned, de-duplicated rules apply at validation and evidence refresh."""
     seen = set()
-    from .gatecache import Receipts
-    receipts = Receipts(project,pipeline,state)
     for row in revision["checks"]:
         spec = row["spec"]
         if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid"} and state.pin_excludes(row["stage"], spec.get("since")):
@@ -284,19 +278,60 @@ def validate(project: Path, pipeline, state, revision: dict) -> tuple[list, str,
         if identity in seen:
             continue
         seen.add(identity)
+        yield row
+
+
+def validate(project: Path, pipeline, state, revision: dict, *, check_identities: dict | None = None) -> tuple[list, str, dict]:
+    from . import checks
+    from .checks import Ctx, Result
+    checks.load_all()
+    files = snapshot(project)
+    problems = scope_problems(project, revision, files)
+    results = [Result(not problems, "revision_scope_unchanged", "; ".join(problems[:10]) or "unaffected files preserved")]
+    if problems:
+        # Resolve the actual scope first; no expensive dependent check has passed yet.
+        return results, input_signature(project, revision, files), files
+    from .gatecache import Receipts, descriptor
+    receipts = Receipts(project,pipeline,state)
+    recorded = []
+
+    def evaluate(row):
+        spec = row["spec"]
+        stage = pipeline.stage(row["stage"])
         fn = checks.get(spec["check"])
+        cache_id = None
         try:
-            cache_id = receipts.identity(pipeline.stage(row["stage"]),spec)
+            cache_id = receipts.identity(stage,spec)
             result = receipts.get(cache_id)
             if result is None:
-                result = fn(Ctx(pipeline, state, project, pipeline.stage(row["stage"]), spec))
-                if cache_id == receipts.identity(pipeline.stage(row["stage"]),spec):
+                result = fn(Ctx(pipeline, state, project, stage, spec))
+                if cache_id == receipts.identity(stage,spec):
                     receipts.put(cache_id,result)
+            stable = cache_id == receipts.identity(stage, spec)
+            if cache_id and not stable:
+                result = Result(False, spec["check"], "check inputs changed during validation; rerun after inputs settle")
+            if check_identities is not None:
+                key = descriptor(stage, spec)
+                if cache_id and result.ok and stable:
+                    check_identities[key] = cache_id
+                else:
+                    check_identities.pop(key, None)
         except Exception as exc:
             result = Result(False, spec["check"], f"{type(exc).__name__}: {exc}")
         if "severity" in spec and not result.ok:
             result.severity = spec["severity"]
+        return result, cache_id
+
+    for row in _selected_checks(state, revision):
+        result, cache_id = evaluate(row)
+        if cache_id:
+            recorded.append((len(results), row, cache_id))
         results.append(result)
+    # A later live-source gate may renew evidence consumed by an earlier pure check.
+    # Recheck only those changed identities once, without repeating live requests/stages.
+    for index, row, old_identity in recorded:
+        if old_identity != receipts.identity(pipeline.stage(row["stage"]), row["spec"]):
+            results[index], _ = evaluate(row)
     receipts.save()
     # Checks may renew evidence, but must never alter authored sources while certifying them.
     after = snapshot(project)
@@ -331,7 +366,8 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
             not any(r["stage"] in {"S13_reflib","S25_submission_audit"} for r in revision["checks"])):
         print("Scoped checks reused: exact files/rules/configuration/evidence unchanged; freshness not extended")
         return 0
-    results, signature, files = validate(project, pipeline, state, revision)
+    check_identities = {}
+    results, signature, files = validate(project, pipeline, state, revision, check_identities=check_identities)
     from .determinism import content_sha256
     revision["validation"] = {"input_signature": signature, "ok": not any(r.blocking for r in results),
                               "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -342,6 +378,7 @@ def check_round(project: Path, pipeline, state, path: Path, revision: dict) -> i
                                                    and (Path(rel).suffix.lower() in {".docx", ".xlsx"}
                                                         or rel in {"04_tables/manifest.json", "05_figures/qc/qc_report.json"})},
                               "renewable_evidence": {r: h for r, h in files.items() if renewable(r)},
+                              "check_identities": check_identities,
                               "results": [{"check": r.check, "ok": r.ok, "detail": r.detail,
                                            "severity": r.severity} for r in results]}
     atomic_json(path, revision)
@@ -360,19 +397,58 @@ def refresh_evidence(project: Path, pipeline, state, revision: dict) -> None:
     if current == revision.get("validation", {}).get("renewable_evidence"):
         return
     checks.load_all()
-    # Unknown consumers are conservative: replay all selected gates when their evidence
-    # dependency is not yet explicitly classified. Pure content gates are safely reusable.
-    from .gatecache import INPUTS
+    # Reuse a pure check only when the exact successfully validated inputs still match.
+    # A check being cacheable does not exempt it from changed reference/guideline evidence.
+    # Unknown/live checks remain conservative, including in legacy rounds without identities.
+    from .gatecache import INPUTS, Receipts, descriptor
+    receipts = Receipts(project, pipeline, state)
+    checked = revision.get("validation", {})
+    identities = dict(checked.get("check_identities", {}))
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(checked.get("checked_at", ""))).total_seconds()
+    except (ValueError, TypeError):
+        age = -1
+    bound_round = bool(checked.get("ok") and 0 <= age < 86400
+                       and checked.get("input_signature") == input_signature(project, revision))
     failures = []
-    for row in revision["checks"]:
+    refreshed = []
+    rows = list(_selected_checks(state, revision))
+    # Renew live/unknown evidence before checking pure consumers of that evidence.
+    rows.sort(key=lambda row: row["spec"]["check"] in INPUTS)
+    for row in rows:
         spec = row["spec"]
-        if spec["check"] in INPUTS:
+        stage = pipeline.stage(row["stage"])
+        key = descriptor(stage, spec)
+        cache_id = receipts.identity(stage, spec)
+        if bound_round and cache_id and identities.get(key) == cache_id:
             continue
-        result = checks.get(spec["check"])(Ctx(pipeline, state, project, pipeline.stage(row["stage"]), spec))
+        result = receipts.get(cache_id)
+        if result is None:
+            result = checks.get(spec["check"])(Ctx(pipeline, state, project, stage, spec))
+            if cache_id == receipts.identity(stage, spec):
+                receipts.put(cache_id, result)
+        if "severity" in spec and not result.ok:
+            result.severity = spec["severity"]
         if result.blocking:
             failures.append(f"{result.check}: {result.detail}")
+        if cache_id and result.ok and cache_id == receipts.identity(stage, spec):
+            identities[key] = cache_id
+        else:
+            identities.pop(key, None)
+        refreshed.append({"check": result.check, "ok": result.ok, "detail": result.detail,
+                          "severity": result.severity})
+    receipts.save()
+    for row in rows:
+        stage, spec = pipeline.stage(row["stage"]), row["spec"]
+        key = descriptor(stage, spec)
+        if key in identities and identities[key] != receipts.identity(stage, spec):
+            failures.append(f"{spec['check']}: evidence changed during refresh; rerun scoped checks")
     if failures:
         raise ValueError("renewed evidence is invalid: " + "; ".join(failures[:8]))
+    # Preserve the original checked_at: evidence renewal must not extend proof freshness.
+    checked["check_identities"] = identities
+    checked["renewable_evidence"] = {r: h for r, h in snapshot(project).items() if renewable(r)}
+    checked["evidence_refresh_results"] = refreshed
 
 
 def record_build(project: Path, output: Path, sources: list[Path], *, entrypoints=None, tool=None, parameters=None) -> None:

@@ -44,6 +44,14 @@ No modern engine refresh may silently rewind a journal-tail project or mark pend
 
 ## Start and resume
 
+For v1.19 use the existing medical-reader acceptance to read prose and every main/supplement
+display without backstage context, then verify that interpretation against sources. Actual
+uploaded supplements are included; technical-word flags never prove AI authorship or permit
+changing scientific meaning. S24/S25 explicitly cover Medical presentation. Keep genuine
+findings in their actual report sections and close each one. Follow rework-routing's smallest
+sufficient correction: classify source edits before expensive rebuilds, reuse only matching
+evidence and do not turn a local correction into a backward-stage/full-audit cycle.
+
 For v1.18 intake/data/analysis/replay and repeat review, read
 `reference/data-and-review-isolation.md`. User-supplied datasets are registered/read in
 place, not duplicated or aliased; full-data proof still applies. Follow declared producer
@@ -184,9 +192,10 @@ confirmation of the exact registered file; an identifier in its references is in
    Markdown thematic rules. Figure legend section/figure titles cannot be duplicated.
 11. A built package is not initial approval. For first review or changed science, require an explicit request
     for the final independent review, freeze the exact files, and complete the S25 reader,
-    editor and journal-compliance audit. Any post-confirmation change invalidates the freeze
-    and returns the workflow to S24. A proven meaning-preserving presentation amendment uses
-    the scoped path and approval lineage instead of another review/confirmation loop.
+    editor and journal-compliance audit. Post-confirmation drift stops auditing until it is
+    classified and validated. A proven meaning-preserving presentation amendment uses the
+    scoped path and approval lineage instead of another review/confirmation loop. Actual
+    new science needs its affected owner/review rules, not a complete stage-tail replay.
 12. A user-requested revision remains inside the workflow. Read `reference/rework-routing.md`
     and create or extend a persisted batch with `tools/rework.py batch` before editing. S19 is
     the repeatable scientific-content loop and S24 is the repeatable journal-package loop;
@@ -220,7 +229,9 @@ confirmation of the exact registered file; an identifier in its references is in
     owns an edit. After two full builds use targeted correction; quality work remains mandatory.
 16. S23 derives portal fields/counts from final DOCX and unified administrative facts. S24 creates
     a read-only release containing actual uploads only. Evidence/caches/control refreshes do not
-    require another author confirmation; upload changes do. S25 binds the independent verdict
+    require another author confirmation. Upload changes need actual scoped classification:
+    proven presentation amendments preserve approval; new science/initial approval follows
+    the required review and confirmation path. S25 binds the independent verdict
     to upload identity and current guideline context. Never fabricate independent review.
 17. Read `reference/r-first.md`: processing may use Python; new medical statistical figures
     default to R, and methods with a better-fitting established R implementation should use R.

@@ -62,8 +62,9 @@ changed science. Unknown equivalence is not automatically presentation.
 ```
    Or, ONLY after an explicit no-further-review answer, use `--answer no_further_review`.
    The tool binds `manuscript_human_reviewed=NO_FURTHER_REVIEW` to this closed round and its
-   current files. It does not interpret user intent for you. Any post-closure file drift
-   requires correction/review and renewed confirmation; never overwrite a saved snapshot.
+   current files. It does not interpret user intent for you. Post-closure drift must be
+   classified and validated through scoped rework; new science needs renewed confirmation,
+   while a proved presentation amendment preserves approval. Never overwrite a saved snapshot.
 7. After approval and all applicable gates, freeze the exact scientific master:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/scientific_freeze.py freeze

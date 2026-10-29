@@ -6,6 +6,49 @@ These are general principles, not a template for one database or one published p
 Unverified external feedback identifies risks; it does not establish that its diagnosis,
 arithmetic or proposed substitute is true. Read actual artifacts in the executing project.
 
+## Read the paper as medicine, without the execution record
+
+Use the existing benchmark and acceptance once; do not commission an extra writer or audit.
+Before production, decide what a medical reader must learn about the population, clinical
+question, comparison, outcome and uncertainty. Keep these decisions in the existing clinical
+story/display plan. Write from those verified facts, not by narrating the sequence of scripts.
+For basic/omics work the scientific unit may be tissue, a sample or a public dataset: do not
+invent a clinical cohort or treatment implication to make the prose sound more medical.
+
+At S17/S22 and the independent S18/S24/S25 reading, first read the submitted narrative and
+displays without the backstage files. Explain the actual question, eligible unit/comparison,
+principal finding and limits in the existing Reader comprehension section. If understanding
+requires a script, result-key dictionary or workflow history, locate and fix the missing
+explanation at its earliest source. Then consult evidence to verify that interpretation.
+
+- Introduction motivates the clinical/scientific gap and the study objective; Methods
+  describes the study rather than a job log; Results follows the agreed table/figure story;
+  Discussion interprets magnitude, uncertainty, prior evidence and limitations in connected
+  prose. Do not default to contribution lists, algorithm architecture, bullet conclusions,
+  a subheading per paragraph or repeated generic claims of robustness/novelty.
+- Retain a technical method, algorithm diagram or unusual structure when it is genuinely
+  needed and supported by the close medical comparators/current journal. Explain its
+  scientific purpose, assumptions and limitations. Word replacement must never hide a
+  design weakness or promote an association into causality or clinical utility.
+- A table must be intelligible from its title, body and notes; a figure from its labels,
+  marks and concise legend. Inspect every planned main/supplement display at its publication
+  size. Ask what population/comparison it shows, what the numbers/marks mean and what a reader
+  could wrongly conclude. Use real clinical labels and essential local definitions while
+  keeping long abbreviation lists centralized. Do not copy the same generic finding per item.
+- Supplements are also medical writing, not a bin for debug logs, raw variable names or
+  opaque procedural labels. Keep only reproducibility details that a researcher needs;
+  internal receipts, paths, code keys and execution status stay outside the upload package.
+
+These are content/reader acceptance criteria, not an AI-authorship detector or a forbidden-
+word score. Automated diagnostics locate risks; substantive reading and actual figure/page
+inspection remain necessary. No numeric quality score or stock rewrite certifies a manuscript.
+
+General basis checked 2026-10-30: [ICMJE manuscript preparation](https://www.icmje.org/recommendations/browse/manuscript-preparation/preparing-for-submission.html)
+supports research-appropriate organization and interpreting tables/figures with their legends;
+[PLOS Medicine author guidance](https://journals.plos.org/plosmedicine/s/submission-guidelines)
+asks for concise, accessible prose. These support reader-oriented judgment, not a universal
+template, journal choice, extra reporting checklist or fixed length/count requirement.
+
 ## Main Methods and labels
 
 Write for a medically trained reader, not a processing engine. Keep the scientific study

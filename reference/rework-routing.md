@@ -188,9 +188,33 @@ Existing schema-1 rounds finish through their recorded legacy gates; do not disc
 evidence. All newly opened rounds use scoped revision. Scientific changes require the scoped
 S18 review. Cosmetic work reuses the old independent verdict plus current local content/visual
 checks, without claiming that the old reviewer saw the new version.
-After corrections, present the revised artifact again, obtain the
-required user confirmation, freeze the new package and run one new independent audit.
+After corrections, report the changed artifacts once. First approval, a new target journal
+or changed science follows its required review/confirmation path. An already approved,
+proven presentation amendment preserves its approval lineage and needs only actual scoped
+checks and changed-page inspection; do not demand another independent audit or author answer.
 Unchanged artifacts may be reused; rebuild only the changed artifact and its actual dependants.
+
+## Decide the smallest sufficient correction before rebuilding
+
+In the existing revision batch, map each genuine feedback item to its earliest source,
+actual consumers and acceptance criterion. The feedback wording is not itself a scientific
+classification: clarify a label without changing its meaning; a wrong denominator or
+overstated conclusion is a scientific correction even when it is one sentence. Preserve
+unchanged sources, analyses, accepted displays and manually edited journal material.
+
+Use `preview` before edits and `classify` on actual edited bytes before expensive builds.
+If equivalence is unclear, investigate the relevant before/after passages and their evidence;
+do not automatically rewind S19, rewrite the whole paper or declare it cosmetic. A new
+analysis proposed by a reviewer needs a scientific reason (it resolves validity, a substantive
+uncertainty or an actual author/journal request), not just its presence in the suggestion list.
+Optional stylistic preferences may be declined with a reason; objective defects may not.
+
+Revise the source, assemble only changed dependants, run the scoped check, then close once.
+Cached checks retain their original freshness and require identical actual inputs, rules,
+configuration and decisions. Closing verifies receipts and drift; changed evidence reruns
+the relevant check. Unknown/live checks stay conservative. Never manually mark a stale
+receipt passed or extend its timestamp. Two failed full rebuild cycles mean stop cascading,
+identify the unstable source and correct it locally, not reduce the requested quality.
 
 ## Context and token discipline without quality loss
 

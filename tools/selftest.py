@@ -969,8 +969,9 @@ def run_codex_integration() -> None:
            "Freeze ID: <freeze_id>" in final_audit_card and
            "allowed = [\"PASS\", \"PASS_AUTHOR_FINAL_COPY\"]" in
            (ROOT / "pipeline/pipeline.toml").read_text(encoding="utf-8") and
-           "loop --to S24_package_human_review" in final_audit_card,
-           "user confirmation -> immutable freeze -> one guideline audit -> PASS or S24 loop")
+           "tools/rework.py batch" in final_audit_card and
+           "tools/wf.py loop --to" not in final_audit_card,
+           "user confirmation -> immutable freeze -> one guideline audit -> PASS or scoped source correction")
     final_headings = next(g for g in final_audit["gate"]
                           if g["check"] == "md_sections")["headings"]
     record("final independent audit includes reader and editor lenses",
@@ -980,7 +981,7 @@ def run_codex_integration() -> None:
            "Reader comprehension" in final_headings and
            "Editorial screening and low-level errors" in final_headings and
            "objective low-level error" in final_audit_card and
-           "never edits the frozen package" in final_audit_card,
+           "never edits frozen uploads" in final_audit_card,
            "first-time comprehension + editorial error screen + journal compliance")
     human_checks = {gate["check"] for gate in human["gate"]}
     package_checks = {gate["check"] for gate in package_human["gate"]}
@@ -2036,9 +2037,9 @@ def run_manuscript_docx(proj: Path) -> None:
     fixture_report.parent.mkdir(parents=True, exist_ok=True)
     fixture_report.write_text("# Synthetic lifecycle review fixture\n\n" + "\n\n".join(
         f"## {heading}\n\n" + "Controlled synthetic reviewer response for lifecycle regression testing only. " * 3
-        for heading in ("Reader comprehension", "Editorial screening and low-level errors", "Guideline compliance")) +
+        for heading in ("Reader comprehension", "Medical presentation", "Editorial screening and low-level errors", "Guideline compliance")) +
         "\n\n```json\n" + json.dumps({"reviewed_artifacts": test_round["reviewed_artifacts"],"finding_inventory_complete":True,"findings":[],
-                                      "section_verdicts":{h:"no_actionable_findings" for h in ("Reader comprehension","Editorial screening and low-level errors","Guideline compliance")}}) + "\n```\n", encoding="utf-8")
+                                      "section_verdicts":{h:"no_actionable_findings" for h in ("Reader comprehension","Medical presentation","Editorial screening and low-level errors","Guideline compliance")}}) + "\n```\n", encoding="utf-8")
     reviewrounds.attach(proj, "package", fixture_report)
     reviewrounds.close(proj, "package", [], [])
     reviewrounds.decide(proj, "package", "no_further_review", "我确认这一版")
@@ -2081,7 +2082,9 @@ def run_manuscript_docx(proj: Path) -> None:
         "\nAudit context ID: " + json.loads((submission / "evidence/evidence_manifest.json").read_text(encoding="utf-8"))["audit_context_id"] +
         "\n\n# Guideline compliance\n\nPass.\n\n# Required files and omissions\n\nNone.\n"
         "\n# Cross-file consistency\n\nPass.\n\n# Formatting and technical checks\n\nPass.\n"
-        "\n# Issues requiring correction\n\nNone.\n\n# Final recommendation\n\nReady.\n",
+        "\n# Issues requiring correction\n\nNone.\n\n# Final recommendation\n\nReady.\n" +
+        "\n\n".join("# "+heading+"\n\n"+"Synthetic lifecycle test only: the supplied clinical question, table population and figure interval are described without relying on internal processing labels."
+                      for heading in ("Reader comprehension","Medical presentation","Editorial screening and low-level errors")),
         encoding="utf-8")
     outcome = gate("submission_audit_matches_freeze", "S25_submission_audit")
     record("independent audit binds to the exact approved freeze", outcome.ok, outcome.detail)
@@ -2395,6 +2398,11 @@ def main() -> int:
                                    capture_output=True,text=True,encoding="utf-8",errors="replace")
         record("isolated data references exact replay engine drift and review-decision regressions",isolation.returncode==0,
                (isolation.stdout+isolation.stderr)[-1800:].strip())
+        for script,label in (("test_reader_review_119.py","medical independent-review coverage and authentic finding locations"),
+                             ("test_revision_efficiency_119.py","incremental validation identity reuse and changed-evidence handling")):
+            current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
+                                     capture_output=True,text=True,encoding="utf-8",errors="replace")
+            record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())
     finally:
         if args.keep or args.workdir:
             print(f"\nkept: {tmp}")

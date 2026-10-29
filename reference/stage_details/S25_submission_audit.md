@@ -32,9 +32,10 @@ verify` for the same final-file measurements used at S23/S24.
 .\.venv\Scripts\python.exe tools/manuscript/scientific_freeze.py verify
 .\.venv\Scripts\python.exe tools/manuscript/journal_workspace.py verify
 ```
-   Stop and return to S24 if any package file was added, removed or changed. If the scientific
-   master changed, return to its owning scientific stage and require renewed S19 review before
-   rebuilding the package.
+   Stop auditing if uploads drifted. Classify the actual source changes through scoped rework;
+   never bless them by replacing the freeze. A genuine scientific correction invokes its
+   owning rules and renewed S19 review, without replaying all completed stages. A proved
+   presentation amendment uses its existing approval lineage and changed-file checks.
 2. Spawn exactly one independent read-only subagent for this frozen package revision. Do not
    give it the intended verdict, prior reviewers' conclusions, or ask it to edit files. Tell
    it to read the actual package in normal submission order before consulting backstage QA.
@@ -52,6 +53,12 @@ verify` for the same final-file measurements used at S23/S24.
    - **Reader comprehension:** passages, terminology, abbreviations, referents, transitions,
      methods, tables, figures or legends that cannot be understood from the submitted files;
      contradictions, unexplained logic jumps and claims whose evidence is hard to locate;
+   - **Medical presentation:** first explain the question, study unit/comparison, finding
+     and limits without relying on scripts or internal labels. Read each actual main and
+     supplementary table (title, cells, notes) and figure (labels, marks, legend) as a medical
+     reader. Locate engineering narration, unexplained processing codes, formulaic promotional
+     prose, missing denominators or misleading statistical encodings. Preserve legitimate
+     methods and real exploratory status; judge meaning, not forbidden-word counts;
    - **Editorial screening:** typographical, grammatical and punctuation errors; duplicated,
      missing or unfinished text; template residue and placeholders; inconsistent spelling,
      capitalization, tense, units, decimals, statistical notation, headings, numbering,
@@ -71,7 +78,7 @@ verify` for the same final-file measurements used at S23/S24.
      - portal-only tasks that cannot be verified from local files, clearly separated from
        defects in the package.
 4. Save the review as `project/08_submission/independent_submission_audit.md` with headings
-   `Verdict`, `Reader comprehension`, `Editorial screening and low-level errors`,
+   `Verdict`, `Reader comprehension`, `Medical presentation`, `Editorial screening and low-level errors`,
    `Guideline compliance`, `Required files and omissions`, `Cross-file consistency`,
    `Formatting and technical checks`, `Issues requiring correction`, `Final recommendation`.
    Under `Verdict`, write the exact `Freeze ID: <freeze_id>` from
@@ -90,17 +97,18 @@ verify` for the same final-file measurements used at S23/S24.
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide submission_package_independent_audit "PASS|REVISE|BLOCKED" --why "<concise evidence-based basis>"
 ```
-6. For `REVISE`, reuse the genuine version-matching findings in the next S24 round rather
-   than commissioning another reviewer before applying the same known fixes.
-   Return to S24, correct the package, revalidate it and
-   obtain a new explicit user confirmation before auditing the changed freeze:
-```
-.\.venv\Scripts\python.exe tools/wf.py loop --to S24_package_human_review --why "<material audit defects requiring correction and renewed user confirmation>"
-```
-   For `BLOCKED`, ask only for the missing user-owned fact/file. If the package changes, use
-   the same S24 loop. Do not repeat an independent audit of an unchanged freeze.
-   For any correction, use `tools/rework.py` to route content to its source; only a verified
-   visible-text-preserving layout edit may remain solely in Word at S24.
+6. For `REVISE`, retain the genuine version-matching findings and open one scoped
+   `tools/rework.py batch` for the actual defects; do not ask another agent to rediscover
+   them, use `wf loop`, or replay S20-S23. Source-owned presentation amendments can run in
+   place at S25. Classify before expensive rebuilds; any genuine scientific route requires
+   the existing explicit authorization, affected owner/review rules and renewed S19 approval.
+   Recheck repaired findings and their cross-file effects. A first audit that found material
+   defects needs actual independent follow-up on the fixes; retain its original findings,
+   supply current frozen files plus the delta, and reuse the same reviewer when available.
+   Never turn an earlier REVISE into PASS by copying its freeze ID or by primary self-review.
+   Proven local presentation work after a genuine PASS uses the existing lineage without a
+   new full audit or confirmation. For `BLOCKED`, ask only for the missing user-owned fact/file.
+   Only a verified visible-text-preserving layout edit may remain solely in Word.
 
 ## Outputs
 - `08_submission/independent_submission_audit.md`
@@ -121,8 +129,9 @@ replace the release.
 - A checklist assertion is not evidence; inspect the actual file and official rule.
 - Read as a first-time reader and editor; do not treat prior automated QA or scientific review
   as proof that the prose is understandable or free of elementary errors.
-- The subagent reports defects but never edits the frozen package. Corrections occur only after
-  returning to S24, followed by renewed user confirmation and a new freeze.
+- The subagent reports defects but never edits frozen uploads. Corrections use scoped source
+  revisions and a new release when upload bytes change; approval/review renewal depends on
+  actual scientific meaning and prior verdict, not on a blanket backward-stage rule.
 - A reference-count field is optional when the journal is silent, but if present it must match
   the actual citation set in both the integration title page and frozen Word file.
 - `PASS` is required to complete the pipeline. Portal-only user tasks may be listed, but an

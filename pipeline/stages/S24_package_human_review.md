@@ -17,7 +17,7 @@ science or an explicitly requested additional independent reading still follows 
    Do not transfer patient data/credentials. Missing delegation means independent review pending.
 2. The reviewer reads as a first-time reader and screening editor, then checks files,
    compliance and consistency. Require precise locations, severity and rule/evidence; the
-   exact printed `reviewed_artifacts` JSON; substantive `Reader comprehension`, `Editorial
+   exact printed `reviewed_artifacts` JSON; substantive `Reader comprehension`, `Medical presentation`, `Editorial
    screening and low-level errors` and `Guideline compliance` sections. Attach before editing:
 ```
 .\.venv\Scripts\python.exe tools/review_round.py attach --scope package --report <actual-report.md>
@@ -58,7 +58,9 @@ science or an explicitly requested additional independent reading still follows 
 
 ## Hard boundaries
 This does not replace S25 on the confirmed freeze. The reviewer reports only; the main agent
-corrects outside immutable releases. New uploads need renewed approval/freeze. Preserve old
+corrects outside immutable releases. First/changed-science uploads need approval/freeze;
+proven presentation amendments preserve the existing approval lineage with scoped validation.
+Preserve old
 rounds, releases and legacy archives. Review cannot create clinical facts, citations, private
 data transfer authority or actual journal submission. The portal remains user-controlled.
 

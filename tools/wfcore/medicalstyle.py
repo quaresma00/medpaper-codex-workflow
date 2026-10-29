@@ -11,6 +11,10 @@ from .packagefreeze import _safe_path, _sha256
 from .readiness import load
 
 RULES = {
+    "assistant_voice": (r"\b(?:as an AI(?: language)? model|as requested by (?:the |our )?user|I (?:can|will) (?:help|generate|provide)|here (?:is|are) (?:the |your )?(?:requested |revised )?(?:manuscript|analysis|table|figure)|let(?:'s| us) (?:delve|explore))\b", "Remove executor-to-user conversation from the medical article; retain scientific content and uncertainty, not assistant narration."),
+    "workflow_metadata": (r"\b(?:source_sha256|render_sha256|rebuild_files|validation_stages|citekeys_resolve|schema_version|engine_pin|medical_style_version)\b|\bS(?:0[1-9]|1[0-9]|2[0-5])_(?:assemble|package|polish|artifacts|human_review|analysis)\b", "Internal engine fields and stage receipts do not explain clinical methods/results. Keep their provenance backstage; review any genuine scientific software terminology in context."),
+    "local_artifact_path": (r"(?:\b[A-Za-z]:[\\/](?:workspace|Users)[\\/]|\b(?:project[\\/])?(?:03_analysis[\\/]results|07_manuscript|08_submission[\\/](?:bundle|integration))[\\/])", "A local workflow path is not a clinical explanation or a stable reader-accessible data source. Replace only the presentation, preserving the actual method and authorized availability statement."),
+    "draft_placeholder": (r"\b(?:TODO|TBD|INSERT[_ ](?:RESULT|REFERENCE|FIGURE|TABLE)|lorem ipsum)\b", "Resolve accidental drafting placeholders before delivery; a target-required placeholder or a quoted scientific term needs its actual contextual reason."),
     "internal_plan_history": (r"\b(?:unregistered protocol|archived.{0,15}protocol|protocol.{0,25}(?:archived|not registered|unregistered)|departures from (?:the |our )?protocol|protocol deviations? (?:are|were) (?:reported|listed)|initial (?:analysis )?plan (?:changed|was revised))\b", "Ordinary retrospective mining does not need internal plan/registration history in the paper. Keep the backstage log; preserve actual exploratory/post-hoc status and any genuinely required protocol reporting."),
     "revision_history": (r"\b(?:after internal review|added after review|review round\s+[MP]\d+|after rerunning the pipeline)\b", "Keep orchestration/revision history backstage, but preserve actual post-hoc status and scientific timing."),
     "runtime_count": (r"\b[\d,]+\s+(?:[A-Za-z-]+\s+){0,3}lines?\s+read\b", "Reading-log count: establish clinical counting unit; never relabel file lines as patients/reports."),
@@ -57,36 +61,76 @@ def visible(path):
     return ""  # no OCR inference or substituted code labels for raster figures
 
 
+def _reader_lines(text):
+    """Skip bibliographic titles, retaining locators and later legends/supplements."""
+    in_references=False
+    for line,value in enumerate(text.splitlines(),1):
+        if re.fullmatch(r"\s*(?:#{1,6}\s*)?(?:References|Bibliography)\s*[:.]?\s*",value,re.I):
+            in_references=True; continue
+        if in_references:
+            following=(re.match(r"\s*#{1,6}\s+",value) or
+                       re.fullmatch(r"\s*(?:Figure legends?|Table captions?|Tables?|Figures?|Supplementary (?:Methods|Materials?|Information|Tables?|Figures?|Figure legends?)|Declarations(?: and Statements)?|Statements(?: and Declarations)?)\s*[:.]?\s*",value,re.I) or
+                       re.match(r"\s*(?:Figure|Table)\s+S?\d+[.:]\s+",value,re.I))
+            if not following: continue
+            in_references=False
+        yield line,value
+
+
+def _summary_surfaces(text,rel):
+    # A count note in Table 2 must not be judged against a median in Table 1 or prose.
+    suffix=Path(rel).suffix.lower()
+    if suffix==".xlsx":
+        sheets={}
+        for line in text.splitlines():
+            match=re.match(r"^(.*?)!\d+: (.*)$",line)
+            if match: sheets.setdefault(match[1],[]).append(match[2])
+        return [(f"worksheet {name}","\n".join(lines)) for name,lines in sheets.items()]
+    if suffix==".csv": return [("table summary footnote",text)]
+    return []  # No reliable table boundary in flattened DOCX/PDF/manuscript text.
+
+
 def diagnose(text, rel):
     findings=[]
-    for line, value in enumerate(text.splitlines(),1):
+    for line,value in _reader_lines(text):
         for kind,(pattern,message) in RULES.items():
-            for match in re.finditer(pattern,value,re.I):
-                excerpt=value.strip()[:240]
-                identity=hashlib.sha256(f"{rel}\0{kind}\0{excerpt}".encode()).hexdigest()[:16]
+            match=re.search(pattern,value,re.I)
+            if match:
+                # Hash the complete context, not the display-truncated excerpt. A change
+                # late in a long paragraph must not inherit an obsolete retained reason.
+                context=value.strip()
+                identity=hashlib.sha256(f"{rel}\0{kind}\0{context}".encode()).hexdigest()[:16]
+                start=max(0,match.start()-60); end=min(len(value),start+240)
+                excerpt=("…" if start else "")+value[start:end].strip()+("…" if end<len(value) else "")
                 findings.append({"id":identity,"path":rel,"locator":f"extracted line {line}","kind":kind,"excerpt":excerpt,"message":message})
-    # A blanket n(%) footnote can contradict median/IQR summaries in the same table.
-    if re.search(r"median|IQR|interquartile",text,re.I) and re.search(r"values are (?:numbers|counts) of",text,re.I) and not re.search(r"unless otherwise|except",text,re.I):
-        identity=hashlib.sha256((rel+"summary_footnote").encode()).hexdigest()[:16]
-        findings.append({"id":identity,"path":rel,"locator":"table summary footnote","kind":"summary_footnote","excerpt":"mixed statistical summaries","message":"Footnote must describe the actual row summaries and available-case denominators, not claim every row is a count."})
-    return findings
+    for locator,surface in _summary_surfaces(text,rel):
+        if re.search(r"median|IQR|interquartile",surface,re.I) and re.search(r"values are (?:numbers|counts) of",surface,re.I) and not re.search(r"unless otherwise|except",surface,re.I):
+            identity=hashlib.sha256(f"{rel}\0summary_footnote\0{locator}\0{surface}".encode()).hexdigest()[:16]
+            findings.append({"id":identity,"path":rel,"locator":locator,"kind":"summary_footnote","excerpt":"mixed statistical summaries","message":"Footnote must describe the actual row summaries and available-case denominators, not claim every row is a count."})
+    # One retained decision covers repeated identical risk in the same surface; locations
+    # remain available without asking for duplicate justifications for the same wording.
+    unique={}
+    for finding in findings:
+        if finding["id"] in unique:
+            unique[finding["id"]].setdefault("also_at",[]).append(finding["locator"])
+        else: unique[finding["id"]]=finding
+    return list(unique.values())
 
 
 def scan(project,layer="science",final=False):
     from .benchmark import display_source
     plan=load(project,"01_protocol/artifact_plan.json" if layer=="science" else "08_submission/integration/artifact_plan.json")
     folder="07_manuscript" if layer=="science" else "08_submission/integration"
-    files={f"{folder}/full_manuscript.md"}
+    files=set() if final else {f"{folder}/full_manuscript.md"}
     for name in ("methods.md","results.md","discussion.md","supplementary_methods.md"):
-        if (project/folder/name).is_file(): files.add(f"{folder}/{name}")
+        if not final and (project/folder/name).is_file(): files.add(f"{folder}/{name}")
     for rel in (("05_figures/legends.md","04_tables/table_captions.md") if layer=="science" else
                 (f"{folder}/figure_legends.md",f"{folder}/table_captions.md")):
-        if (project/rel).is_file(): files.add(rel)
+        if not final and (project/rel).is_file(): files.add(rel)
     for group in ("main_figures","supp_figures","main_tables","supp_tables"):
         for entry in plan.get(group,[]): files.add(display_source(project,entry,layer,final))
     if final:
         for row in load(project,"08_submission/bundle/manifest.json")["items"]:
-            if row.get("upload",True) and row.get("role") in {"manuscript","tables","figure_legends"}: files.add(row["file"])
+            if row.get("upload",True) and row.get("role") in {"manuscript","tables","figure_legends","supplementary"}: files.add(row["file"])
     issues=[]
     for rel in sorted(files):
         _,file=_safe_path(project,rel)
@@ -116,12 +160,21 @@ def verify(project, report, layer="science", final=False):
     problems=[]
     if report.get("medical_style_version")!=1: problems.append("Complete current medical presentation checks using reference/medical-reader-presentation.md; do not auto-upgrade old evidence")
     plan=load(project,"01_protocol/artifact_plan.json" if layer=="science" else "08_submission/integration/artifact_plan.json")
+    observed_checks={}
     for group in ("main_figures","supp_figures","main_tables","supp_tables"):
         kind="table" if "tables" in group else "figure"
         for entry in plan.get(group,[]):
             checks=report.get("display_findings",{}).get(entry["id"],{}).get("medical_checks",{})
             for field in FIELDS[kind]:
                 if not substantive(checks.get(field)): problems.append(f"{entry['id']}: describe actual {field}, not generic PASS")
+            observations=tuple(re.sub(r"\s+"," ",str(checks.get(field,"")).strip()).casefold() for field in FIELDS[kind])
+            if all(observations):
+                if len(set(observations))==1:
+                    problems.append(f"{entry['id']}: distinct medical questions need actual observations, not one copied sentence for every check")
+                key=(kind,observations)
+                if key in observed_checks:
+                    problems.append(f"{entry['id']} and {observed_checks[key]}: all medical observations are copied; inspect each display's actual labels, measures and denominator")
+                observed_checks[key]=entry['id']
     for issue in scan(project,layer,final):
         decision=report.get("style_resolutions",{}).get(issue["id"],{})
         if decision.get("action")!="retained" or not substantive(decision.get("reason")) or not str(decision.get("evidence_location","")).strip():

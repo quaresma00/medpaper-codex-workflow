@@ -90,7 +90,7 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
         except (OSError, ValueError, TypeError, KeyError):
             mode = "full (dependency uncertainty)"
     number = int(previous["id"][1:]) + 1 if previous else 1
-    record = {"schema_version": 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
+    record = {"schema_version": 4 if version_tuple(version)>=(1,19,0) else 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
               "started_at": now(), "mode": mode, "before": current,
               "reviewed_artifacts": selection, "changed_since_previous": differences,
               "deleted_since_previous": [rel for rel in differences if rel not in current],
@@ -138,9 +138,12 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
         raise ValueError("review report must bind the exact selected input hashes")
     headings = ("Reader comprehension", "Medical presentation") if scope == "manuscript" else (
         "Reader comprehension", "Editorial screening and low-level errors", "Guideline compliance")
+    if scope=="package" and record.get("schema_version",1)>=4:
+        headings+=("Medical presentation",)
+    from .reviewfindings import sections
+    bodies=sections(text)
     for heading in headings:
-        match = re.search(r"(?mi)^#{1,3}\s+" + re.escape(heading) + r"\s*$\n(.*?)(?=^#{1,3}\s|\Z)", text, re.S | re.M)
-        if not match or len(match.group(1).strip()) < 80:
+        if len(bodies.get(heading, "")) < 80:
             raise ValueError(f"review needs substantive {heading} findings")
     if record.get("schema_version",1)>=3:
         from .reviewfindings import catalogue

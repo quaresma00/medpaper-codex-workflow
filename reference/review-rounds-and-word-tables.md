@@ -11,6 +11,13 @@ Kiro agent names/configuration are not executable Codex APIs.
 
 ## One round, one report to the user, one question
 
+New v1.19 package rounds also require substantive `Medical presentation` in the existing
+independent report. Read actual main/supplement files, not only compliance fields or sources.
+Each finding may stay in its real headed section (for example `Scientific validity`) with
+its matching prose marker and section verdict; do not misclassify it as readability to make
+the tool accept it. A JSON/code block cannot substitute for actual reviewer prose. The final
+audit's actual `Verdict` must be PASS; a state decision cannot turn REVISE into PASS.
+
 S18 starts manuscript M001, delegates once and attaches the genuine report before edits.
 S19 applies safe findings at their source, validates true dependants, records corrections
 and unadopted reasons, closes, reports once and asks whether another round is needed.
