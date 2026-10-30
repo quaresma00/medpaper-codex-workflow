@@ -287,12 +287,17 @@ def refs_library(ctx: Ctx) -> Result:
     if hi and len(entries) > hi:
         problems.append(f"{len(entries)} entries, allowed <= {hi}")
 
-    if ctx.spec.get("require_abstract", True):
+    if "require_abstract" in ctx.spec and "require_readable_source" in ctx.spec:
+        return Result(False,"refs_library","require_abstract and require_readable_source cannot both be specified; adopt one explicit source-access policy")
+    if ctx.spec.get("require_abstract", False):
         no_abs = [e.get("citekey", "?") for e in entries if not (e.get("abstract") or "").strip()]
         if no_abs:
             problems.append(
-                f"{len(no_abs)} entry/entries without an abstract (must be removed): " + ", ".join(no_abs[:6])
+                f"{len(no_abs)} entry/entries without an abstract under the explicit legacy abstract-only policy: " + ", ".join(no_abs[:6])
             )
+    elif ctx.spec.get("require_readable_source", True):
+        for entry in entries:
+            problems.extend(f"{entry.get('citekey','?')}: {issue}" for issue in refproof.readable_source_errors(ctx.project,entry))
     missing_id = [e.get("citekey", "?") for e in entries if not (e.get("pmid") or e.get("doi"))]
     if missing_id:
         problems.append(f"{len(missing_id)} entry/entries with neither PMID nor DOI: " + ", ".join(missing_id[:6]))
@@ -316,13 +321,13 @@ def refs_library(ctx: Ctx) -> Result:
             "; ".join(problems),
             [
                 "Add genuinely needed verified sources with tools/pubmed/build_library.py --add-ids <PMIDs>; inspect benchmark argument coverage.",
-                "Entries without abstracts must be dropped, not padded with a summary you wrote.",
+                "Keep a missing abstract empty; register an identity-checked actual full text before citation, or leave the source pending.",
             ],
         )
     return Result(
         True,
         "refs_library",
-        f"{len(entries)} PubMed-proven entries, all with abstracts and an ID",
+        f"{len(entries)} PubMed-proven entries with actual abstract/full-text evidence and an ID",
     )
 
 

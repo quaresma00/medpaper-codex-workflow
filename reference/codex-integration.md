@@ -25,8 +25,11 @@ to `library.json`, and run `tools/pubmed/verify.py` before citing it.
 
 Verification is evidence-based and fail-closed. The verifier performs a fresh PubMed EFetch,
 stores the raw XML, records its SHA-256 and the parsed record fingerprint, binds the receipt to
-the exact current `library.json`, and compares PMID, DOI, title, journal, year, first author,
-abstract availability and PubMed status. The S13 `reference_provenance` gate then makes a
+the exact current `library.json`, and compares PMID, DOI, PMCID, title, journal, year, the full
+ordered author list, actual abstract text and PubMed status. A genuine no-abstract record
+stays a candidate until readable, identity-confirmed, hash-valid full text is registered;
+register it after adding its metadata and before formal verification. Leave absent abstracts
+empty and do not treat a summary or link as source text. The S13 `reference_provenance` gate makes a
 second live EFetch and repeats those comparisons independently; the same live gate recurs at
 later manuscript, human-review, package and final-audit checkpoints so post-S13 tampering is
 also caught. `verified: true` is not

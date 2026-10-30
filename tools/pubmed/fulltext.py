@@ -203,8 +203,9 @@ def fetch_one(entry: dict) -> dict:
         "route": "none", "access": "paywalled",
         "fulltext": f"https://doi.org/{doi}" if doi else "",
         "source_url": f"https://doi.org/{doi}" if doi else "",
-        "note": "no open-access copy found. Use your institutional access, or rely on the "
-                "abstract and say so explicitly in the deep-read notes.",
+        "note": "no open-access copy found. Use an authorized institutional route or leave "
+                "the full-text requirement unresolved. An abstract or link is not a deep read; "
+                "a no-abstract candidate remains unavailable for formal citation.",
     }
 
 
@@ -297,7 +298,7 @@ def main() -> int:
         key = keys[0]
         entry = entries.get(key)
         if not entry:
-            eu.die(f"{key}: not in library.json - add and verify it before registration")
+            eu.die(f"{key}: not in library.json - fetch it with build_library.py --add-ids before registration; verify after full-text registration")
         source = args.file.expanduser().resolve()
         if not source.is_file():
             eu.die(f"file not found: {source}")

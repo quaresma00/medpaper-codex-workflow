@@ -169,12 +169,19 @@ class State:
         self.data.setdefault("events", []).append({"at": _now(), "kind": kind, "detail": detail})
 
     def record_decision(self, name: str, value: str, why: str) -> None:
-        self.data.setdefault("decisions", {})[name] = {
+        record = {
             "value": value,
             "rationale": why,
             "at": _now(),
             "stage": self.current,
         }
+        if (version_tuple(str(self.data.get("pipeline_version","0"))) >= (1,20,0)
+                and (name,value) in {("analysis_converged","YES"),("go_nogo_2","GO")}):
+            from .readiness import writing_sources
+            # Bind the scientific judgment when it is actually made, not retroactively
+            # when a later freeze is created. This is evidence identity, not clinical QA.
+            record["scientific_inputs"] = writing_sources(self.project,validate_analysis=False)
+        self.data.setdefault("decisions", {})[name] = record
         self.event("decision", f"{name}={value}")
         self.save()
 

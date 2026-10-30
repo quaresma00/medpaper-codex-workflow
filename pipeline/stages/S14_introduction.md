@@ -5,7 +5,7 @@ Write the Introduction from the verified library, read full-text comparators and
 this stage only.
 
 ## Inputs
-- `06_refs/library.json` (abstracts - read them, do not recall them)
+- `06_refs/library.json` (read real abstracts; for no-abstract sources read their verified registered full text)
 - `03_analysis/notes.md` -> `Introduction points`
 - `01_protocol/feasibility.md` -> the gap argument, already reasoned once
 - `01_protocol/protocol_final.md` -> the objective, stated exactly

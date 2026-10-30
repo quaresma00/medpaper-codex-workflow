@@ -54,7 +54,7 @@ def cmd_search(args) -> int:
 
     no_abs = sum(1 for r in recs if not r["abstract"])
     print(f"\n{len(recs)} record(s) parsed; {no_abs} without an abstract "
-          f"(those are ineligible for the reference library).")
+          f"(register identity-checked full text before using those as formal citations).")
     return 0
 
 

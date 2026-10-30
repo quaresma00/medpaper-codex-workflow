@@ -464,7 +464,11 @@ def cmd_decide(args) -> int:
     if len(args.why.strip()) < 40:
         print("rationale too short (need >= 40 chars). A decision without a reason is a guess.")
         return 1
-    st.record_decision(args.name, args.value, args.why)
+    try:
+        st.record_decision(args.name, args.value, args.why)
+    except (OSError,ValueError,TypeError,KeyError) as exc:
+        print(f"decision not recorded: {exc}",file=sys.stderr)
+        return 2
     st.add_note(f"[DECISION] {args.name} = {args.value}\n{args.why}")
     print(f"recorded {args.name} = {args.value}")
     return 0

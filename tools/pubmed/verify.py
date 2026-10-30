@@ -42,7 +42,7 @@ def ratio(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
-def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
+def verify_entry(entry: dict, live: dict | None, strict: bool, project: Path | None = None) -> dict:
     checks: list[dict] = []
     if live is None:
         return {
@@ -76,8 +76,11 @@ def verify_entry(entry: dict, live: dict | None, strict: bool) -> dict:
     a_ok = norm(ea) == norm(la)
     checks.append({"field": "first_author", "ok": a_ok, "expected": la})
 
-    abs_ok = bool((live.get("abstract") or "").strip())
-    checks.append({"field": "abstract_present", "ok": abs_ok})
+    abs_ok = refproof.normalized_abstract(entry.get("abstract")) == refproof.normalized_abstract(live.get("abstract"))
+    checks.append({"field": "abstract_matches_source", "ok": abs_ok})
+    access_errors=refproof.readable_source_errors(project or eu.project_root(),entry,live)
+    checks.append({"field": "readable_source", "ok": not access_errors,
+                   "detail": "; ".join(access_errors) or "source abstract or registered full text available"})
     flags_ok = not live.get("flags")
     checks.append({"field": "citable_status", "ok": flags_ok,
                    "expected": "no retraction, expression-of-concern or preprint flag"})
@@ -181,8 +184,8 @@ def main() -> int:
         print(f"\n{len(failures)} failure(s):")
         for k, why in failures:
             print(f"  {k}: {why}")
-        print("\nA failure means the entry does not match the source of record.")
-        print("Fix it by re-fetching the real record, never by editing the metadata to match.")
+        print("\nA failure means source identity, citable status or required readable evidence is not verified.")
+        print("Re-fetch mismatched records or register the actual full text for a no-abstract record; never invent metadata or an abstract.")
         if args.quarantine:
             bad = {k for k, _ in failures}
             keep = [e for e in entries if e["citekey"] not in bad]

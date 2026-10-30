@@ -75,16 +75,26 @@ def writing_sources(project: Path, *, validate_analysis: bool = True) -> dict[st
 
 
 def freeze_writing(project: Path) -> dict:
-    from .state import State
+    from .state import State,version_tuple
 
     state = State(project).load()
     from .revision import permits
     if state.current != "S06_protocol_final" and not permits(project, "S06_protocol_final"):
         raise ValueError("writing freeze is created only at S06 after analysis has converged")
+    sources=writing_sources(project)
+    bound=version_tuple(str(state.data.get("pipeline_version","0"))) >= (1,20,0)
+    decisions={}
     for name, value in (("analysis_converged", "YES"), ("go_nogo_2", "GO")):
         if (state.decision(name) or {}).get("value") != value:
             raise ValueError(f"{name}={value} must be recorded before freezing")
-    payload = {"schema_version": 1, "files": writing_sources(project)}
+        record=state.decision(name)
+        if bound and record.get("scientific_inputs") != sources:
+            before=record.get("scientific_inputs",{})
+            changed=sorted(p for p in set(before)|set(sources) if before.get(p)!=sources.get(p))
+            raise ValueError(f"{name} belongs to missing/older scientific evidence; reassess this decision on current results, do not rerun unchanged analyses: {', '.join(changed[:6])}")
+        decisions[name]={k:record.get(k) for k in ("value","rationale","scientific_inputs")}
+    payload = {"schema_version": 2 if bound else 1, "files": sources}
+    if bound: payload["scientific_decisions"]=decisions
     atomic_json(project / FREEZE, payload)
     return payload
 
@@ -93,8 +103,17 @@ def verify_writing(project: Path, *, validate_analysis: bool = True) -> list[str
     try:
         frozen = load(project, FREEZE)
         current = writing_sources(project,validate_analysis=validate_analysis)
-        if frozen.get("schema_version") != 1 or frozen.get("files") != current:
+        if frozen.get("schema_version") not in {1,2} or frozen.get("files") != current:
             return ["analysis, protocol or clinical story changed after S06; return to its owner and refreeze"]
+        if frozen.get("schema_version")==2:
+            from .state import State
+            state=State(project).load()
+            for name,value in (("analysis_converged","YES"),("go_nogo_2","GO")):
+                record=state.decision(name) or {}
+                decision={k:record.get(k) for k in ("value","rationale","scientific_inputs")}
+                if (record.get("value")!=value or record.get("scientific_inputs")!=current
+                        or frozen.get("scientific_decisions",{}).get(name)!=decision):
+                    return [f"{name}: scientific decision/evidence changed after writing freeze; reassess and refreeze at the owner, not a full analysis replay"]
     except (OSError, ValueError, TypeError) as exc:
         return [str(exc)]
     return []

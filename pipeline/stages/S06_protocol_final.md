@@ -14,32 +14,42 @@ the effect size and the data's limits are known. This is the last cheap exit.
 ## Procedure
 1. Write `project/01_protocol/protocol_final.md` - same headings as v1 plus
    `Deviations from protocol v1`. The deviations section is the important one:
-   for each change, state what changed, why, and whether the change was driven by the
-   data (which weakens it) or by a method-scan finding (which strengthens it).
+   for each change, state what changed, why, when it was decided and how it affects inference.
+   Data-driven does not automatically mean invalid and a cited method does not automatically
+   make a change stronger; preserve actual timing and judge its scientific consequences.
    Reconcile the actual control, denominator and endpoint choices with the S03 design/method
    precedents. Keep their applicability and departures in the existing sections; do not
    re-search unchanged evidence or add a default registration/reporting form.
 2. Write `project/01_protocol/protocol_diff.md` - a plain list of v1 -> final changes,
    one line each. This becomes the honest basis for any "pre-specified" claim in Methods.
-3. Confirm the analysis is finished:
+3. Before decisions, read `reference/efficient-quality.md`. Persist the scientific rules in
+   `01_protocol/analysis_contract.json` and the four-part clinical story in
+   `01_protocol/study_facts.json`; link findings to executed result JSONs. Resolve material
+   clinical ambiguity, preserve relevant null/contradictory findings and reconcile every
+   planned primary/secondary outcome with its result or explained limitation. Do not invent
+   validation or silently replace a failed primary question with a favourable exploratory one.
+4. Confirm required analysis and validity work are complete:
 ```
-.\.venv\Scripts\python.exe tools/wf.py decide analysis_converged YES --why "<what was the last analysis, why nothing further would change the conclusion>"
+.\.venv\Scripts\python.exe tools/wf.py decide analysis_converged YES --why "<required questions resolved; remaining optional work and why it does not block the current inference>"
 ```
-   If it is not converged: `.\.venv\Scripts\python.exe tools/wf.py loop --to S05_analysis --why "..."`.
-4. Re-judge publishability against the real result, not the hoped-for one:
+   If a material task remains, correct its source through the existing scoped owner rules;
+   do not claim YES or repeat unrelated analyses. No requirement to test every conceivable model.
+5. Re-judge publishability against the real result, not the hoped-for one:
    - Is the primary result interpretable (direction, magnitude, precision)?
-   - A null result is publishable if the question mattered and the study was adequately
-     powered to answer it. Say which of those two conditions holds.
-   - Does the finding survive the sensitivity analyses?
+   - What effects remain compatible with the interval, and does this address the clinically
+     relevant question? Nonsignificance alone proves neither no effect nor unpublishability.
+     Do not manufacture a clinical importance threshold or run post-hoc power to defend a p value.
+   - What do the required sensitivity analyses reveal? Explain contradictions and their impact
+     rather than requiring every variant to support the preferred conclusion.
    - Has the gap from S02 changed now that you know the effect size?
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide go_nogo_2 GO --why "<the finding, its precision, why a journal takes it, which journal tier is realistic>"
 ```
 
-5. Before writing, read `reference/efficient-quality.md`. Persist the scientific rules in
-   `01_protocol/analysis_contract.json` and the four-part clinical story in
-   `01_protocol/study_facts.json`; link the main finding to executed result JSONs. Resolve
-   any material clinical ambiguity; do not invent validation. After convergence and GO:
+6. These two judgments bind the actual scientific inputs when recorded. If those inputs
+   subsequently change, reassess the judgments on the new version; do not simply recapture
+   a freeze using stale GO. This is executor scientific judgment, not an extra author-confirmation
+   stop. After convergence and GO:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/readiness.py freeze
 ```

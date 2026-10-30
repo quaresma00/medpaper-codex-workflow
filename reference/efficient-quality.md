@@ -40,11 +40,47 @@ source pointers and contexts before freeze. S09/S10/S17 bind reported prose/cell
 facts. `readiness.py facts` prints the resolved small catalog; do not reload entire result
 libraries for every wording edit. Numeric matching is not proof of clinical interpretation.
 
+Prepare these scientific sources before recording convergence/GO. In v1.20 the two decisions
+bind the actual source hashes at the time they are made. A later change to the results,
+protocol, model code or clinical interpretation requires reassessing those decisions on the
+new evidence; merely running `freeze` again cannot transfer an old GO to new science. This
+reassessment is not an instruction to refit unchanged models or ask for a new user approval.
+Existing schema-1 freezes remain historical; a new freeze uses the current decision contract.
+
 After the existing convergence and GO decisions, run `tools/manuscript/readiness.py freeze`.
 Its hashes bind the contract, story, protocol, acquisition manifest, analysis code and results.
 `writing_ready` fails on later drift. Return to the scientific owner and refreeze after a real
 change. An existing project's new fields must be reconstructed from actual evidence, never
 backfilled with invented facts or discarded old artifacts.
+
+## Analysis stopping and reporting completeness
+
+Use the existing protocol and analysis log, not another planning report. Before a new model,
+subgroup or sensitivity analysis, state the specific scientific uncertainty and which choice
+or claim its outcomes could change. Complete primary/secondary analyses and essential validity
+work. Optional variants without a decision consequence do not delay writing; a real unresolved
+validity threat cannot be relabelled optional to save resources. Reviewers' suggestions use the
+same test and any required author/journal decision; do not execute every suggestion reflexively.
+
+At S06 compare what Methods promises with executed results, including null, contradictory and
+nonestimable findings. Explain omitted or infeasible analyses and their impact; do not claim an
+unrun analysis. Convergence means no identified material unresolved task, not certainty that
+every possible future analysis supports the same conclusion. Judge effect size, uncertainty,
+design validity and practical contribution. A nonsignificant result is neither automatic STOP
+nor proof of equivalence; significance is not automatic GO. Do not add post-hoc power merely
+to defend an observed p value or continue variants until significance appears.
+
+Keep valid results even when not selected for the main narrative. Only genuinely superseded or
+invalid task-created versions leave the active result directory, retaining their original bytes
+under `.wf/retired_analysis/` and their reason in the existing log. These historical files are
+outside the current number pool and cannot be claim sources. Reconcile actual consumers first.
+This prevents both stale-number reuse and loss of inconvenient evidence without adding a
+default archive of every run or rewriting raw/user-supplied data.
+
+Basis checked 2026-10-30: [ICMJE statistics and Results guidance](https://www.icmje.org/recommendations/browse/manuscript-preparation/preparing-for-submission.html)
+emphasizes effect size/uncertainty, distinguishing planned from exploratory analyses and
+reporting the primary/secondary outcomes described in Methods. The stopping rule above is
+this workflow's implementation choice, not a claim of a universal publication threshold.
 
 ## Display prototypes: S07
 

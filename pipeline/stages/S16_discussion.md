@@ -9,7 +9,7 @@ Interpret the finding against the literature you actually read. One file, this s
 
 ## Inputs
 - `06_refs/deepread/*.md` - argument-bearing full texts, actually read
-- `06_refs/library.json` - abstracts for the wider context
+- `06_refs/library.json` - real abstracts or registered full texts for the wider context
 - `03_analysis/notes.md` -> `Discussion points`, `Limitations`, `Surprises`
 - `07_manuscript/results.md` - what you may interpret (and nothing beyond it)
 - `01_protocol/protocol_diff.md` - internal context for material scientific limitations, not a manuscript change log

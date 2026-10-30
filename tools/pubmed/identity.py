@@ -70,7 +70,7 @@ def errors(entry, path: Path, record):
         return []
     confirmation = record.get("identity_confirmation", {})
     expected = {k: norm(k, entry.get(k)) for k in ("doi", "pmid", "pmcid", "title")}
-    if (confirmation.get("sha256") == _sha256(path) and confirmation.get("expected") == expected
+    if (str(confirmation.get("sha256", "")).casefold() == _sha256(path).casefold() and confirmation.get("expected") == expected
             and str(confirmation.get("confirmed_by", "")).strip()
             and len(str(confirmation.get("note", "")).strip()) >= 30):
         return []

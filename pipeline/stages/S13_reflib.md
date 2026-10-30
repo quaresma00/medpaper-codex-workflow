@@ -12,19 +12,28 @@ Everything the Introduction and Discussion say about the literature comes from h
    the papers they disagree with, and the guideline/definition sources.
 2. Build it. Discovery tools may suggest titles, DOI values or queries, but they do not
    populate the formal library. The script searches, fetches full records, generates
-   citekeys, drops records with no abstract, and caches every raw payload:
+   citekeys and caches every raw payload. It retains genuine no-abstract records as
+   candidates; inclusion in this file does not itself authorize citation:
 ```
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --add-query "<uncovered argument area>"
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --add-ids 12345678,23456789
 ```
    Anything already cited in `feasibility.md`, `method_scan.md` or `methods.md` is pulled in
    automatically so no existing citekey is orphaned.
+   For a no-abstract record, obtain and register its legal full text before verification:
+```
+.\.venv\Scripts\python.exe tools/pubmed/fulltext.py fetch --citekey <generated-key>
+```
+   Use the existing `register`/identity-confirmation route in `reference/codex-integration.md`
+   for an acquired local file. Registration needs the candidate library identity, not prior
+   verification. A missing full text is an explicit evidence gap; do not invent an abstract
+   or silently substitute a less relevant citation just to pass.
 3. Verify every entry against the source of record. This is what makes a citekey usable:
 ```
 .\.venv\Scripts\python.exe tools/pubmed/verify.py
 ```
    This command always performs a fresh PubMed EFetch, compares PMID, DOI, PMCID, title,
-   journal, year, the complete ordered author list and abstract status, and writes
+   journal, year, the complete ordered author list and actual abstract text, and writes
    `06_refs/verified.json` together with
    the exact `library.json` hash and hashes/fingerprints of the cached raw PubMed XML.
    Confirm the stored proof by running:
@@ -41,10 +50,12 @@ Everything the Introduction and Discussion say about the literature comes from h
 ```
 .\.venv\Scripts\python.exe tools/pubmed/build_library.py --export
 ```
-5. Read the abstracts. Update `03_analysis/notes.md` (`Introduction points`,
+5. Read the source abstracts, or the registered full text when no abstract exists. Update
+   `03_analysis/notes.md` (`Introduction points`,
    `Discussion points`) with what the literature actually says, tagging each point with the
    citekey that supports it. The Introduction is written from these notes plus the
-   abstracts, so vague notes here become vague prose later.
+   source content, so vague notes here become vague prose later. Detailed method or numerical
+   claims require the relevant full text regardless of abstract availability.
 
 ## Outputs
 - `06_refs/library.json`
@@ -53,8 +64,10 @@ Everything the Introduction and Discussion say about the literature comes from h
 - `06_refs/refs.ris`
 
 ## Hard rules
-- **No abstract, no entry.** A record without a retrievable abstract is removed from the
-  library. Do not write a summary and call it the abstract.
+- **Real identity and readable evidence.** A record without a PubMed abstract may be cited
+  only with registered, identity-matched, hash-valid full text. A link, notes stub or AI summary
+  is insufficient. Leave its abstract empty; never supply synthetic content in a source field.
+  Both abstract text and bibliographic metadata must match independently fetched PubMed records.
 - Never invent, guess or "reconstruct" a citekey, PMID, DOI, title, journal or year.
 - Never write or modify `library.json`, `verified.json`, `refs.bib` or `refs.ris` with an
   ad-hoc script. Only `tools/pubmed/build_library.py` and `tools/pubmed/verify.py` may produce
@@ -70,7 +83,7 @@ Everything the Introduction and Discussion say about the literature comes from h
 ## Close
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> fresh-PubMed-proven entries with abstracts; independent live gate passed; coverage gaps: <...>"
+.\.venv\Scripts\python.exe tools/wf.py advance --note "library: <n> fresh-PubMed-proven entries with readable source evidence; independent live gate passed; coverage gaps: <...>"
 ```
 
 ## v1.14 execution update

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build 06_refs/library.json and export refs.bib / refs.ris.
 
-Records without a retrievable abstract are dropped, not summarized. Citekeys already
+Records without an abstract remain candidates pending registered full-text evidence; never
+write a substitute abstract. Citekeys already
 used anywhere in the project are pulled in automatically so no citation is orphaned.
 
     .venv/Scripts/python.exe tools/pubmed/build_library.py --add-ids <selected PMIDs>
@@ -94,9 +95,6 @@ def add_records(lib: dict, records: list[dict]) -> tuple[int, int, int]:
     taken = {e["citekey"] for e in lib["entries"]}
     added = dropped = dup = 0
     for rec in records:
-        if not (rec.get("abstract") or "").strip():
-            dropped += 1
-            continue
         if rec.get("pmid") and rec["pmid"] in by_pmid:
             dup += 1
             continue
@@ -201,7 +199,7 @@ def report(lib: dict) -> None:
         print(f"years  : {years[0]}-{years[-1]}  ({recent} from the last 5 years)")
     print(f"with abstract : {len(entries) - len(no_abs)}/{len(entries)}")
     if no_abs:
-        print(f"  !! must be removed: {', '.join(no_abs)}")
+        print(f"  requires registered, identity-checked full text before citation: {', '.join(no_abs)}")
     if flagged:
         print("flagged records (do not cite as evidence):")
         for k, f in flagged:
@@ -271,13 +269,13 @@ def main() -> int:
              "cache_file": res["cache_file"]}
         )
         print(f"[{q[:60]}] hits={res['count']} +{added} added, "
-              f"{dropped} dropped for having no abstract, {dup} duplicate(s)")
+              f"{dup} duplicate(s); records without abstracts await full-text verification")
 
     if args.add_ids:
         ids = [x for x in args.add_ids.replace(" ", "").split(",") if x]
         recs = eu.efetch(ids)
         added, dropped, dup = add_records(lib, recs)
-        print(f"[--add-ids] +{added} added, {dropped} without abstract dropped, {dup} already present")
+        print(f"[--add-ids] +{added} added, {dup} already present; no-abstract records require registered full text")
 
     missing = used_citekeys() - {e["citekey"] for e in lib["entries"]}
     if missing:

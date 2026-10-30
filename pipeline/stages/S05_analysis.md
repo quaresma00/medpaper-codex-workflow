@@ -17,15 +17,16 @@ separate S05 statistical computation from S11 display-only R rendering.
 Find out what the data actually says, using methods the literature accepts for this
 design, and dump every number to disk so writing can never invent one.
 
-This stage is deliberately loopable. Iterate here as long as needed; do not
-half-finish it and move on.
+Resolve the primary question and actual validity threats. Before adding an analysis, identify
+what decision or claim it could change. An available model/package is not a reason to run it.
+Complete necessary work; stop adding speculative variants once material questions are resolved.
 
 ## Procedure
 1. **Method scan.** Search for how comparable papers analysed this design - the model
    family, the confounder strategy, the sensitivity analyses, the standard reported
    metrics. Discovery tools may suggest candidates, but method claims and citations must
-   resolve to records retrieved by the bundled client. Run at least 5 distinct formal
-   queries through the client (the gate counts them):
+   resolve to records retrieved by the bundled client. Reuse relevant S02/S03 retrievals and
+   full texts; run a new query for a real uncovered method/assumption, not to reach a count:
 ```
 .\.venv\Scripts\python.exe tools/pubmed/client.py search --query "<design> <outcome> statistical analysis" --retmax 100
 .\.venv\Scripts\python.exe tools/pubmed/client.py fetch --ids <...> --with-abstract
@@ -52,12 +53,19 @@ half-finish it and move on.
    **Every number that will ever appear in the manuscript, a table, or an abstract must
    be in one of these files.** The gates at S08-S16 reject numbers that are not.
 4. **Keep the log.** Append to `project/03_analysis/analysis_log.md` as you go: what you
-   ran, what came out, what you decided next and why. Include dead ends - they become the
-   sensitivity analyses a reviewer asks for.
+   ran, what came out, what you decided next and why. Retain failed or contradictory findings
+   and distinguish technical failure from a valid null result. A dead end does not automatically
+   become another manuscript sensitivity analysis. Say which uncertainty it resolves.
 5. **Keep the notes.** Update `03_analysis/notes.md` under all four headings. This is the
    only sanctioned input to Introduction and Discussion framing, so it must be substantive.
-6. Delete scratch scripts and abandoned outputs from `project/temp/`. Also delete result
-   JSONs from analyses you abandoned - a stale file becomes a fake provenance source.
+6. Clean disposable task-created scratch from `project/temp/`. Preserve valid prespecified
+   primary/secondary and relevant null/contradictory results. Genuinely invalid or superseded
+   task-created result versions may be moved out of the active result directory to
+   `.wf/retired_analysis/` with their original bytes and a concise reason/original path in the
+   existing analysis log. Never retire a result merely for its p value or direction. Check and
+   reconcile its actual consumers first; do not delete user files or silently drop evidence.
+   Retired outputs cannot supply current manuscript numbers or become active facts by copying
+   a value. Recompute a genuinely corrected result through its producer when necessary.
 
 ## Outputs
 - `03_analysis/method_scan.md`
@@ -83,12 +91,14 @@ Do not infer unexported complementary counts later or replay old analysis solely
   protocol, create manuscript prose, bypass results JSON, or advance the stage.
 
 ## Close
-When the analysis has converged (no further analysis would change the conclusions):
+When required analysis and validity questions are resolved, and no identified material task
+remains (not a claim that every possible future analysis would agree):
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "primary result: <effect, CI, p>; K result files; open: <...>"
 ```
-To iterate again later from a downstream stage: `.\.venv\Scripts\python.exe tools/wf.py loop --to S05_analysis --why "..."`
+Later scientific corrections use scoped `tools/rework.py` owner rules; do not replay the
+completed stage tail or refit unrelated models.
 
 ## v1.14 execution update
 

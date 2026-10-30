@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.19.0"
+version = "1.20.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -448,7 +448,7 @@ check = "reference_provenance"
 live = true
 [[stage.gate]]
 check = "refs_library"
-require_abstract = true
+require_readable_source = true
 require_verified = true
 [[stage.gate]]
 check = "bib_ris_match_library"

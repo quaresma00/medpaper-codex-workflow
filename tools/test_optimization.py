@@ -64,13 +64,21 @@ class OptimizationTests(unittest.TestCase):
     def test_writing_contract_binds_scientific_inputs(self):
         self.writing_fixture()
         self.text("03_analysis/code/helpers/model.py", "# diagnostic model helper")
+        self.assess_current_science()
         freeze_writing(self.project)
         self.assertEqual(verify_writing(self.project), [])
         self.text("03_analysis/code/helpers/model.py", "# changed model helper")
         self.assertTrue(verify_writing(self.project))
+        with self.assertRaises(ValueError):
+            freeze_writing(self.project)
+        self.assess_current_science()
         freeze_writing(self.project)
         self.data("03_analysis/results/main.json", {"n": 99})
         self.assertTrue(verify_writing(self.project))
+
+    def assess_current_science(self):
+        self.state.record_decision("analysis_converged", "YES", "Required analysis assessed on the current scientific inputs.")
+        self.state.record_decision("go_nogo_2", "GO", "Current findings and uncertainty support the stated scientific scope.")
 
     def test_unresolved_story_and_non_go_cannot_freeze(self):
         self.writing_fixture()

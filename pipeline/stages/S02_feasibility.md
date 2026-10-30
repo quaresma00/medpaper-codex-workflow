@@ -9,9 +9,11 @@ Decide whether this idea can be published at all, using retrieved literature rat
 than impressions. A wrong GO here wastes the entire pipeline.
 
 ## Procedure
-1. Derive at least 4 distinct search strategies from `01_protocol/idea.json`:
+1. Cover the relevant search roles from `01_protocol/idea.json` without a fixed query quota:
    the exact claim, the broader claim, the population alone, the exposure-outcome pair,
-   and (if relevant) the same question in an adjacent population or database.
+   and (if relevant) the same question in an adjacent population or database. One well-designed
+   query may cover several roles. Identify unresolved coverage and broaden it where needed;
+   a query count or empty result alone does not establish novelty. Reuse this search at S03/S05.
 2. A scholarly search skill or plugin may help discover terms or candidate records, but
    it is not evidence for this workflow. Run every formal strategy through the bundled
    client. It caches the raw payload and appends to the manifest, which is what the gate
