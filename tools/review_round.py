@@ -13,13 +13,14 @@ from wfcore.state import State
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["start", "attach", "close", "decide", "status", "reader-copies", "restart", "export"])
+    parser.add_argument("command", choices=["start", "prepare-revalidation", "ingest", "attach", "close", "decide", "status", "reader-copies", "restart", "export"])
     parser.add_argument("--project", type=Path)
     parser.add_argument("--scope", choices=list(rounds.SCOPES), required=True)
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument("--delta",action="store_true",default=None)
     mode.add_argument("--full",action="store_true",help="explicit full reread; later rounds otherwise use actual delta")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--from-file", type=Path, help="actual saved reviewer Markdown reply; never a host state dump")
     parser.add_argument("--revalidation", action="store_true", help="attach actual post-scientific-fix independent revalidation; retains original report")
     parser.add_argument("--change", nargs=2, action="append", default=[])
     parser.add_argument("--kept", nargs=2, action="append", default=[])
@@ -53,7 +54,23 @@ def main() -> int:
             record["reader_copies"] = {}
             rounds.save(project, record)
             print(json.dumps({"round": record["id"], "reviewed_artifacts": record["reviewed_artifacts"]}, indent=2))
-        elif args.command == "attach":
+        elif args.command == "prepare-revalidation":
+            record = rounds.prepare_revalidation(project, args.scope)
+            print(json.dumps({"round": record["id"], "reviewed_artifacts": record["revalidation_request"]["inputs"],
+                              "report_destination": record["report_destination"]}, ensure_ascii=False, indent=2))
+        elif args.command in {"attach", "ingest"}:
+            if args.command == "ingest":
+                if not args.from_file:
+                    raise ValueError("--from-file must name the actual saved reviewer reply")
+                from wfcore.reviewguard import extract
+                from wfcore.packagefreeze import _safe_path
+                record = rounds.latest(project, args.scope)
+                if not record or record.get("closed_at"):
+                    raise ValueError("An open review round is required")
+                body = extract(args.from_file.read_text(encoding="utf-8"))
+                args.report = _safe_path(project, record["report_destination"])[1]
+                args.report.parent.mkdir(parents=True, exist_ok=True)
+                args.report.write_text(body, encoding="utf-8")
             if not args.report:
                 raise ValueError("--report must name the actual independent review")
             record = rounds.attach(project, args.scope, args.report, revalidation=args.revalidation)

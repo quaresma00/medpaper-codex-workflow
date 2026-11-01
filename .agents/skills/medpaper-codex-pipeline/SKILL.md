@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.20.0"
+  version: "1.21.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -36,6 +36,9 @@ Use `rework.py depend --input ... --output ... --why ...` for a newly found cons
 without rewriting feedback. Mark inspected unchanged sources with `--checked-file`.
 Read `reference/source-aligned-validation.md` for composed builds, journal reorganisation,
 versioned snapshots and final Word cleanup. Unchanged check receipts are reused, not relabelled.
+At S23/S24 use `wf rebuild --dry-run` then `wf rebuild` for stale managed DOCX uploads;
+preserve author edits and complete actual visual QA. New review revalidation must prepare
+current hashes first; ingest actual saved Markdown reports, never host-state dumps.
 Unmapped dependencies remain conservative. Preserve unrelated edits and frozen sources.
 
 ## Read the relevant reference, not every reference

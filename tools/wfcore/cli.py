@@ -11,6 +11,7 @@ import argparse
 import fnmatch
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -474,6 +475,16 @@ def cmd_decide(args) -> int:
     return 0
 
 
+def cmd_rebuild(args) -> int:
+    _, _, project = _load()
+    from .rebuild import run
+    try:
+        return run(project, dry=args.dry_run)
+    except (OSError,ValueError,TypeError,KeyError,subprocess.SubprocessError) as exc:
+        print(f"package rebuild stopped: {exc}", file=sys.stderr)
+        return 2
+
+
 def cmd_tree(args) -> int:
     pipe, st, proj = _load()
     print(f"{pipe.meta.get('name')} {pipe.meta.get('version')}  ({len(pipe.stages)} stages)")
@@ -744,6 +755,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("doctor", help="environment and wiring check")
     p.set_defaults(fn=cmd_doctor)
+
+    p = sub.add_parser("rebuild", help="rebuild stale managed DOCX uploads from actual receipts; preserve manual edits")
+    p.add_argument("--dry-run", action="store_true", help="show the actual affected consumers before building")
+    p.set_defaults(fn=cmd_rebuild)
 
     p = sub.add_parser("config", help="view or override per-project targets")
     p.add_argument("action", choices=["list", "get", "set"])

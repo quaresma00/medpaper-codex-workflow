@@ -113,3 +113,13 @@ closure, percentage denominator-basis checks and safe trial routing, also use
 new scoped work does not imply a complete analysis or manuscript rebuild.
 
 
+# Review input changes after actual corrections (v1.21)
+
+New independent rounds snapshot scientific and delivery sources at the start and reject
+creation, deletion or content changes before the report is attached. Apply fixes AFTER attach.
+For a real post-correction independent revalidation within the open round, prepare the current
+inputs with `review_round.py prepare-revalidation --scope manuscript|package` before asking
+the reviewer; attach the actual new report using `--revalidation`. If the host cannot write,
+save the complete response and use `ingest --from-file`; never paraphrase or mine host state.
+Old sealed reviews are not upgraded or invalidated by adding protocol context to new rounds.
+

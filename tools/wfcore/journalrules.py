@@ -29,14 +29,28 @@ def limits(project):
                 raise ValueError(f"{field}: unspecified limit must be null")
         elif isinstance(value,bool) or not isinstance(value,int) or value <= 0:
             raise ValueError(f"{field}: limit must be a positive integer, not an inferred prose number")
-        parsed[field] = row
+        basis = row.get("basis", "estimated" if row.get("estimated") is True else "explicit")
+        if basis not in {"explicit", "page_derived", "estimated"}:
+            raise ValueError(f"{field}: unknown rule basis")
+        if basis != "explicit" and len(str(row.get("derivation", "")).strip()) < 20:
+            raise ValueError(f"{field}: estimated/page-derived guidance needs its real derivation; do not relabel an explicit cap")
+        if basis == "explicit" and row.get("estimated") is True:
+            raise ValueError(f"{field}: an explicit cap cannot also be estimated")
+        parsed[field] = {**row, "basis": basis}
     return requirements,parsed
 
 
 def compare(counts, rules):
     return [f"{field}: {counts[field]} exceeds explicit {row['value']} limit"
             for field,row in rules.items() if row["status"] == "required" and row["value"] is not None
+            and row.get("basis", "explicit") == "explicit" and row.get("estimated") is not True
             and counts.get(field) is not None and counts[field] > row["value"]]
+
+
+def advisories(counts, rules):
+    return [f"{field}: {counts[field]} exceeds advisory {row['value']} ({row.get('basis', 'explicit')}); judge against the actual journal rule"
+            for field, row in rules.items() if (row["status"] in {"recommended", "allowed"} or row.get("basis", "explicit") != "explicit")
+            and row.get("value") is not None and counts.get(field) is not None and counts[field] > row["value"]]
 
 
 def display_limits(project):

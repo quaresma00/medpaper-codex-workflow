@@ -169,3 +169,13 @@ centralized abbreviations, Word cleanup and final actual-page inspection remain 
 
 
 
+# Bound repeat review after a material defect
+
+On a necessary repeat review, verify the previous objective defects and their actual changed
+consumers, using the existing delta/approval-lineage rules. Full current context remains
+available for consistency checks. Do not invent a new list of style preferences each pass.
+New material scientific errors, missing uploads and explicit journal-rule violations still
+block. An engine-owned formatting error must be repaired at its source; calling it an engine
+issue is never an exemption from a real journal requirement. Only an actual author choice can
+use the existing author-final-copy handoff, which is not a fabricated independent PASS.
+

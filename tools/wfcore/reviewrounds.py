@@ -24,9 +24,11 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
-def inputs(project: Path, scope: str) -> dict[str, str]:
+def inputs(project: Path, scope: str, *, protocol_context: bool | None = None) -> dict[str, str]:
     if scope == "manuscript":
-        files = reader_inputs(project)
+        if protocol_context is None:
+            protocol_context = (latest(project, scope) or {}).get("schema_version", 1) >= 5
+        files = reader_inputs(project, protocol_context=protocol_context)
         for rel in ("06_refs/refs.bib", "06_refs/refs.ris"):
             if (project / rel).is_file():
                 files[rel] = _sha256(project / rel)
@@ -76,7 +78,7 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
     if delta is None: delta=bool(previous)
     if previous and (not previous.get("closed_at") or not previous.get("user_decision")):
         raise ValueError("finish this review round and obtain its user answer before starting another")
-    current = inputs(project, scope)
+    current = inputs(project, scope, protocol_context=version_tuple(version)>=(1,21,0))
     selection = dict(current)
     differences = changed(previous.get("after", {}), current) if previous else list(current)
     mode = "full"
@@ -90,7 +92,7 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
         except (OSError, ValueError, TypeError, KeyError):
             mode = "full (dependency uncertainty)"
     number = int(previous["id"][1:]) + 1 if previous else 1
-    record = {"schema_version": 4 if version_tuple(version)>=(1,19,0) else 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
+    record = {"schema_version": 5 if version_tuple(version)>=(1,21,0) else 4 if version_tuple(version)>=(1,19,0) else 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
               "started_at": now(), "mode": mode, "before": current,
               "reviewed_artifacts": selection, "changed_since_previous": differences,
               "deleted_since_previous": [rel for rel in differences if rel not in current],
@@ -98,6 +100,9 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
               "report": None, "closed_at": None, "after": {}, "changes": [], "kept": [],
               "user_decision": None}
     record["report_destination"]=f".wf/review_inbox/{record['id']}.md"
+    if record["schema_version"] >= 5:
+        from .reviewguard import snapshot
+        record["reading_guard"] = snapshot(project)
     save(project, record)
     # Old approval cannot silently release a newly opened round, even with identical files.
     from .state import State
@@ -119,11 +124,29 @@ def restart(project: Path, scope: str, why: str) -> dict:
     return start(project, scope)
 
 
+def prepare_revalidation(project: Path, scope: str) -> dict:
+    record = latest(project, scope)
+    if not record or record.get("closed_at") or not record.get("report"):
+        raise ValueError("Prepare revalidation only after the original report and scoped corrections")
+    from .reviewguard import snapshot
+    current = inputs(project, scope)
+    record["revalidation_request"] = {"inputs": current, "reading_guard": snapshot(project)}
+    save(project, record)
+    return record
+
+
 def attach(project: Path, scope: str, report: Path, *, revalidation: bool = False) -> dict:
     record = latest(project, scope)
     if not record or record.get("closed_at") or (record.get("report") and not revalidation):
         raise ValueError("an open round without an attached report is required")
     current = inputs(project, scope)
+    if record.get("schema_version", 1) >= 5:
+        from .reviewguard import verify
+        request = record.get("revalidation_request") if revalidation else {
+            "inputs": record["before"], "reading_guard": record.get("reading_guard")}
+        if not request or request.get("inputs") != current or not isinstance(request.get("reading_guard"), dict):
+            raise ValueError("Prepare the current independent reading inputs before attaching this report")
+        verify(project, request["reading_guard"])
     if not revalidation and current != record["before"]:
         raise ValueError("inputs changed while the independent reviewer was reading; restore or restart explicitly")
     if not revalidation:
@@ -168,6 +191,7 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     if revalidation:
         record["reviewed_after"] = current
         record["reviewed_artifacts"] = selection
+        record.pop("revalidation_request", None)
     save(project, record)
     return record
 

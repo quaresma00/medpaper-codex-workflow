@@ -390,6 +390,18 @@ def _sanitize_package_xml(path: Path, font: str) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
         for item, blob in entries:
+            if item.filename.startswith("docProps/") and item.filename.endswith(".xml"):
+                from wfcore.journalspec import LOCAL_PATH
+                root = ET.fromstring(blob)
+                dirty = False
+                for node in root.iter():
+                    if node.text and LOCAL_PATH.search(node.text):
+                        node.text = ""; dirty = True
+                    for key, value in list(node.attrib.items()):
+                        if LOCAL_PATH.search(value):
+                            del node.attrib[key]; dirty = True
+                if dirty:
+                    blob = ET.tostring(root, encoding="utf-8", xml_declaration=True)
             if item.filename.startswith("word/") and item.filename.endswith(".xml"):
                 # Word's mc:Ignorable attributes contain namespace-prefix strings; parsing
                 # and reserializing them with ElementTree can rename prefixes and make Word
@@ -741,6 +753,7 @@ def build(args) -> int:
                  entrypoints=[*args.input, *([tables_path] if tables_path else [])],tool="tools/manuscript/build_docx.py",
                  parameters={"kind":args.kind,"style":str(args.style_config),"bibliography":str(args.bibliography or ""),
                              "csl":str(args.csl or ""),"tables_json":str(tables_path or ""),
+                             "inputs":[str(p) for p in args.input], "csl_patch":str(patch_path or ""),
                              "legend_scope":getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all")})
     print(f"built and audited {args.kind} -> {args.output}")
     return 0
@@ -782,6 +795,8 @@ def audit_manifest(args) -> int:
     planned = planned_figure_ids()
     legend_cap = figure_legend_cap()
     for item in manifest.get("items", []):
+        if item.get("upload", True) is False:
+            continue
         role = str(item.get("role", "")).strip()
         path = _resolve_manifest_file(args.manifest, str(item.get("file", "")))
         roles.setdefault(role, []).append(path)

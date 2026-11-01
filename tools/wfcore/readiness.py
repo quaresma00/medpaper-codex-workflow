@@ -168,7 +168,7 @@ def verify_displays(project: Path) -> list[str]:
         return [str(exc)]
 
 
-def reader_inputs(project: Path) -> dict[str, str]:
+def reader_inputs(project: Path, *, protocol_context: bool = False) -> dict[str, str]:
     """Small read-only handoff inventory; no patient records or extra dossier."""
     plan = load(project, "01_protocol/artifact_plan.json")
     files = {"07_manuscript/full_manuscript.md", "01_protocol/artifact_plan.json",
@@ -185,6 +185,11 @@ def reader_inputs(project: Path) -> dict[str, str]:
     optional = "07_manuscript/supplementary_methods.md"
     if (project / optional).is_file():
         files.add(optional)
+    if protocol_context:
+        for rel in ("01_protocol/protocol_v1.md", "01_protocol/protocol_final.md",
+                    "01_protocol/protocol_diff.md", "01_protocol/analysis_contract.json"):
+            if (project / rel).is_file():
+                files.add(rel)  # Review context; never manuscript filler or a new report.
     for group in ("main_figures", "supp_figures", "main_tables", "supp_tables"):
         for entry in plan.get(group, []):
             rel = entry.get("file", "")

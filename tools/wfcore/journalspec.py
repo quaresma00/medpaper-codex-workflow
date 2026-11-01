@@ -153,6 +153,23 @@ def apply_docx(doc, target: dict, role: str) -> None:
                 run.text = number_text(spelling(run.text, target.get("spelling", "")), target.get("number_format", {}))
 
 
+LOCAL_PATH = re.compile(r"(?i)(?:\b[A-Z]:[\\/]|file://|\\\\[^\\\s]+\\|/(?:Users|home|workspace)/)")
+
+
+def metadata_problems(path: Path) -> list[str]:
+    import zipfile
+    from xml.etree import ElementTree as ET
+    problems = []
+    with zipfile.ZipFile(path) as archive:
+        for name in archive.namelist():
+            if name.startswith("docProps/") and name.endswith(".xml"):
+                root = ET.fromstring(archive.read(name))
+                if any(LOCAL_PATH.search(value) for node in root.iter()
+                       for value in [node.text or "", *node.attrib.values()]):
+                    problems.append(f"{path.name}: local filesystem path in {name}")
+    return problems
+
+
 def docx_problems(path: Path, target: dict, project: Path, role: str) -> list[str]:
     from docx import Document
     doc = Document(path); problems = []
@@ -178,4 +195,5 @@ def docx_problems(path: Path, target: dict, project: Path, role: str) -> list[st
                 separator = config.get("separator", ", ").strip()
                 if (separator == ";" and "," in value) or (separator == "," and ";" in value): problems.append("actual Word keyword separator differs from journal")
     problems += blind_problems(path, project, role)
+    problems += metadata_problems(path)
     return problems

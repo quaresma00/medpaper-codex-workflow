@@ -91,3 +91,41 @@ resolved catalog to `.wf/resolved_facts.json`. Query `--fact-id`, `--fields`, `-
 Use bounded PNG previews for screening, original-size critical-page inspection for final QA.
 Report generated/content-checked/layout-checked/user-approved/submitted as distinct states.
 Generating files is never a claim of actual journal submission.
+# KIRO 1.15 adaptation: managed rebuild and isolated review (v1.21)
+
+After sealing the actual S24 source revision (or at S23), run `tools/wf.py rebuild --dry-run`
+to inspect the recorded DOCX consumers, then `tools/wf.py rebuild`. It rebuilds stale managed
+DOCX uploads in their real dependency order, including composed inputs. A missing managed
+output can be restored; missing receipts, unknown producers, cycles, out-of-project arguments
+and manual output edits stop preflight. Resolve those explicitly, never guess source files by
+role. External templates must first be registered as project-local approved inputs. A failed
+build/audit stops before downstream baseline/certification steps. No --force override.
+
+The command regenerates final DOCX counts/portal fields and measured upload QA, then uses
+existing legitimate baseline/scoped-check rules. It never closes feedback, records visual
+acceptance, grants user approval, freezes an upload, or invokes a fresh full analysis/review.
+If nothing is stale it does no build or repeated QA. Scientific figures, workbooks and PDFs
+stay with their actual producer; arbitrary scripts are never replayed from a receipt.
+
+New review rounds retain a source snapshot during independent reading, without rereading raw
+patient records. Attach the report before applying findings. If actual scientific correction
+needs independent revalidation within the same open round, first run
+`tools/review_round.py prepare-revalidation --scope manuscript|package`, give its CURRENT hashes
+and neutral context to the real reviewer, then attach with `--revalidation`. That operation
+does not retrospectively certify an old report; no author-confirmation stop is added.
+
+When the host cannot write the report, save its actual complete Markdown reply, then use
+`tools/review_round.py ingest --scope manuscript|package --from-file <saved-reply.md>`
+(plus `--revalidation` for the prepared revalidation). One optional `<<<REPORT>>>...<<<END>>>`
+block is extracted verbatim. Ambiguous/missing markers and host state JSON are refused.
+Existing metadata/finding/coverage checks still apply. Do not search sibling chats or state
+dumps. Legacy rounds preserve their historic input sets; new scientific rounds also carry
+existing protocol v1/final/diff and analysis-contract context for prespecification judgment.
+
+Typed word limits may specify `basis: explicit|page_derived|estimated`. Non-explicit guidance
+needs `derivation` explaining the actual calculation (at least 20 characters) and generates
+an advisory in final portal measurements. Official explicit caps remain hard. Do not relabel
+an actual explicit cap to fit the current manuscript. Only items with `upload` other than
+`false` participate as uploads. Central abbreviations, no Word keep/outline controls, exact
+upload lists, scientific freezes and user-controlled AI disclosure remain unchanged.
+

@@ -69,7 +69,7 @@ def build_portal(project: Path) -> dict:
     from .journalrules import limits,compare
     requirements,rules = limits(project)
     manifest = load(project, MANIFEST)
-    manuscripts = [row for row in manifest.get("items", []) if row.get("role") == "manuscript"]
+    manuscripts = [row for row in manifest.get("items", []) if row.get("role") == "manuscript" and row.get("upload", True) is not False]
     if len(manuscripts) != 1:
         raise ValueError("portal extraction needs exactly one final manuscript DOCX")
     rel, manuscript = _safe_path(project, manuscripts[0]["file"])
@@ -113,6 +113,10 @@ def build_portal(project: Path) -> dict:
         "uploads": [{"role": item["role"], "file": item["file"]} for item in manifest["items"]
                     if item.get("upload", True)],
     }
+    from .journalrules import advisories
+    warnings = advisories({"main": main_words, "abstract": abstract_words}, rules)
+    if warnings:
+        payload["advisories"] = warnings
     return payload
 
 

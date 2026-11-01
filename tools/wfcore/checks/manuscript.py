@@ -485,6 +485,8 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
     if planned is None:
         problems.append("01_protocol/artifact_plan.json is missing or invalid")
     for item in manifest.get("items", []):
+        if item.get("upload", True) is False:
+            continue
         role = str(item.get("role", "")).casefold()
         raw = str(item.get("file", ""))
         path = ctx.p(raw)

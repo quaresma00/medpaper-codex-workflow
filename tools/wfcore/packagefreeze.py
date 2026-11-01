@@ -53,7 +53,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest().upper()
 
 
-def expected_files(project: Path) -> dict[str, Path]:
+def expected_files(project: Path, *, require_exists: bool = True) -> dict[str, Path]:
     """Return actual upload files only. Caches and working sources are not uploads."""
     project = project.resolve()
     files: dict[str, Path] = {}
@@ -73,7 +73,7 @@ def expected_files(project: Path) -> dict[str, Path]:
             raise ValueError("upload_manifest.json is reserved release metadata, not an upload filename")
         if normalized in files:
             raise ValueError(f"duplicate upload: {normalized}")
-        if not path.is_file():
+        if require_exists and not path.is_file():
             raise ValueError(f"manifest item missing: {normalized}")
         files[normalized] = path
     if not files:
