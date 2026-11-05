@@ -660,11 +660,14 @@ def audit_docx(path: Path, style: dict, kind: str = "",
 
 
 def run_pandoc(inputs: list[Path], output: Path, bibliography: Path | None,
-               csl: Path | None) -> None:
+               csl: Path | None, reference_doc: Path | None = None) -> None:
     pandoc = shutil.which("pandoc")
     if not pandoc:
         raise RuntimeError("pandoc is required to render Markdown and citations")
     cmd = [pandoc, *map(str, inputs)]
+    if reference_doc:
+        if not reference_doc.is_file(): raise ValueError("Explicit journal Word template missing; no default substituted")
+        cmd += ["--reference-doc",str(reference_doc)]
     if bibliography:
         cmd += ["--citeproc", f"--bibliography={bibliography}"]
     if csl:
@@ -683,6 +686,9 @@ def build(args) -> int:
     from wfcore.dependencies import guard_build
     from wfcore.revision import guard_outputs, record_build
     guard_build(project_root())
+    from wfcore.journalcontext import guard as guard_journal, build_identity
+    guard_journal(project_root())
+    journal_build=build_identity(project_root())
     guard_outputs(project_root(), [args.output])
     style = load_style(args.style_config)
     if style.get("all_text_black") is not True or style.get("external_hyperlinks") is not False:
@@ -706,6 +712,11 @@ def build(args) -> int:
         if not args.csl: raise ValueError("CSL patch needs an explicitly sourced base --csl")
         profile_inputs.append(patch_path)
     actual_inputs = [p for p in [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,*profile_inputs] if p is not None]
+    reference_doc=getattr(args,"reference_doc",None)
+    if reference_doc:
+        if not reference_doc.is_file() or reference_doc.suffix.lower()!=".docx": raise ValueError("Use the actual current official DOCX reference template")
+        Document(reference_doc)  # Parse the actual template before touching the output.
+        actual_inputs.append(reference_doc)
     before = {p:_sha256(p) for p in actual_inputs}
     try:
         source_problems = _source_problems(args.kind, args.input)
@@ -719,7 +730,8 @@ def build(args) -> int:
                 from wfcore.cslpatch import apply
                 used_csl = Path(folder)/"journal.csl"
                 apply(args.csl, patch_path, used_csl)
-            run_pandoc(args.input, candidate, args.bibliography, used_csl)
+            if reference_doc: run_pandoc(args.input,candidate,args.bibliography,used_csl,reference_doc=reference_doc)
+            else: run_pandoc(args.input, candidate, args.bibliography, used_csl)
             if tables:
                 from wfcore.wordtables import append_tables
                 document = Document(candidate)
@@ -734,6 +746,8 @@ def build(args) -> int:
                 raise ValueError("DOCX audit failed: " + "; ".join(problems))
             if any(not p.is_file() or _sha256(p)!=h for p,h in before.items()):
                 raise ValueError("DOCX input changed during build; previous output preserved")
+            if journal_build!=build_identity(project_root()):
+                raise ValueError("Target journal/configuration changed during Word build; previous output preserved")
             candidate.replace(args.output)
     except Exception as exc:  # noqa: BLE001
         print(f"DOCX build failed: {exc}", file=sys.stderr)
@@ -742,7 +756,7 @@ def build(args) -> int:
     plan = project/"08_submission/integration/artifact_plan.json"
     if not plan.is_file():
         plan = project/"01_protocol/artifact_plan.json"
-    observed = [*args.input,args.style_config,args.bibliography,args.csl,*table_inputs,*profile_inputs,Path(__file__),
+    observed = [*args.input,args.style_config,args.bibliography,args.csl,reference_doc,*table_inputs,*profile_inputs,Path(__file__),
                 ROOT/"tools/wfcore/journalspec.py",ROOT/"tools/wfcore/determinism.py",
                 ROOT/"tools/wfcore/qualitylimits.py",
                 ROOT/"tools/wfcore/cslpatch.py",
@@ -754,6 +768,7 @@ def build(args) -> int:
                  parameters={"kind":args.kind,"style":str(args.style_config),"bibliography":str(args.bibliography or ""),
                              "csl":str(args.csl or ""),"tables_json":str(tables_path or ""),
                              "inputs":[str(p) for p in args.input], "csl_patch":str(patch_path or ""),
+                             "reference_doc":str(reference_doc or ""),
                              "legend_scope":getattr(args,"legend_scope",None) or style.get("figure_legend_scope","all")})
     print(f"built and audited {args.kind} -> {args.output}")
     return 0
@@ -831,6 +846,7 @@ def main() -> int:
     p.add_argument("--style-config", type=Path, required=True)
     p.add_argument("--bibliography", type=Path)
     p.add_argument("--csl", type=Path)
+    p.add_argument("--reference-doc",type=Path,help="actual official Word reference template; missing explicit templates never fall back")
     p.add_argument("--csl-patch", type=Path, help="local formatting-only patch; never edit a shared CSL or reference metadata")
     p.add_argument("--tables-json", type=Path, help="declared XLSX sheets/ranges/orientations appended as native three-line tables")
     p.add_argument("--legend-scope",choices=["main","supp","all"],help="actual journal legend inventory")

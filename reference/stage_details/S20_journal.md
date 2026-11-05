@@ -13,6 +13,9 @@ Choose a legitimate current SCIE venue that maximises realistic acceptance proba
 then freeze its actual author instructions and Word-format rules.
 
 ## Procedure
+Follow `reference/journal-adaptation.md`: `journal.py begin` archives the prior guide/config/
+package together; fetch/register actual current sources, bind their atomic `guide_rules`,
+and seal before integration initialization. Existing bibliography/scientific freeze remains.
 Read `reference/content-aware-amendments.md`. Freeze sourced article-specific presentation
 fields (`main_text_headings`, `keywords.min/max/separator`, `blinded_main_manuscript`,
 `spelling`, `number_format`) before expensive construction. Builders must apply them to the
@@ -35,9 +38,10 @@ from a `journal-switch`, which still preserves the same accepted science.
    journals are fully acceptable and should outrank prestige targets with poor odds.
 4. Present the shortlist and wait for the user's choice. Do not default to the highest
    impact factor.
-5. Fetch the chosen journal's current official author instructions, snapshot the raw page
-   under `project/08_submission/cache/`, and write `target_journal.json` with the required
-   SCIE, JCR, integrity and retrieval fields.
+5. Write the actual next target to a task-local JSON, with ISSN, article_type,
+   submission_stage and existing SCIE/JCR/integrity/guide fields. Run `journal.py begin`
+   before fetching its official pages/PDFs. Use browser/registration fallback when needed;
+   original snapshots remain under `project/08_submission/cache/`.
 6. Write `guidelines_extract.md` with sourced sections for word limits, abstract, keywords,
    references, figures and legends, tables, supplements, statements, cover letter, required
    upload items and formatting.
@@ -74,7 +78,8 @@ from a `journal-switch`, which still preserves the same accepted science.
   "fallbacks": ["font_family", "body_font_pt", "title_font_pt", "section_heading_font_pt", "subsection_heading_font_pt", "line_spacing", "paragraph_spacing_after_pt", "margins_in", "paper_size"]
 }
 ```
-8. Derive a pristine journal-specific integration workspace from the accepted scientific
+8. Complete source-bound `guide_rules` in submission_requirements.json, run `journal.py seal`
+   and `journal.py check`, then derive a pristine journal-specific integration workspace from the accepted scientific
    freeze after the target journal, guideline snapshot and style file are final:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/journal_workspace.py init
@@ -117,9 +122,9 @@ unstated. Apply those caps to the derived plan at S22 before Word production, no
 - `fallbacks` lists only the canonical JSON keys whose rules are silent; every other style
   value must be supported by the official `guidelines_url`, which is included in `source`.
 - The S19 scientific freeze must verify unchanged before journal selection closes.
-- For a later journal, run `journal_workspace.py init --replace`; the tool preserves the
-  previous generated integration and bundle under `08_submission/journal_archives/`, then
-  derives the new target from the same frozen scientific master.
+- For a later journal/article type/submission stage, run `journal.py begin --target-file`
+  with its actual fresh target, then acquire/bind/seal its own guide. `init --replace` alone
+  cannot carry a previous guide/style forward. Reuse author facts and scoped scientific sources.
 
 ## Close
 ```

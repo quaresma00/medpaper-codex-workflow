@@ -32,6 +32,9 @@ def _render(project, figure_id, timeout=180):
     guard_build(project)
     state = State(project).load()
     journal_mode=state.current in {"S23_package","S24_package_human_review"} or permits(project,"S23_package")
+    if journal_mode:
+        from wfcore.journalcontext import guard
+        guard(project)
     if state.current != "S11_figures" and not permits(project, "S11_figures") and not journal_mode:
         raise ValueError("Publication R figures run at S11 or an explicitly scoped S11 revision")
     plan_path = project / ("08_submission/integration/artifact_plan.json" if journal_mode else "01_protocol/artifact_plan.json")

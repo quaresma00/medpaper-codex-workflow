@@ -1,5 +1,10 @@
 # S23 - Build and verify only actual journal uploads
 
+Follow `reference/journal-adaptation.md`: verify the current sealed guide context before
+builds. Use actual selected CSL/official template assets, inspect manual guide clauses in the
+same rendered QA pass, then run existing submission measurements once. Required clauses
+without implementation/current evidence remain pending; a built Word is not compliance.
+
 Freeze content, author/blinding facts, official rules and the exact upload list before
 expensive builds. Keep one source/dependency path; compose from the real build entrypoint.
 Resolve routine medical prose, table/figure meaning and reference coverage before building.

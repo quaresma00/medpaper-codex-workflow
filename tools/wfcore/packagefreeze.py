@@ -20,6 +20,7 @@ REQUIRED_EVIDENCE = (
     "08_submission/package_content_baseline.json",
 )
 OPTIONAL_EVIDENCE = (
+    "08_submission/journal_context.json",
     "07_manuscript/scientific_master_freeze.json",
     "08_submission/integration/journal_workspace.json",
     "08_submission/integration/full_manuscript.md",
@@ -86,6 +87,10 @@ def sync_evidence(project: Path) -> dict:
     records = []
     candidates = [*REQUIRED_EVIDENCE, *OPTIONAL_EVIDENCE,
                   "08_submission/submission_requirements.json", "08_submission/portal_fields.json"]
+    from .journalcontext import enabled,current,CONTEXT
+    if enabled(project):
+        context=current(project)
+        candidates.extend(source[field] for source in context["sources"].values() for field in ("raw","text"))
     for rel in candidates:
         path = project / rel
         if path.is_file():
@@ -93,7 +98,7 @@ def sync_evidence(project: Path) -> dict:
     # Requirement content matters to the audit, but its refresh is not an author revision.
     context = [row for row in records if row["path"] in {
         "08_submission/target_journal.json", "08_submission/guidelines_extract.md",
-        "08_submission/submission_requirements.json", "08_submission/docx_style.json"}]
+        "08_submission/submission_requirements.json", "08_submission/docx_style.json", CONTEXT}]
     payload = {"schema_version": 1, "files": records,
                "guideline_cache": "08_submission/cache/",
                "audit_context_id": hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest().upper()}

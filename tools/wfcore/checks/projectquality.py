@@ -6,6 +6,17 @@ from . import Ctx,Result,check
 from ..readiness import load
 from ..packagefreeze import _safe_path,_sha256
 
+@check("journal_requirements_current")
+def journal_requirements_current(ctx):
+    from .. import journalcontext as jc
+    if not jc.enabled(ctx.project) and ctx.state.pin_excludes("S20_journal","1.24.0"):
+        return Result(True,"journal_requirements_current","Completed legacy journal attempt remains historical; begin a new context at the next journal switch")
+    problems=jc.problems(ctx.project)
+    if not problems and ctx.spec.get("final"):
+        from ..submissionqc import verify
+        problems=verify(ctx.project)
+    return Result(not problems,"journal_requirements_current","; ".join(problems[:8]) or "Current journal/article/stage, actual official sources and configured/final-file rule checks agree")
+
 @check("medical_display_story")
 def medical_display_story(ctx):
     from ..displayquality import story_problems

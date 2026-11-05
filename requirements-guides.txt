@@ -1,0 +1,4 @@
+# Optional local readable extraction; complete original/visible text works without it.
+# uv pip install --python .venv/Scripts/python.exe -r requirements-guides.txt
+trafilatura==2.3.1
+# Crawl4AI/browser installation is deliberately on demand, not a science dependency.

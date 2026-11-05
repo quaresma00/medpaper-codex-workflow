@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.23.0"
+  version: "1.24.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -109,8 +109,12 @@ Use clinical table hierarchy/summaries and independent upper-left R panel tags. 
 production renders in the existing display review before Results. Prototype PASS or use of
 R alone is insufficient. Borrow external ideas without replacing native Codex contracts.
 
-For current sequencing, source-specific declarations, prior-study numeric evidence, soft size budgets,
-optional third-party copies and exact-version approval, read `reference/quality-before-writing.md`.
+At S20-S25 or transfer use `reference/journal-adaptation.md` and `tools/journal.py` for actual
+current-journal acquisition, bound rules and final-file checks. Keep approved science and
+the existing checkpoint; old guides/styles/approvals cannot certify the new journal.
+
+For current sequencing, source-specific declarations, prior-study numeric evidence, soft size
+budgets, optional third-party copies and exact-version approval, read `reference/quality-before-writing.md`.
 
 At S07-S11/S17 and journal acceptance use `reference/medical-reader-presentation.md`.
 Keep clinical meaning and legitimate method terminology; decode actual tables/figures and

@@ -35,7 +35,7 @@ def command(project: Path, rel: str, receipt: dict) -> list[str]:
     for src in inputs:
         cmd += ["--input", str(_path(project, src))]
     for field, flag in (("bibliography", "--bibliography"), ("csl", "--csl"),
-                        ("tables_json", "--tables-json"), ("csl_patch", "--csl-patch")):
+                        ("tables_json", "--tables-json"), ("csl_patch", "--csl-patch"), ("reference_doc", "--reference-doc")):
         if params.get(field):
             cmd += [flag, str(_path(project, params[field]))]
     if params.get("legend_scope"):
@@ -45,6 +45,8 @@ def command(project: Path, rel: str, receipt: dict) -> list[str]:
 
 def plan(project: Path) -> list[dict]:
     from .revision import guard_outputs
+    from .journalcontext import guard,build_identity
+    guard(project); current_identity=build_identity(project)
     uploads = expected_files(project, require_exists=False)
     receipts = buildproof.load(project)
     pending = []
@@ -56,7 +58,7 @@ def plan(project: Path) -> list[dict]:
             continue  # Images/PDFs/workbooks stay with their own producer and scoped QA.
         if output.is_file() and _sha256(output) != rec.get("sha256"):
             raise ValueError(f"{rel}: changed outside its recorded build; preserve author edits and resolve them first")
-        if output.is_file() and buildproof.inputs_current(rec):
+        if output.is_file() and buildproof.inputs_current(rec) and all(rec.get(k)==v for k,v in current_identity.items()):
             continue
         cmd = command(project, rel, rec)
         guard_outputs(project, [output])

@@ -66,6 +66,8 @@ def docx_sections(path: Path, aliases: dict | None = None) -> tuple[str, dict[st
 
 
 def build_portal(project: Path) -> dict:
+    from .journalcontext import guard
+    guard(project)
     from .journalrules import limits,compare
     requirements,rules = limits(project)
     manifest = load(project, MANIFEST)

@@ -12,11 +12,14 @@ RECEIPT = ".wf/submission_measurements.json"
 CHECKLIST = "08_submission/evidence/SUBMISSION_CHECKLIST.md"
 BEGIN, END = "<!-- medpaper measured begin -->", "<!-- medpaper measured end -->"
 RULE_FILES = [Path(__file__), *(Path(__file__).with_name(name + ".py") for name in
-    ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch", "qualitylimits")),
+    ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch", "qualitylimits",
+     "journalcontext", "guides", "guidelinerules")),
     Path(__file__).parents[1]/"manuscript/build_docx.py"]
 
 
 def measure(project: Path) -> dict:
+    from . import journalcontext as jc
+    jc.guard(project)
     from manuscript.build_docx import load_style, audit_docx, planned_figure_ids, figure_legend_cap
     from .submission import verify_portal
     files = expected_files(project)  # Empty/missing manifest must fail, never PASS zero files.
@@ -61,10 +64,28 @@ def measure(project: Path) -> dict:
                 "08_submission/portal_fields.json", "00_input/author_info.json"):
         if (project / rel).is_file():
             sources[rel] = _sha256(project / rel)
+    reviews={}
+    if jc.enabled(project):
+        from .guidelinerules import measure as measure_rules
+        old=project/RECEIPT
+        reviews=json.loads(old.read_text(encoding="utf-8")).get("guide_rule_reviews",{}) if old.is_file() else {}
+        rows+=measure_rules(project,reviews)
+        context=jc.current(project)
+        for rel in [jc.CONTEXT,*(v[field] for v in context["sources"].values() for field in ("raw","text")),
+                    *(v["render"] for v in reviews.values() if v.get("context_id")==context["context_id"])]:
+            sources[rel]=_sha256(project/rel)
+        identity=jc.build_identity(project)
+        for rel,path in files.items():
+            if path.suffix.lower()==".docx":
+                from .buildproof import load as builds
+                receipt=builds(project).get(rel,{})
+                if any(receipt.get(k)!=v for k,v in identity.items()):
+                    rows.append({"file":rel,"status":"FAIL","checks":"current journal build identity","defects":["DOCX has no matching current-context build receipt"]})
     engine = {str(path.resolve()): _sha256(path) for path in RULE_FILES}
     signature = hashlib.sha256(json.dumps({"sources": sources, "engine": engine}, sort_keys=True).encode()).hexdigest()
     return {"schema_version": 1, "input_signature": signature, "sources": sources, "engine": engine, "rows": rows,
-            "ok": all(row["status"] == "PASS" for row in rows),
+            "guide_rule_reviews":reviews,"guide_reviews_signature":jc.digest(reviews),
+            "ok": all(row["status"] != "FAIL" for row in rows),
             "visual_acceptance": "Not certified by these measurements; actual final rendered pages must be inspected."}
 
 
@@ -91,7 +112,13 @@ def write(project: Path) -> dict:
 
 def verify(project: Path) -> list[str]:
     try:
+        from .journalcontext import guard
+        guard(project)
         receipt = json.loads((project / RECEIPT).read_text(encoding="utf-8"))
+        if "input_signature" not in receipt: return ["Manual guide inspection updated; run final-file measurements once"]
+        from .journalcontext import enabled,digest
+        if enabled(project) and receipt.get("guide_reviews_signature")!=digest(receipt.get("guide_rule_reviews",{})):
+            return ["Manual guide inspection changed after measurements; remeasure the affected final-file rules"]
         # Hash current sources/rules first. Do not repeat passed measurements on unchanged files.
         for rel, digest in receipt["sources"].items():
             if not (project / rel).is_file() or _sha256(project / rel) != digest:

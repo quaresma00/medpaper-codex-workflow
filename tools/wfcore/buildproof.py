@@ -72,6 +72,12 @@ def record(project: Path, output: Path, sources: list[Path], *, entrypoints=None
     direct = [p.resolve().relative_to(project).as_posix() for p in entrypoints or []]
     row = {"sha256": _sha256(output), "content_sha256": content_digest(output), "sources": inputs,
            "entrypoints": direct, "tool": tool, "parameters": parameters or {}}
+    if rel.startswith("08_submission/"):
+        from .journalcontext import enabled, build_identity, projection, TARGET
+        if enabled(project):
+            row.update(build_identity(project))
+            target=str((project/TARGET).resolve())
+            if target in inputs: row["source_projections"]={target:projection(project,TARGET)}
     from .paths import repo_root
     row["engine_inputs"]=[name for name in inputs if any(Path(name).is_relative_to(repo_root()/folder)
                                                        for folder in ("tools","pipeline","reference"))]
@@ -82,8 +88,15 @@ def record(project: Path, output: Path, sources: list[Path], *, entrypoints=None
 
 def inputs_current(receipt: dict) -> bool:
     # A historic builder version is provenance, not a reason to redo an unchanged manuscript.
-    return bool(receipt.get("sources")) and all(Path(p).is_file() and _sha256(Path(p)) == h for p,h in receipt["sources"].items()
-                                                if p not in receipt.get("engine_inputs",[]))
+    for p,h in receipt.get("sources",{}).items():
+        if p in receipt.get("engine_inputs",[]): continue
+        path=Path(p)
+        if not path.is_file(): return False
+        if p in receipt.get("source_projections",{}):
+            from .journalcontext import projection,TARGET
+            if projection(path.parents[1],TARGET)!=receipt["source_projections"][p]: return False
+        elif _sha256(path)!=h: return False
+    return bool(receipt.get("sources"))
 
 
 def project_inputs(project: Path, receipt: dict) -> list[str]:

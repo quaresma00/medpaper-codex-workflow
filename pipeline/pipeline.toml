@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.23.0"
+version = "1.24.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -729,6 +729,10 @@ layer = "journal"
 [[stage.gate]]
 check = "journal_display_fit"
 
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
+
 [[stage]]
 id = "S21_authors"
 title = "Collect authors and journal-required administrative statements"
@@ -769,6 +773,10 @@ paths = ["08_submission/integration/full_manuscript.md", "08_submission/integrat
 
 [[stage.gate]]
 check = "study_governance"
+
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
 
 [[stage]]
 id = "S22_polish"
@@ -831,6 +839,10 @@ allowed = ["YES"]
 [[stage.gate]]
 check = "executor_acceptance"
 layer = "journal"
+
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
 
 [[stage]]
 id = "S23_package"
@@ -899,6 +911,11 @@ check = "executor_acceptance"
 layer = "journal"
 final = true
 
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
+final = true
+
 [[stage]]
 id = "S24_package_human_review"
 title = "User review, modification and explicit confirmation of the final submission package"
@@ -954,6 +971,11 @@ check = "executor_acceptance"
 layer = "journal"
 final = true
 
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
+final = true
+
 [[stage]]
 id = "S25_submission_audit"
 title = "Independent reader, editor and journal-guideline audit of the user-confirmed frozen package"
@@ -1007,6 +1029,11 @@ check = "submission_measurements_current"
 check = "portal_fields_current"
 
 # ------------------------------------------------------------------------------
+[[stage.gate]]
+check = "journal_requirements_current"
+since = "1.24.0"
+final = true
+
 # Directories where the agent may legitimately create many files.
 # Anything under project/ that matches neither a stage `outputs` entry nor one of
 # these globs is reported by `wf clean` / the no_orphans check.
@@ -1030,6 +1057,7 @@ globs = [
   "06_refs/deepread/*.md",
   "07_manuscript/review_packages/*.zip",
   "08_submission/integration/**",
+  "08_submission/journal_context.json",
   "08_submission/final_copy/**",
   "08_submission/journal_archives/**",
   "08_submission/cache/**",

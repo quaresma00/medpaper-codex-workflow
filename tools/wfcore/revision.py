@@ -221,6 +221,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
                          "08_submission/portal_fields.json"})
     if revision.get("resume_from_science"):
         controls.add("08_submission/integration/journal_workspace.json")
+    if "S20_journal" in stages:
+        controls.add("08_submission/journal_context.json")
     if "S05_analysis" in stages:
         controls.update({"03_analysis/analysis_log.md", "03_analysis/notes.md", "03_analysis/method_scan.md"})
     if "S12_reconcile" in stages:

@@ -5,6 +5,14 @@ history and not another skill, determines the current stage, allowed outputs, an
 
 ## Current quality policy (v1.14)
 
+At S20-S25 and any journal transfer read `reference/journal-adaptation.md`. Start the actual
+journal/ISSN/article-type/initial-or-revision context before acquiring its complete official
+sources. Bind atomic rules to existing configuration, seal, then build only current-context
+uploads and measure actual compliance. Old guides, styles, CSL and approval pointers leave
+the active attempt together. Same-context resume preserves edits; no scientific rewind or
+new default agent/author stop. Sources and manual observations never substitute for real
+retrieval/inspection. Use the optional local extraction/browser route only when useful.
+
 At S07/S10/S11/S09 use the v1.22 medical display rules in `reference/project-benchmarking.md`.
 The medical scientific story determines the display inventory; implementation receipts and
 economy goals do not. Applicable selection is main Figure 1, with real counting units/branches;

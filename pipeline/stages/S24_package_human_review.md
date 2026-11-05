@@ -1,5 +1,10 @@
 # S24 - Package subagent review and scoped correction rounds
 
+For a changed target/article type/initial-or-revision stage, follow
+`reference/journal-adaptation.md` inside a sealed journal-switch batch. Start a fresh guide
+context, preserve the old attempt, reuse accepted science/author facts and update only true
+submission consumers. Do not carry old configuration or replay completed scientific stages.
+
 ## Purpose
 Independently read actual journal uploads, fix safe defects in the workflow, report once,
 then ask whether another round is needed. No review ZIP. User inspection and edits remain

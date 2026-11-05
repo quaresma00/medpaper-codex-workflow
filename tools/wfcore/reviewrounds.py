@@ -42,6 +42,11 @@ def inputs(project: Path, scope: str, *, protocol_context: bool | None = None) -
         path = project / rel
         if path.is_file():
             files[rel] = path
+    from .journalcontext import enabled,current,CONTEXT
+    if enabled(project):
+        context=current(project);files[CONTEXT]=project/CONTEXT
+        for source in context["sources"].values():
+            for field in ("raw","text"): files[source[field]]=project/source[field]
     return {rel: _sha256(path) for rel, path in sorted(files.items())}
 
 
@@ -91,7 +96,11 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
             mode = "delta"
         except (OSError, ValueError, TypeError, KeyError):
             mode = "full (dependency uncertainty)"
-    number = int(previous["id"][1:]) + 1 if previous else 1
+    # Journal switches remove only the active package pointer, keeping historical Pxxx
+    # records immutable. Never restart at P001 and overwrite the previous journal's review.
+    prefix=SCOPES[scope][0]
+    prior=[int(p.stem[1:]) for p in (project/ROOT).glob(prefix+"[0-9][0-9][0-9].json")]
+    number=max([int(previous["id"][1:]) if previous else 0,*prior])+1
     record = {"schema_version": 5 if version_tuple(version)>=(1,21,0) else 4 if version_tuple(version)>=(1,19,0) else 3 if version_tuple(version)>=(1,16,0) else 2, "id": f"{SCOPES[scope][0]}{number:03d}", "scope": scope,
               "started_at": now(), "mode": mode, "before": current,
               "reviewed_artifacts": selection, "changed_since_previous": differences,

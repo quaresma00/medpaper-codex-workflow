@@ -1,5 +1,10 @@
 # S20 - Choose a legitimate current SCIE journal and isolate its adaptation
 
+Use `reference/journal-adaptation.md` for this stage and later journal switches. After the
+user chooses the target, begin its exact journal/article/initial-or-revision context, capture
+complete official sources, map atomic clauses in existing requirements, seal and then
+initialize integration. Old guide/style/configuration must not enter a new attempt.
+
 Verify current official author instructions, article type, indexing and realistic fit. Q3/Q4
 are acceptable; do not claim a current JCR quartile from an inaccessible primary source.
 Use the existing dated source cache when valid; unresolved indexing or integrity concerns

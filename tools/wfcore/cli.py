@@ -48,6 +48,7 @@ NON_OVERRIDABLE_GATES = {
     "reader_review_coverage",
     "medical_benchmark", "literature_coverage", "executor_acceptance",
     "medical_display_story", "medical_display_production",
+    "journal_requirements_current",
     "numbers_have_provenance", "numbers_cross_match",
     "research_context_known", "study_governance", "variable_definitions", "statistical_reporting_plan", "source_record_spotcheck", "reference_usage",
     "dependent_checks_pending",
@@ -335,6 +336,11 @@ def cmd_handoff(args) -> int:
     revision=json.loads((st.dir/"revisions"/(active+".json")).read_text(encoding="utf-8")) if active else {}
     print(f"Stage: {stage.id} | {stage.title}")
     print(f"Versions: engine={pipe.meta['version']}; state={st.data.get('pipeline_version')}; pin={st.data.get('engine_pin')}")
+    from .journalcontext import enabled,CONTEXT
+    if enabled(project):
+        journal=json.loads((project/CONTEXT).read_text(encoding="utf-8"))
+        print("Active journal (recorded): "+json.dumps(journal.get("identity",{}),ensure_ascii=False)+
+              "; context="+str(journal.get("context_id",""))+"; guide sealed="+str(bool(journal.get("seal"))))
     print("Card: "+str(stage.card_path()))
     detail=paths.repo_root()/"reference/stage_details"/stage.card_path().name
     if detail.is_file(): print("Details (read relevant procedure once): "+str(detail))

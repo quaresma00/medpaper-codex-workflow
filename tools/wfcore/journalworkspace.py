@@ -57,6 +57,8 @@ def _target(project: Path) -> tuple[dict, str]:
 
 def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, bool]:
     project = project.resolve()
+    from .journalcontext import guard,enabled,current
+    guard(project)
     ok, problems, freeze = verify_scientific_freeze(project)
     if not ok or freeze is None:
         raise ValueError("scientific master is not frozen: " + "; ".join(problems[:8]))
@@ -78,20 +80,7 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
                 "an integration workspace for another master/journal already exists; "
                 "use --replace only after preserving any submission attempt that still has value"
             )
-        archive_root = project / "08_submission/journal_archives"
-        archive_root.mkdir(parents=True, exist_ok=True)
-        journal = str(previous.get("journal", "previous-journal"))
-        slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in journal).strip("-")[:48]
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        archive = archive_root / f"{slug or 'previous-journal'}-{stamp}"
-        archive.mkdir(parents=True, exist_ok=False)
-        integration = project / "08_submission/integration"
-        if integration.is_dir():
-            shutil.move(str(integration), str(archive / "integration"))
-        bundle = project / "08_submission/bundle"
-        if bundle.is_dir() and any(bundle.iterdir()):
-            shutil.move(str(bundle), str(archive / "bundle"))
-            bundle.mkdir(parents=True, exist_ok=True)
+        raise ValueError("A new journal/article/stage requires tools/journal.py begin --target-file, fresh guide capture and seal; --replace cannot retain the previous guide/style. For a renewed scientific freeze use rebase after merging its approved delta.")
 
     records_by_path = {item["path"]: item for item in freeze["files"]}
     copies = []
@@ -125,6 +114,7 @@ def initialise(project: Path, *, replace: bool = False) -> tuple[Path, dict, boo
         "files": copies,
         "boundary": "journal-specific copies only; frozen 07_manuscript sources remain unchanged",
     }
+    if enabled(project): payload["journal_context_id"]=current(project)["context_id"]
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     from .claims import copy_for_journal
@@ -142,6 +132,11 @@ def verify(project: Path, *, require_pristine: bool = False) -> tuple[bool, list
     except json.JSONDecodeError as exc:
         return False, [f"{MANIFEST_REL} is invalid JSON: {exc}"], None
     problems: list[str] = []
+    from .journalcontext import enabled,problems as context_problems,current
+    if enabled(project):
+        problems.extend(context_problems(project))
+        if not problems and payload.get("journal_context_id")!=current(project)["context_id"]:
+            problems.append("Integration workspace belongs to a different journal/article/submission attempt")
     if payload.get("schema_version") != SCHEMA_VERSION:
         problems.append("journal workspace schema is invalid")
     ok, freeze_problems, freeze = verify_scientific_freeze(project)
@@ -232,4 +227,8 @@ def rebase(project: Path, why: str) -> Path:
                     "rebase": {"round": revision["round_id"], "why": why,
                                "at": datetime.now(timezone.utc).isoformat()}})
     atomic_json(output, payload)
+    from .journalcontext import enabled,current,CONTEXT
+    if enabled(project):
+        context=current(project);context["scientific_freeze_id"]=freeze["freeze_id"]
+        atomic_json(project/CONTEXT,context)
     return output
