@@ -2168,8 +2168,8 @@ def run_polish(proj: Path) -> None:
     out = p.stdout or ""
     counts = json.loads((integration / "polish_report.json").read_text(encoding="utf-8"))["counts"]
     record("tier-A AI phrases detected", counts["ai_tier_a"] >= 10, f"{counts['ai_tier_a']} found")
-    record("structural tells detected", counts["structure_blocking"] >= 1,
-           f"{counts['structure_blocking']} blocking")
+    record("contextual structure prompts detected", counts["structure_advisory"] >= 1,
+           f"{counts['structure_advisory']} advisory")
     record("house-style defects detected", counts["style_blocking"] >= 4,
            f"{counts['style_blocking']} blocking")
     for want, label in [("utilize", "inflated verb"), ("range_dash", "hyphen numeric range"),
@@ -2179,7 +2179,7 @@ def run_polish(proj: Path) -> None:
         record(f"caught: {label}", want in out, "" if want in out else f"{want!r} absent from report")
 
     r = gate("ai_tells_clean")
-    record("ai_tells_clean rejects the slop", not r.ok, r.detail[:100])
+    record("wording prompts do not mechanically block prose", r.ok, r.detail[:100])
     r = gate("style_consistent")
     record("style_consistent rejects the slop", not r.ok, r.detail[:100])
 
@@ -2239,7 +2239,7 @@ def run_polish(proj: Path) -> None:
     disc.write_text(CLEAN + "\nThe guideline states that screening plays a crucial role.\n",
                     encoding="utf-8")
     polish("lint")
-    record("allowlist absent -> phrase blocks", not gate("ai_tells_clean").ok)
+    record("a conventional phrase needs judgment, not an allowlist", gate("ai_tells_clean").ok)
     (integration / "polish_allowlist.tsv").write_text(
         "plays a crucial role\tquoted verbatim from the 2023 guideline\n", encoding="utf-8")
     polish("lint")
@@ -2403,7 +2403,8 @@ def main() -> int:
                              ("test_scientific_decisions_120.py","scientific decisions bind the evidence at judgment time"),
                              ("test_source_access_120.py","authentic sources distinguish abstract availability from full-text access"),
                              ("test_kiro_121.py","KIRO migration: review isolation, fail-fast incremental builds and actual upload rules"),
-                             ("test_medical_displays_122.py","medical display story, actual rendered review, table hierarchy and independent R panel tags")):
+                             ("test_medical_displays_122.py","medical display story, actual rendered review, table hierarchy and independent R panel tags"),
+                             ("test_medical_production_123.py","contextual medical wording, current lint evidence and numerical forest columns")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

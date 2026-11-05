@@ -10,6 +10,11 @@ Retain an approved legacy Python graph or a concrete documented Python exception
 Missing R packages require repair, not an unannounced Python fallback.
 
 ## Procedure
+Choose the design-appropriate recipe using `reference/r-first.md`'s medical figure routes.
+The endpoint, measure and required uncertainty determine the graph; a theme cannot supply
+missing clinical content. Use `medpaper_forest_table` for an appropriate aligned numerical
+forest with explicit measure/null/scale; it formats existing estimates without refitting.
+
 1. Confirm Rscript and the actual required packages/environment. Put renderer="R" in each
    new figure entry, plus its .R script, PNG/PDF paths, width, source_results and archetype.
    A Python exception declares renderer="Python" and a substantive renderer_reason.
@@ -45,7 +50,8 @@ Missing R packages require repair, not an unannounced Python fallback.
    only decode the display, panels, symbols and necessary test/error-bar definitions.
    They do not repeat Results directions/effect estimates. Preserve journal-mandated risk
    tables, flow counts, units and essential source-bound statistics. Use the existing
-   legend word ceiling; record moved material in 05_figures/moved_to_legend.md.
+   legend length as advisory unless the journal explicitly limits it; record actual moved
+   material in 05_figures/moved_to_legend.md.
 8. Write 05_figures/manifest.json with actual renderer, script, source_results, png/pdf,
    width/size_mm/dpi, R/package versions or the Python exception, and review_rounds.
    SVG/rmeta/artist sidecars are backstage QC, not submission uploads.

@@ -16,6 +16,13 @@ necessary scientific methods/uncertainty, centralized abbreviations and scoped i
 Borrow external workflow ideas only when they fit these native contracts; do not replace them
 wholesale or import unrelated stages, defaults, agents, checks or uploads.
 
+At section drafting use the contracts in `reference/medical-reader-presentation.md`, not
+only a final word scan. Language-pattern/density matches are advisory; preserve legitimate
+medical terms and justified uncertainty. Actual scientific defects, source integrity and
+explicit journal requirements still block. Use design-appropriate table summaries without
+default baseline P values and the relevant R figure route in `reference/r-first.md`.
+Do not add named reporting checklists before S20 or install an entire optional package stack.
+
 Read `reference/quality-before-writing.md` for S01-S09, assembly, journal adaptation and review.
 It supersedes old pre-display Results, numeric quota, blanket author-question and automatic
 reading-copy text below. S10 -> S11 -> S09 -> S12; stable IDs are not execution order.

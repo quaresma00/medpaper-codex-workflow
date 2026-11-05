@@ -13,6 +13,10 @@ displays alongside source JSON; S12 does crosschecks, not a planned rewrite of t
 - `05_figures/legends.md`, `04_tables/table_captions.md` - so the prose does not repeat them
 
 ## Procedure
+Apply `reference/medical-reader-presentation.md`'s drafting contract now. Read the accepted
+tables/figures first, write the medical finding, then check the actual comparison and
+uncertainty; a successful model run is not the result narrative.
+
 1. Organize Results around the clinical question: who was studied, the principal outcome,
    and clinically meaningful supporting findings. Cohort/flow, characteristics, primary,
    secondary and sensitivity results are useful conventions, not mandatory headings.

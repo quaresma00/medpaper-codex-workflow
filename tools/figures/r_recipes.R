@@ -22,6 +22,32 @@ medpaper_forest <- function(data, measure="Adjusted odds ratio", null=1, log_sca
   p
 }
 
+# One measured ggplot: exact source estimates beside their intervals, not a new
+# model or multiple pseudo-panels. Explicit measure/null/scale prevent guessing
+# an OR/HR/RR/linear coefficient from a generic result field called estimate.
+medpaper_forest_table <- function(data, measure, null, log_scale, digits=2L,
+                                  interval_label="95% CI", effect_header=NULL) {
+  if (missing(measure) || missing(null) || missing(log_scale) ||
+      length(measure)!=1L || is.na(measure) || !nzchar(measure) ||
+      length(null)!=1L || !is.finite(null) || !is.logical(log_scale) || length(log_scale)!=1L || is.na(log_scale))
+    stop("Explicit source-supported measure, null value and logical scale are required")
+  if(length(digits)!=1L || !is.numeric(digits) || !is.finite(digits) || digits<0L || digits>8L || digits!=as.integer(digits))
+    stop("Use explicit display precision from 0 to 8 digits")
+  if(length(interval_label)!=1L || is.na(interval_label) || !nzchar(interval_label)) stop("Declare the actual interval label")
+  p <- medpaper_forest(data,measure=measure,null=null,log_scale=log_scale)
+  format_effect <- function(x) ifelse(x!=0 & round(x,digits)==0,
+                                      formatC(x,format="g",digits=2),formatC(x,format="f",digits=digits))
+  data$label <- factor(data$label,levels=rev(data$label))
+  data$effect_text <- paste0(format_effect(data$estimate)," (",format_effect(data$lower)," to ",format_effect(data$upper),")")
+  if(is.null(effect_header)) effect_header <- paste0(measure,"\n(",interval_label,")")
+  p + ggplot2::geom_text(data=data,ggplot2::aes(x=Inf,y=label,label=effect_text),
+                         inherit.aes=FALSE,hjust=-.08,size=9/ggplot2::.pt) +
+    ggplot2::annotate("text",x=Inf,y=Inf,label=effect_header,hjust=-.08,vjust=-.15,
+                       size=9/ggplot2::.pt,fontface="bold") +
+    ggplot2::coord_cartesian(clip="off") + ggplot2::labs(x=measure,y=NULL) +
+    ggplot2::theme(plot.margin=ggplot2::margin(12,48,4,4,unit="mm"))
+}
+
 medpaper_roc <- function(data, legend_title=NULL) {
   medpaper_require("ggplot2")
   medpaper_check_numeric(data,c("fpr","tpr"))

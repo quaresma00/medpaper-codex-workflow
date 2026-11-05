@@ -20,15 +20,23 @@ write_table(
     path="project/04_tables/main/Table1.xlsx",
     sheet="Table 1",
     title="Table 1. Baseline characteristics of the study population.",
-    header=["Characteristic", "Group A (n=123)", "Group B (n=456)", "P value"],
-    rows=[["Age, years, mean (SD)", "62.1 (11.4)", "61.7 (12.0)", "0.62"]],
+    header=["Characteristic", "Group A (n=123)", "Group B (n=456)"],
+    rows=[["Age, years, mean (SD)", "62.1 (11.4)", "61.7 (12.0)"]],
     footnotes=[
         "Data are n (%) unless stated otherwise.",
         "Abbreviations: SD, standard deviation; BMI, body mass index.",
-        "P values from the two-sided t test for continuous and chi-square for categorical variables.",
     ],
 )
 ```
+   These numbers illustrate layout only. In a study the script reads executed results and
+   records actual source-bound cells; do not copy example values. Select categorical,
+   continuous, regression or outcome-table structure from design/analysis and the benchmark.
+   Do not add baseline P values by default or infer summary type from a column's storage type.
+   Report exported n (%), mean (SD) or median (IQR), actual missing/available counts and
+   denominators as appropriate. Effect labels/interval levels, reference groups, adjustment
+   sets and analysis populations must match their actual models. S10 formats; it does not
+   fit models, run add-on tests or calculate a missing percentage. Follow the optional R
+   table route in `reference/r-first.md` only when it improves this project.
 2. Layout rules (enforced by the `tables_threeline` gate):
    - Row 1 is the title. Unruled.
    - Exactly three horizontal rules: above the header, below the header, below the last
@@ -73,15 +81,16 @@ write_table(
   paragraph-length cells. Clinically relevant discrimination, calibration, diagnostic
   accuracy or sensitivity results remain when required by the study design; hide engineering
   logs and redundant model-debugging output, not necessary scientific evidence.
-  The gate rejects cells over 300 characters
-  and footnote blocks over 1500 characters.
+  The writer rejects body cells over 300 characters. A 1500-character footnote block is an
+  advisory prompt to remove unnecessary detail, not permission to truncate essential notes.
 - Every numeric cell must trace to `03_analysis/results/*.json` (gate:
   `numbers_have_provenance source=tables`). Do not retype from the Results prose.
 - Titles are self-contained and short. Footnotes carry abbreviations, units and tests.
 - Follow S07's abbreviation policy on the first build. Use the central glossary when planned,
   retaining only the local decoding information needed to understand the table. S17 checks
   consistency; regenerate only a table with an actual newly discovered defect.
-- Do not add a table that is not in the plan. If one is needed, loop to S07.
+- Add a necessary table through a scoped S07-owned plan correction and its true consumers;
+  stay at the revision checkpoint rather than looping or rebuilding unrelated tables.
 - Structural checks alone are insufficient; the visual-review decision is mandatory.
 
 ## Close

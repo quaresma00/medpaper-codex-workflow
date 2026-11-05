@@ -11,6 +11,9 @@ this stage only.
 - `01_protocol/protocol_final.md` -> the objective, stated exactly
 
 ## Procedure
+Use the drafting contract in `reference/medical-reader-presentation.md`; settle the actual
+gap-to-objective argument before writing, then read it without the literature notes.
+
 1. Use this common clinical route, adapting it to the actual problem rather than imposing a template:
    1. The clinical problem and why it matters (burden, consequence).
    2. What is established. Cite the strongest evidence, not the most convenient.
@@ -35,10 +38,10 @@ this stage only.
 - Every citation verified. Read the source to the depth needed to support the actual claim;
   an abstract alone is not enough for nuanced method/result comparisons.
 - No results in the Introduction. No hypothesis stated as if already confirmed.
-- No stock openers: not "In recent years", not "has attracted increasing attention",
-  not "plays a crucial role". The gate flags these.
-- Do not restate the whole field. Three to five paragraphs, tightest possible path to the
-  gap.
+- Prefer a concrete clinical problem to stock openers. Wording flags prompt judgement,
+  not automatic replacement of legitimate medical terminology.
+- Do not restate the whole field. Paragraph count follows the argument and close comparators,
+  not a fixed quota.
 
 ## Close
 ```

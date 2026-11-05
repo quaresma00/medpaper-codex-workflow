@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manuscript de-AI and academic-English linter. Stdlib only.
+"""Medical-manuscript language diagnostics and fact preservation. Stdlib only.
 
     .venv/Scripts/python.exe tools/text/polish.py snapshot      # freeze the pre-polish text (do this first)
     .venv/Scripts/python.exe tools/text/polish.py lint          # report -> 08_submission/integration/polish_report.json
@@ -8,7 +8,7 @@
 
 Three jobs, deliberately separated:
 
-  ai_tells    machine-generated writing patterns. Tier A blocks, Tier B is advisory.
+  ai_tells    context-sensitive wording prompts. Both tiers are advisory, not AI detection.
   style       journal-house-style consistency that code can settle definitively.
   readability advisory metrics that need a human call.
 
@@ -20,6 +20,7 @@ of figure/table references to be unchanged.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -69,7 +70,7 @@ PVAL_RE = re.compile(r"\b[Pp]\s*[<>=≤≥]\s*(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]
 # ===========================================================================
 # pattern tables
 # ===========================================================================
-# Tier A: phrasing that reads as machine-generated in a clinical paper. Blocking.
+# Historical tier names are retained for report compatibility; neither proves an error.
 AI_TIER_A = [
     (r"\bdelve[sd]?\s+(?:in)?to\b", "delve into"),
     (r"\bit\s+is\s+worth\s+noting\b", "it is worth noting"),
@@ -98,8 +99,8 @@ AI_TIER_A = [
     (r"\bcomprehensive\s+understanding\b", "comprehensive understanding"),
     (r"\bit\s+is\s+(?:crucial|essential|imperative|vital)\s+to\s+(?:note|understand|recognize|recognise)\b",
      "it is crucial to note"),
-    (r"\bleverag\w+\b", "leverage (use 'use')"),
-    (r"\butili[sz]\w+\b", "utilize (use 'use')"),
+    (r"\bleverag(?:e[sd]?|ing)\b", "leverage (consider 'use' outside technical terminology)"),
+    (r"\butili[sz](?:e[sd]?|ing)\b", "utilize (consider 'use')"),
     (r"\bbridg\w*\s+(?:this\s+|the\s+)?gap\b", "bridge the gap"),
     (r"\bnot\s+only\s+\w[^.;]{0,60}?\s+but\s+also\b", "not only ... but also"),
     (r"\bdeep\s+dive\b", "deep dive"),
@@ -264,7 +265,15 @@ def lint_ai(rel: str, text: str, allow: dict) -> list[dict]:
             rx = re.compile(pattern, re.I)
             for i, line in enumerate(lines, 1):
                 for m in rx.finditer(line):
+                    # Healthcare utilization is not an inflated verb. Keep regression
+                    # leverage/high-leverage observations out of wording substitutions.
+                    nearby=line[max(0,m.start()-55):m.end()+55]
+                    if label.startswith("leverage") and re.search(
+                            r"(?:high[- ]|statistical |regression |hat[- ]matrix )leverage|leverage\s+(?:values?|points?|observations?|diagnostics?|scores?|statistics?)",
+                            nearby,re.I):
+                        continue
                     out.append({"file": rel, "line": i, "tier": tier, "label": label,
+                                "severity":"advisory",
                                 "match": m.group(0)[:60],
                                 "context": line.strip()[max(0, m.start() - 30):m.end() + 30][:120]})
     return out
@@ -284,7 +293,7 @@ def lint_structure(rel: str, text: str) -> list[dict]:
     em = len(re.findall(r"\u2014|\s--\s", b))
     if em / nwords * 1000 > 4:
         flag("em_dash_density", f"{em} em dashes in {nwords} words "
-                               f"({em / nwords * 1000:.1f} per 1000; > 4 reads as generated)", "blocking")
+                               f"({em / nwords * 1000:.1f} per 1000; inspect readability)", "advisory")
 
     transitions = re.findall(
         r"(?:(?<=[.!?])\s+|(?<=\n\n)|\A)(Furthermore|Moreover|Additionally|Notably|"
@@ -296,7 +305,7 @@ def lint_structure(rel: str, text: str) -> list[dict]:
         if rate > 6:
             flag("transition_density",
                  f"{len(transitions)} paragraph-initial transitions ({rate:.1f} per 1000 words): "
-                 + ", ".join(f"{k}x{v}" for k, v in c.most_common(5)), "blocking")
+                 + ", ".join(f"{k}x{v}" for k, v in c.most_common(5)), "advisory")
         for word, n in c.items():
             if n >= 3:
                 flag("transition_repeat", f"'{word}' opens {n} sentences", "advisory")
@@ -332,11 +341,11 @@ def lint_structure(rel: str, text: str) -> list[dict]:
             r"\b(?:may|might|could)\s+(?:possibly|potentially|perhaps)\b|"
             r"\b(?:suggests?|indicates?)\s+that\s+\w+\s+(?:may|might|could)\s+(?:possibly|potentially)\b",
             b, re.I):
-        flag("hedge_stacking", f"stacked hedges: {m.group(0)!r}", "blocking")
+        flag("hedge_stacking", f"stacked hedges: {m.group(0)!r}; preserve justified uncertainty", "advisory")
     if len(hedges) / nwords * 1000 > 28:
         flag("hedge_density",
              f"{len(hedges)} hedge words per {nwords} words ({len(hedges) / nwords * 1000:.0f} "
-             "per 1000) - commit to what the data shows", "advisory")
+             "per 1000) - inspect redundancy while retaining justified uncertainty", "advisory")
 
     long_sents = [s for s in re.split(r"(?<=[.!?])\s+", b) if len(s.split()) > 45]
     if long_sents:
@@ -398,7 +407,8 @@ def lint_style(rel: str, text: str) -> list[dict]:
         flag("p_zero", "P = 0 / P = 0.000 is not a value; report P < 0.001")
     if re.search(r"\b(?:proves?|proven|demonstrates?\s+causation|causes?\s+the\s+outcome)\b", b, re.I):
         flag("causal_overclaim",
-             "causal language - use 'associated with' unless the design supports causation")
+             "Review actual claim and design: negated/prior-study statements and justified causal designs are not errors; unsupported own-study causation must be corrected",
+             "advisory")
     if re.search(r"[ \t]+$", b, re.M):
         flag("trailing_whitespace", "trailing whitespace on one or more lines", "advisory")
     if "  " in re.sub(r"^\s+", "", b, flags=re.M):
@@ -562,6 +572,7 @@ def cmd_snapshot(args) -> int:
 
 
 def cmd_lint(args) -> int:
+    from wfcore.packagefreeze import _sha256
     proj = project_root()
     docs = sections(args.file)
     if not docs:
@@ -585,6 +596,10 @@ def cmd_lint(args) -> int:
     blocking_style = [x for x in style if x["severity"] == "blocking"]
 
     report = {
+        "lint_policy_version":2,
+        "input_hashes":{rel:_sha256(proj/rel) for rel,_ in docs},
+        "linter_sha256":_sha256(Path(__file__)),
+        "allowlist_sha256":_sha256(proj/ALLOWLIST) if (proj/ALLOWLIST).is_file() else None,
         "linted_at": now(),
         "files": [rel for rel, _ in docs],
         "counts": {
@@ -594,7 +609,7 @@ def cmd_lint(args) -> int:
             "style_blocking": len(blocking_style),
             "style_advisory": len(style) - len(blocking_style),
         },
-        "blocking_total": len(tier_a) + len(blocking_struct) + len(blocking_style),
+        "blocking_total": len(blocking_struct) + len(blocking_style),
         "ai_tells": ai, "structure": struct, "style": style, "readability": read,
         "allowlisted": sorted(allow),
     }
@@ -616,9 +631,9 @@ def cmd_lint(args) -> int:
         if len(items) > 40:
             print(f"  ... {len(items) - 40} more (see project/{REPORT})")
 
-    block("AI TELLS - tier A (blocking)", tier_a,
+    block("WORDING PROMPTS - tier A (advisory, assess context)", tier_a,
           lambda x: f"{Path(x['file']).name}:{x['line']}  {x['label']}  -> {x['match']!r}")
-    block("AI TELLS - tier B (advisory: conventional but overused)", tier_b,
+    block("WORDING PROMPTS - tier B (advisory)", tier_b,
           lambda x: f"{Path(x['file']).name}:{x['line']}  {x['label']}  -> {x['match']!r}")
     block("STRUCTURE", struct,
           lambda x: f"[{x['severity']:<9}] {Path(x['file']).name}  {x['kind']}: {x['detail']}")
@@ -637,10 +652,9 @@ def cmd_lint(args) -> int:
     print("\n" + "=" * 70)
     n = report["blocking_total"]
     if n == 0:
-        print("no blocking findings. Tier B and advisory items are yours to judge.")
+        print("no blocking findings. Wording prompts require medical/contextual judgement; this is not semantic acceptance.")
     else:
-        print(f"{n} blocking finding(s): {len(tier_a)} tier-A phrase(s), "
-              f"{len(blocking_struct)} structural, {len(blocking_style)} style.")
+        print(f"{n} blocking finding(s): {len(blocking_struct)} structural, {len(blocking_style)} style.")
         print("Rewrite them. Do not change a number, a citation, or a figure/table reference")
         print("while doing it - `polish.py diff` will catch it if you do.")
         print(f"A genuine exception goes in project/{ALLOWLIST} as 'pattern<TAB>reason'.")

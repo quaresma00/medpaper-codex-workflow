@@ -15,6 +15,10 @@ only when reproducibility requires detail that would obscure the main narrative.
 - `reference/methods-structure.md` (structure and main-versus-supplement boundary)
 
 ## Procedure
+Apply the drafting contract in `reference/medical-reader-presentation.md` before writing;
+read the completed section as a medical explanation of the study, then verify it against
+executed methods. Use the existing notes/acceptance; no extra report is required.
+
 1. Read `reference/methods-structure.md`, then re-read the protocol and actual executed
    methods. The guide supplies a flexible architecture, not a mandatory heading template.
    Do not choose, cite or fill a reporting checklist here; any explicitly requested journal
@@ -46,8 +50,8 @@ only when reproducibility requires detail that would obscure the main narrative.
    scoring system and model. Keys must come from records already
    retrieved this session.
 7. Numbers—study period, follow-up, n screened/excluded/analysed, software versions—must
-   already exist in `03_analysis/results/*.json`. If a number you need is not there, go back
-   and dump it from code rather than typing it.
+   already exist in `03_analysis/results/*.json`. If a necessary fact is absent, make a
+   scoped correction to its producing analysis/export; do not reset completed stages or type it.
 8. Do not describe an analysis you did not run, and do not omit reportable methods you did.
    Explain scientifically necessary methods, not checklist paperwork or an invented registration.
 

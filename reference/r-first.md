@@ -77,6 +77,47 @@ fields, a changed archetype to evade checks, or a silent switch back to Python.
 
 ## QA and local edits
 
+### Medical figure routes (use only the relevant route)
+
+| Display | Scientific content to settle before drawing | Production route |
+|---|---|---|
+| Forest / sensitivity comparison | Actual measure and interval level, comparison direction, null value, population/available counts where needed, model adjustments | `medpaper_forest_table(data, measure, null, log_scale)` adds aligned exact effect/interval text to an inspected ggplot. Use an established specialized package for complex grouped/multiple-column forests when justified. Never invent n or imply event counts are group sizes. |
+| Kaplan-Meier | Endpoint, time origin/unit, groups, actual censoring and number-at-risk at stated times, appropriate uncertainty | Use existing analysis exports or its approved fitted object with a suitable survival R implementation. Do not refit to draw; keep risk table and curve times aligned and disable automatic tests not already analysed. |
+| ROC | Validation population, outcome definition, curve identity, actual AUC/interval when applicable | Existing `medpaper_roc` draws approved coordinates; supply source-supported curve/statistic labels. Plotting must not calculate a fresh AUC. |
+| Calibration | Prediction horizon, validation setting, predicted/observed risk, uncertainty appropriate to the actual method | Existing `medpaper_calibration` draws approved results. Add exported uncertainty where applicable; do not create an unanalysed smoother or bootstrap. |
+| Selection flow | Source, period, exclusions, final units and nested/overlapping branches | S07's real counting structure and applicable Figure 1 rule; counts come from executed results, not layout arithmetic. |
+
+The numerical forest helper requires an explicit measure, null and scale. Use linear scale
+with null 0 for an appropriate coefficient/difference, log scale with null 1 for an appropriate
+ratio; neither is guessed from values. Specify the actual interval label. It preserves all
+supplied estimates/rows and reports tiny nonzero values without rounding them to apparent
+zero. Inspect physical width and statistics-column clipping in the actual PNG/PDF.
+The existing simple forest remains available for compatible approved figures.
+
+For grouped forests, `forestploter` is a possible grid implementation; its non-ggplot content
+still needs the existing measured adapter, not false QC metadata. `survminer` can provide
+curves/risk tables when the existing analysis inputs support them. These are conditional
+choices, not newly installed defaults or a reason to bypass the renderer. A risk table is
+supporting information for its curve, not automatically a second clinical panel.
+
+### Optional medical table route
+
+Keep the present three-line writer for approved Python/R result JSONs. When an analysis
+already benefits from `gtsummary`, calculate summaries in S05 and export its approved
+statistics/ARD there. At S10 `tbl_ard_summary()` can format a complete precomputed ARD without
+calculating missing statistics. Supply explicit labels, summary types, denominator bases and
+missingness from the study; do not call raw-data `tbl_summary`, `add_p`, model fitting or
+new summary calculations merely to build a table. Missing required facts return as a scoped
+analysis/export correction. An ARD is optional and does not replace existing JSON/cell binding.
+Map its formatted rows into the existing writer/upload path and inspect the actual output;
+do not add competing gt/flextable/modelsummary document chains by default.
+
+Official capability references checked 2026-11-06 (not installed-version guarantees):
+[gtsummary precomputed ARD tables](https://www.danieldsjoberg.com/gtsummary/reference/tbl_ard_summary.html),
+[survminer plotting interface](https://github.com/kassambara/survminer/blob/master/R/ggsurvplot.R),
+[forestploter grid layout](https://adayim.r-universe.dev/forestploter/doc/forestploter-intro.html).
+Use the already-recorded project environment; restore only missing selected dependencies.
+
 QC measures PNG resolution/content and actual SVG font/stroke/text positions and inspects
 built ggplot layers. SVG text widths are measured; text heights/collision boxes are conservative
 estimates. PDF font fallback, glyph coverage, clipping paths and complex grid layout still

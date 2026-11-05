@@ -15,7 +15,8 @@ unchanged.
 ```
    The tool snapshots `08_submission/integration/full_manuscript.md` plus its supplementary
    Methods and administrative files. It never snapshots or edits the frozen S19 sources.
-2. Run `tools/text/polish.py lint`, fix blocking AI tells and house-style defects, and align
+2. Run `tools/text/polish.py lint`, resolve actual structural/house-style defects, assess
+   wording prompts in their medical context, and align
    abstract structure, spelling, word/reference limits and permitted headings with the
    chosen journal. Preserve medical-journal prose: continuous narrative, calibrated claims,
    concise Methods in the main paper, and detailed implementation only in the supplement.
@@ -23,8 +24,10 @@ unchanged.
    explicit References heading and concise Figure legends at the end.
 4. Run `tools/text/polish.py diff` and `tools/text/polish.py lint` again. Restore and redo
    any wording edit that loses or adds a number, citation or artifact reference.
-5. Write `polish_log.md` with `AI patterns removed`, `Language changes by section`, `House
-   style decisions`, `Cut to meet journal limits`, `Read by eye`, `Tier-B phrases kept`.
+5. Keep the existing `polish_log.md` concise: actual changes, retained context-dependent
+   terminology and substantive reading findings. Do not write a justification per harmless word.
+   New lint reports bind current sources, linter and exceptions; rerun only this cheap check
+   when those inputs change, never analysis or an unrelated Word build.
 6. Reread the complete manuscript and optional supplementary Methods, then record
    `polish_reviewed YES` with a concrete reason.
 

@@ -8,22 +8,21 @@ Loaded on demand by S10. Enforced by `tools/tables/threeline.py` (writer) and th
 ```
 Table 1. Baseline characteristics of the study population.        <- title, unruled
 ------------------------------------------------------------      <- rule 1 (above header)
-Characteristic        Group A (n=642)   Group B (n=642)   P
+Characteristic        Group A (n=642)   Group B (n=642)
 ------------------------------------------------------------      <- rule 2 (below header)
-Age, years, mean (SD) 62.14 (11.42)     61.73 (12.05)     0.62
-Male, n (%)           311 (48.4)        298 (46.4)        0.47
+Age, years, mean (SD) 62.14 (11.42)     61.73 (12.05)
+Male, n (%)           311 (48.4)        298 (46.4)
 ------------------------------------------------------------      <- rule 3 (below last row)
 Data are n (%) unless stated otherwise.                           <- footnotes, unruled
 Abbreviations: SD, standard deviation.
-P values from the two-sided t test for continuous variables.
 ```
 
 Exactly three horizontal rules. No vertical rules. No interior horizontal rules. The gate
 checks each of those, plus that row 1 holds a title and that at least one footnote row
 exists beneath the bottom rule.
 
-A spanning sub-header may add a fourth partial rule under the spanned columns only; if you
-need one, add it deliberately and note the exception in the handoff.
+Keep the scientific workbook's three-line structure; any explicitly required different
+journal presentation belongs in the derived submission layer, with its actual requirements.
 
 ## Files
 
@@ -36,7 +35,7 @@ need one, add it deliberately and note the exception in the handoff.
 
 Hard limits the writer enforces:
 - no cell longer than 300 characters
-- footnotes totalling no more than 1500 characters
+- footnotes beyond 1500 characters trigger an advisory review, not automatic truncation
 - title must begin `Table N.` or `Table SN.`
 - footnotes are mandatory
 
@@ -45,6 +44,14 @@ convergence messages, every covariate when only the adjusted estimate matters, a
 of interpretation, or a repeat of the Results prose.
 
 ## Content conventions
+
+Choose the structure from design, scientific question and exported statistics, not a generic
+Table 1 template. Baseline P values are not a default; include an actually planned/tested
+comparison only when it answers a scientific purpose. Storage type alone cannot decide
+whether a variable is categorical or whether mean (SD) / median (IQR) is appropriate.
+Use actual missing and available counts and specify denominator bases. Regression tables
+name the real effect (OR/HR/RR/coefficient), interval level, reference categories, adjustment
+sets and analysis populations. Do not compute new results during table production.
 
 - **Title**: self-contained. A reader who sees only the table knows the population, the
   grouping and what is being compared.
@@ -83,8 +90,8 @@ write_table(
     path="project/04_tables/main/Table1.xlsx",
     sheet="Table 1",
     title="Table 1. Baseline characteristics of the study population.",
-    header=["Characteristic", "Group A (n=642)", "Group B (n=642)", "P value"],
-    rows=[["Age, years, mean (SD)", "62.14 (11.42)", "61.73 (12.05)", p_value(0.62)]],
+    header=["Characteristic", "Group A (n=642)", "Group B (n=642)"],
+    rows=[["Age, years, mean (SD)", "62.14 (11.42)", "61.73 (12.05)"]],
     footnotes=["Data are n (%) unless stated otherwise.",
                "Abbreviations: SD, standard deviation."],
 )

@@ -1,4 +1,4 @@
-"""Polish-stage checks: de-AI, house style, and fact preservation.
+"""Polish-stage checks: contextual language, house style, and fact preservation.
 
 The last one matters most. A language pass rewrites sentences wholesale, which is the
 easiest place in the whole pipeline to silently lose a number or a citation. The gate
@@ -103,30 +103,21 @@ def ai_tells_clean(ctx: Ctx) -> Result:
     rep = _report(ctx)
     if isinstance(rep, Result):
         return rep
-    tier_a = [x for x in rep.get("ai_tells", []) if x.get("tier") == "A"]
     struct = [x for x in rep.get("structure", []) if x.get("severity") == "blocking"]
-    if tier_a or struct:
-        bits = []
-        if tier_a:
-            labels = Counter(x["label"] for x in tier_a)
-            bits.append(f"{len(tier_a)} tier-A phrase(s): "
-                        + ", ".join(f"{k} x{v}" for k, v in labels.most_common(6)))
-        if struct:
-            bits.append(f"{len(struct)} structural tell(s): "
-                        + "; ".join(f"{x['kind']} in {Path(x['file']).name}" for x in struct[:4]))
+    if struct:
         return Result(
             False,
             "ai_tells_clean",
-            "; ".join(bits),
+            f"{len(struct)} prose structure finding(s): "
+            + "; ".join(f"{x['kind']} in {Path(x['file']).name}" for x in struct[:4]),
             ["Full detail: .venv/Scripts/python.exe tools/text/polish.py lint",
-             "Rewrite the clause. Do not delete the sentence to make the check pass.",
-             f"A genuine exception goes in project/08_submission/integration/polish_allowlist.tsv."],
+             "Correct the actual structure while preserving scientific content and explicit journal requirements."],
         )
-    tier_b = [x for x in rep.get("ai_tells", []) if x.get("tier") == "B"]
-    if tier_b:
+    prompts = rep.get("ai_tells", [])
+    if prompts:
         return Result(True, "ai_tells_clean",
-                      f"no tier-A tells; {len(tier_b)} tier-B phrase(s) left for your judgement")
-    return Result(True, "ai_tells_clean", "no machine-generated phrasing detected")
+                      f"{len(prompts)} advisory wording prompt(s); assess medical meaning, redundancy and claim support before acceptance")
+    return Result(True, "ai_tells_clean", "no wording prompts; medical semantic acceptance remains required")
 
 
 @check("style_consistent")
@@ -196,9 +187,30 @@ def _report(ctx: Ctx):
             ["Run: .venv/Scripts/python.exe tools/text/polish.py lint"],
         )
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return Result(False, "polish_report", f"{REPORT} invalid JSON: {exc}")
+        report=json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(report,dict): raise ValueError("language report must be an object")
+        from ..state import version_tuple
+        required=(version_tuple(str(ctx.state.data.get("pipeline_version","0"))) >= (1,23,0)
+                  and not ctx.state.pin_excludes(ctx.stage.id,"1.23.0"))
+        if required or report.get("lint_policy_version")==2:
+            from ..packagefreeze import _sha256, _safe_path
+            if report.get("lint_policy_version")!=2: raise ValueError("language report uses an obsolete policy; rerun lint")
+            hashes=report.get("input_hashes",{})
+            from text.polish import CANONICAL_ORDER, LEGACY_SECTION_ORDER
+            order=CANONICAL_ORDER if ctx.p("08_submission/integration/full_manuscript.md").is_file() else LEGACY_SECTION_ORDER
+            wanted={rel for rel in order if ctx.p(rel).is_file() and ctx.p(rel).stat().st_size>0}
+            if set(hashes)!=wanted: raise ValueError("language report does not cover the current manuscript files")
+            for rel,digest in hashes.items():
+                _,source=_safe_path(ctx.project,rel)
+                if not source.is_file() or _sha256(source)!=digest: raise ValueError(f"language report is stale for {rel}; rerun lint")
+            if report.get("linter_sha256")!=_sha256(Path(__file__).resolve().parents[2]/"text/polish.py"):
+                raise ValueError("language diagnostics changed; rerun lint")
+            allow=ctx.p("08_submission/integration/polish_allowlist.tsv")
+            if report.get("allowlist_sha256")!=(_sha256(allow) if allow.is_file() else None):
+                raise ValueError("language exceptions changed; rerun lint")
+        return report
+    except (OSError,ValueError,TypeError) as exc:
+        return Result(False, "polish_report", f"{REPORT} missing valid current evidence: {exc}")
 
 
 def _env(ctx: Ctx) -> dict:
