@@ -157,6 +157,11 @@ def seal(project: Path, layer="science"):
     state = State(project).load()
     if state.current != owner and not permits(project, owner): raise ValueError(f"Benchmark plan belongs to {owner}; no late untracked reset")
     problems = verify_benchmark(project, layer, require_lock=False)
+    if layer == "science" and not state.pin_excludes(owner,"1.22.0"):
+        from .state import version_tuple
+        if version_tuple(str(state.data.get("pipeline_version","0"))) >= (1,22,0):
+            from .displayquality import story_problems
+            problems += story_problems(load(project,"01_protocol/artifact_plan.json"),dossier(project))
     if problems: raise ValueError("; ".join(problems[:8]))
     path = project / f".wf/benchmark_{layer}_lock.json"; doc = dossier(project, layer)
     if path.is_file() and load(project, path.relative_to(project).as_posix()).get("plan_hash") != plan_hash(doc):

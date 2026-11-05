@@ -7,8 +7,10 @@ labels and reversible physical presentation profile already in artifact_plan.jso
 
 For EACH table/figure state its clinical question, population/comparison, measure/unit and
 denominator, placement, overlap with other displays and likely reader misunderstanding.
-Do not add a figure merely to answer an editorial request if an existing display can carry
-it clearly. Prototype with real complete data, without refitting approved results to draw.
+Required scientific reader tasks determine displays. Do not treat "focused", "compact" or
+"nonredundant" as grounds to omit an applicable main selection flow or primary-result view.
+Map actual comparator figure/table pages to adopted/modified/omitted roles in the existing
+benchmark. Prototype with real complete data, without refitting approved results to draw.
 New statistical graphics default to managed R; record a real exception for Python.
 
 Write substantive legends/captions that decode the actual display without repeating Results.
@@ -22,7 +24,7 @@ For schema, benchmark commands and prototype acceptance, use the full procedure 
 `reference/stage_details/S07_artifacts.md` (`tools/wf.py card S07_artifacts --details`).
 On first execution read the applicable detailed procedure; later local corrections reuse
 already-read guidance and go directly to affected owner rules. After compaction use
-`tools/wf.py handoff`, then retrieve only missing context. The actual gates remain unchanged.
+`tools/wf.py handoff`, then retrieve only missing context. The CLI shows the applicable gates.
 `reference/structural-quality.md` v1.17 explains runtime fixes and preserved boundaries.
 
 ## Outputs

@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.21.0"
+  version: "1.22.0"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -102,6 +102,12 @@ Keep patient/private data local unless external transfer is explicitly authorize
 
 Use selective rebuilding and valid check reuse, never reduced evidence or skipped review.
 Ask only for a material missing decision/authorization/source; otherwise finish unblocked work.
+
+At S07-S11/S09 use the v1.22 contracts in `reference/project-benchmarking.md`: connect real
+comparator evidence to concrete reader tasks; applicable selection needs main Figure 1.
+Use clinical table hierarchy/summaries and independent upper-left R panel tags. Bind actual
+production renders in the existing display review before Results. Prototype PASS or use of
+R alone is insufficient. Borrow external ideas without replacing native Codex contracts.
 
 For current sequencing, source-specific declarations, prior-study numeric evidence, soft size budgets,
 optional third-party copies and exact-version approval, read `reference/quality-before-writing.md`.

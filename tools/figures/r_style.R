@@ -18,6 +18,21 @@ medpaper_theme <- function(base_size = 10, family = "Arial") {
 
 medpaper_palette <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")
 
+# Independent panel letters at the outer upper-left corner; titles remain separate.
+# Supply these same component plots to medpaper_save(..., panels=panels).
+medpaper_compose <- function(panels, ncol = 1L, labels = LETTERS[seq_along(panels)]) {
+  medpaper_require(c("ggplot2", "patchwork"))
+  if (!is.list(panels) || length(panels)<2L || length(labels)!=length(panels) ||
+      anyNA(labels) || anyDuplicated(labels) || any(!grepl("^[A-Z]$", labels)) ||
+      length(ncol)!=1L || !is.finite(ncol) || ncol<1L || ncol!=as.integer(ncol) || ncol>length(panels))
+    stop("Use actual component panels, unique uppercase labels and valid column count.")
+  (patchwork::wrap_plots(panels, ncol=as.integer(ncol)) +
+     patchwork::plot_annotation(tag_levels=list(labels))) &
+    ggplot2::theme(plot.tag.position=c(0,1),
+                   plot.tag=ggplot2::element_text(size=10,face="bold",hjust=0,vjust=1,colour="black"),
+                   plot.margin=ggplot2::margin(6,4,4,6,unit="mm"))
+}
+
 # Display strings only: never rename data levels, populations or model objects.
 medpaper_label <- function(value) {
   if (!is.character(value)) return(value)

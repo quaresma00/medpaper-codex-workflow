@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.21.0"
+version = "1.22.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -256,6 +256,9 @@ check = "outputs_exist"
 [[stage.gate]]
 check = "medical_benchmark"
 [[stage.gate]]
+check = "medical_display_story"
+since = "1.22.0"
+[[stage.gate]]
 check = "json_keys"
 path = "01_protocol/artifact_plan.json"
 keys = ["main_figures", "main_tables", "supp_figures", "supp_tables", "supp_files"]
@@ -344,6 +347,10 @@ check = "tables_match_plan"
 [[stage.gate]]
 check = "tables_threeline"
 [[stage.gate]]
+check = "medical_display_production"
+kind = "table"
+since = "1.22.0"
+[[stage.gate]]
 check = "numbers_have_provenance"
 source = "tables"
 [[stage.gate]]
@@ -368,6 +375,10 @@ check = "figures_match_plan"
 [[stage.gate]]
 check = "figures_qc_pass"
 [[stage.gate]]
+check = "medical_display_production"
+kind = "figure"
+since = "1.22.0"
+[[stage.gate]]
 check = "legend_no_results_restatement"
 [[stage.gate]]
 check = "decision_recorded"
@@ -388,6 +399,14 @@ outputs = ["07_manuscript/results.md", "07_manuscript/claim_bindings.json"]
 check = "outputs_exist"
 [[stage.gate]]
 check = "single_section_written"
+[[stage.gate]]
+check = "medical_display_production"
+kind = "table"
+since = "1.22.0"
+[[stage.gate]]
+check = "medical_display_production"
+kind = "figure"
+since = "1.22.0"
 [[stage.gate]]
 check = "numbers_have_provenance"
 path = "07_manuscript/results.md"

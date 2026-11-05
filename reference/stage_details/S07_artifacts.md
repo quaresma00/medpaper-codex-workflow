@@ -28,7 +28,8 @@ first keep panels from filling up with explanatory text later.
    Write `project/01_protocol/artifact_benchmark.md` with headings
    `Comparable papers surveyed`, `Figure/table counts observed`, `Chosen inventory and why`.
    Record the observed range (e.g. "4-6 main figures, 2-3 main tables, n=8 papers"), and
-   justify your inventory against it. Fewer, better displays beat padding.
+   justify your inventory against it. Optimize complete medical communication; fewer items
+   are not inherently better and extra items must not be added merely to imitate counts.
    Counts alone are insufficient. Read the actual Methods/Results and at least one table
    and figure from close, legally accessible medical comparators. In the same benchmark
    note record their clinical ordering, labels, denominators, uncertainty and footnote/legend
@@ -66,9 +67,12 @@ first keep panels from filling up with explanatory text later.
    Structural requirements the gate enforces: sequential numbering with no gaps; each
    main table in its own xlsx; **all supplementary tables in a single xlsx, one sheet
    each**; every figure has a `width`, a `script` and an `archetype`.
-   Include a participant/study-selection flow diagram only when it materially helps readers
-   understand inclusion/exclusion and denominators; do not create one because a preselected
-   checklist says so. Number it in the actual scientific narrative, not automatically Figure 1.
+   Map the four reader tasks using `adaptation.displays.role_mapping` in the existing benchmark
+   (schema in `reference/project-benchmarking.md`). A real participant/report/study selection
+   process belongs in a main Figure 1 flow diagram, especially when versions, exclusions,
+   suspect roles or nested subsets affect denominators. A supplementary counting table does
+   not replace it. A genuinely absent selection process may be marked inapplicable with its
+   scientific basis. Do not impose a fixed total figure count or an early reporting checklist.
    Specific journal reporting/display requirements are handled later in the integration copy.
    Add `reader_contract` to every display: `population`, `comparison`, `measure`,
    `denominator_and_units`, `interpretation_limit`, plus distinct `question`,

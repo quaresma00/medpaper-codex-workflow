@@ -93,3 +93,13 @@ Primary sources checked 2026-10-06:
 - [ragg PNG device](https://ragg.r-lib.org/reference/agg_png.html)
 - [patchwork layout](https://patchwork.data-imaginist.com/articles/guides/layout.html)
 - [renv project environments](https://rstudio.github.io/renv/articles/renv.html)
+# v1.22 medical multi-panel composition
+
+Create each component as a ggplot, keep clinical titles independent of letters, then use
+`p <- medpaper_compose(list(p1,p2), ncol=2)` and
+`medpaper_save(p, "05_figures/out/Figure2", width="double", panels=list(p1,p2))`.
+This uses patchwork for standalone upper-left A/B tags. Declare the same letters and actual
+`panel_layout.columns` in the existing artifact plan. Do not concatenate A/B into facet
+titles. A facet can be a panel, but it still needs independent tag placement in the actual
+SVG and medical/visual inspection; reading the code or recognizing R style is not acceptance.
+

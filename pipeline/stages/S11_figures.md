@@ -104,3 +104,15 @@ centralized abbreviations, Word cleanup and final actual-page inspection remain 
 
 
 
+# v1.22 independent panel tags and production reading
+
+R rendering is mandatory for new statistical figures unless an actual approved exception
+applies; R alone does not certify medical layout. Multi-panel letters are independent A/B/C
+at each component's outer upper-left corner, separate from clinical titles/facet strips.
+Use `medpaper_compose(panels,ncol=N)` and save the actual `panels` list with `medpaper_save`.
+Declare `panel_layout.columns` (and true bounds for irregular grids) in the plan. Inspect
+the actual PNG/PDF at planned physical size: unit, denominator, interval/statistical columns,
+clinical group labels and whitespace together. Use existing `display_review.json.final_reviews`
+to bind the actual production render, following `reference/project-benchmarking.md`.
+The SVG tag gate and typography checks support, and do not replace, this medical reading.
+

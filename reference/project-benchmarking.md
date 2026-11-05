@@ -59,10 +59,9 @@ Use the same schema for the journal comparison. Do not create a second narrative
   S13 and passages when the section is written. Cover key prior, contradictory and method
   evidence when applicable, not only easy agreeing papers. A selected key must support the
   actual argument on reading; a citation appearing somewhere else is insufficient.
-- `adaptation.displays`: `inventory_rationale`, `essential_questions`, `omissions`. Include
-  needed selection/denominator, primary result, validation or sensitivity evidence when
-  scientifically applicable. Explicitly explain when a flowchart or extra validation display
-  adds nothing; do not silently treat the cheapest inventory as complete. Record null results.
+- `adaptation.displays`: `inventory_rationale`, `essential_questions`, `omissions`, and for
+  v1.22 `role_mapping` as described below. Complete the required medical reader tasks;
+  compactness and nonredundancy do not justify removing necessary evidence. Record null results.
 - Journal only: `target_hashes` for `08_submission/target_journal.json` and
   `08_submission/submission_requirements.json`. Same-journal identity comes from PubMed.
 
@@ -75,6 +74,60 @@ it does not rewind the completed stage tail. Old projects add genuine missing ev
 scope; never label historical abstract-only comparisons as completed full-text reading.
 
 ## Specific display contracts and executor acceptance
+
+### v1.22: decisions must change the actual display plan
+
+In the SAME benchmark's `adaptation.displays.role_mapping`, record one row for each role:
+`selection`, `population`, `primary_results`, `comparisons_or_robustness`. Each has
+`applicable` (boolean), actual `display_ids`, a substantive `scientific_reason`, and
+`comparator_evidence: [{citekey, locator, adopt_or_depart}]` pointing to actual comparator
+page/figure/table observations. Merely reporting their figure counts is insufficient. Read
+how they analysed the relevant question, what each display shows, and why an approach is or
+is not scientifically applicable. Do not add unsupported time-to-event, cross-database or
+algorithm comparisons to look like the examples. Do not minimize the display inventory as
+an efficiency target. Keep different units, unknowns, null/contradictory results and overlap.
+
+For selection, record `process: none|single_stage|multi_stage`, `steps` (the actual sequence),
+and `counting_unit_and_branches` (source rows vs unique patients/reports/studies; true exclusion
+losses vs nested/overlapping analysis subsets). A real selection process maps to a MAIN
+Figure 1 with archetype `flow_diagram`; supplementary accounting can support but cannot replace
+it. Mark inapplicable only when there actually is no selection process (e.g. a single case),
+using `process: none`, `steps: []`, no claimed display and the real scientific reason.
+Population and primary results need main-text displays when applicable. A flowchart is not
+a primary-result figure. Comparisons/robustness may use appropriate supplementary material;
+unsupported additional analyses are explicitly inapplicable rather than manufactured.
+No fixed total figure/table minimum is introduced. A lower count than comparators requires
+coverage of these roles and actual methodological differences, not "a focused paper is enough".
+
+For population record `summaries: {categorical, continuous}`: category n (%) with actual
+report/patient/available-case denominators, and clinically relevant mean(SD)/median(IQR) plus
+availability/missingness. Explain genuinely unavailable/inapplicable summaries or a legitimate
+counts-only choice. Absence of an exposed-patient denominator does not prohibit percentages
+among eligible reports. Do not calculate any statistic while writing or substitute the count
+of available ages for the age distribution. Reuse/export actual analysis facts when present.
+
+The small structural gate checks mapped displays and decisions; it does not prove the reasons
+or comparator reading correct. The executor must challenge its own choices against the actual
+papers and read the resulting displays before declaring acceptance.
+
+At S10/S11 update `final_reviews` in the EXISTING `01_protocol/display_review.json`, leaving
+prototype `items` intact. Key by display ID. Each row needs `reviewed_file` (actual plan file),
+`sha256`, `rendered_preview`, `rendered_sha256`, `reader_explanation`, `layout_and_style`, and
+`verdict: PASS` only after actual inspection/resolution. Explain concrete medical understanding
+and layout defects/fixes, not a repeat of technical QC. Render each planned table sheet; retain
+its actual page PNG/PDF under `.wf/display_previews/` so temp cleanup cannot erase evidence.
+A workbook's bytes are not a rendered page. A figure's actual PNG may itself be the preview.
+S09 verifies these current production bindings before Results. Use an overview plus details
+of changed/critical regions, not repeated full rendering of unchanged files. This adds no
+independent agent, human-approval stop or second report. S17/S23 medical acceptance remains.
+
+For multi-panel R figures declare `panels: [A,B,...]` and `panel_layout: {columns: N}`. Default
+equal grid cells locate standalone tags at each panel's outer upper-left margin. Irregular
+composition adds actual normalized `bounds: [[left,top,right,bottom],...]` in reading order.
+The gate inspects the real SVG, not only metadata: "A Clinical outcome" as a facet title is
+not a panel tag. Managed R stores SVG under `05_figures/qc/<stem>.render.svg`. Use
+`medpaper_compose(panels,ncol=N)` to create independent tags; retain panel titles separately.
+Inspect actual final physical size, intervals, statistical columns, labels and whitespace.
 
 Alongside the existing five reader-contract fields, each display has `question`,
 `placement_reason`, `nonredundancy`, `misinterpretation_risk`. Common population wording is fine;

@@ -115,3 +115,16 @@ centralized abbreviations, Word cleanup and final actual-page inspection remain 
 
 
 
+# v1.22 medical content and actual production reading
+
+Use clinical variable headings and indented category rows, not repeated "Sex distribution:"
+or other exported field prefixes. Descriptive tables normally report n (%) with an explicit
+report/patient/available-case denominator and appropriate continuous summaries plus missingness.
+Use only actual exported numbers; do not calculate in prose. `write_table`/`write_workbook`
+support zero-based `group_rows` and `indent_rows` without changing supplied values or adding
+interior borders. Group rows have a label and empty statistic cells. Keep source/sender
+identity when relevant, with its real clinical purpose; do not rename records as patients.
+Follow `reference/project-benchmarking.md` to bind actual saved workbook AND rendered sheet
+pages in existing `display_review.json.final_reviews`. Prototype/three-line/numeric PASS
+cannot certify medical content. The v1.22 production gate must pass before Results writing.
+

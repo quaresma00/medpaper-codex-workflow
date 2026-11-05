@@ -2402,7 +2402,8 @@ def main() -> int:
                              ("test_revision_efficiency_119.py","incremental validation identity reuse and changed-evidence handling"),
                              ("test_scientific_decisions_120.py","scientific decisions bind the evidence at judgment time"),
                              ("test_source_access_120.py","authentic sources distinguish abstract availability from full-text access"),
-                             ("test_kiro_121.py","KIRO migration: review isolation, fail-fast incremental builds and actual upload rules")):
+                             ("test_kiro_121.py","KIRO migration: review isolation, fail-fast incremental builds and actual upload rules"),
+                             ("test_medical_displays_122.py","medical display story, actual rendered review, table hierarchy and independent R panel tags")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

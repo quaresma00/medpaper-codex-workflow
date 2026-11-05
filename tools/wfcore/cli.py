@@ -47,6 +47,7 @@ NON_OVERRIDABLE_GATES = {
     "bundle_complete", "docx_bundle_ready", "package_content_matches_baseline",
     "reader_review_coverage",
     "medical_benchmark", "literature_coverage", "executor_acceptance",
+    "medical_display_story", "medical_display_production",
     "numbers_have_provenance", "numbers_cross_match",
     "research_context_known", "study_governance", "variable_definitions", "statistical_reporting_plan", "source_record_spotcheck", "reference_usage",
     "dependent_checks_pending",

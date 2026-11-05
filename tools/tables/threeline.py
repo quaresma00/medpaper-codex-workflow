@@ -14,6 +14,7 @@ by hand, so every table in the paper is identical.
 from __future__ import annotations
 
 import re
+import textwrap
 from pathlib import Path
 
 try:
@@ -49,6 +50,13 @@ def _check(spec: dict) -> None:
             "an abbreviations or data-format note."
         )
     ncol = len(spec["header"])
+    groups, indents = spec.get("group_rows", []), spec.get("indent_rows", [])
+    for indices in (groups, indents):
+        if not isinstance(indices,list) or any(type(i) is not int or not 0<=i<len(spec["rows"]) for i in indices) or len(set(indices))!=len(indices):
+            raise ValueError("group_rows/indent_rows must be unique zero-based actual data-row indices")
+    if set(groups)&set(indents): raise ValueError("A clinical section header cannot also be an indented category")
+    if any(any(v not in (None, "") for v in spec["rows"][i][1:]) for i in groups):
+        raise ValueError("A group header row must not contain observations or statistics; preserve data on category rows")
     for i, row in enumerate(spec["rows"], 1):
         if len(row) != ncol:
             raise ValueError(
@@ -96,7 +104,7 @@ def _write_sheet(ws, spec: dict) -> None:
     # --- title (row 1, unruled) ---------------------------------------
     ws.cell(row=1, column=1, value=spec["title"])
     ws.cell(row=1, column=1).font = Font(name=BASE_FONT, size=TITLE_PT, bold=True)
-    ws.cell(row=1, column=1).alignment = Alignment(horizontal="left", vertical="center", wrap_text=False)
+    ws.cell(row=1, column=1).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
     if ncol > 1:
         ws.merge_cells(f"A1:{last_col}1")
 
@@ -114,6 +122,11 @@ def _write_sheet(ws, spec: dict) -> None:
             cell = ws.cell(row=r, column=c, value=value)
             cell.font = Font(name=BASE_FONT, size=BODY_PT)
             cell.alignment = Alignment(horizontal=align[c - 1], vertical="top", wrap_text=False)
+        index = r-first_data
+        if index in spec.get("group_rows", []):
+            ws.cell(r,1).font = Font(name=BASE_FONT,size=BODY_PT,bold=True)
+        elif index in spec.get("indent_rows", []):
+            ws.cell(r,1).alignment = Alignment(horizontal="left",vertical="top",indent=1,wrap_text=True)
     last_data = first_data + len(rows) - 1
 
     # --- bottom rule ---------------------------------------------------
@@ -125,7 +138,7 @@ def _write_sheet(ws, spec: dict) -> None:
         r = last_data + 1 + i
         cell = ws.cell(row=r, column=1, value=str(note))
         cell.font = Font(name=BASE_FONT, size=FOOT_PT)
-        cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=False)
+        cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         if ncol > 1:
             ws.merge_cells(f"A{r}:{last_col}{r}")
 
@@ -133,6 +146,19 @@ def _write_sheet(ws, spec: dict) -> None:
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.sheet_view.showGridLines = False
     ws.freeze_panes = f"A{first_data}"
+
+
+def _fit_merged_notes(ws, spec: dict) -> None:
+    """Excel does not autofit merged cells; reserve height without changing any text."""
+    width = sum(ws.column_dimensions[get_column_letter(i)].width for i in range(1,len(spec["header"])+1))
+    for row, size in [(1,TITLE_PT)]+[(3+len(spec["rows"])+i,FOOT_PT) for i in range(len(spec["footnotes"]))]:
+        capacity = max(8,int(width*BODY_PT/size*.80))
+        lines = sum(max(1,len(textwrap.wrap(part,width=capacity))) for part in str(ws.cell(row,1).value).split("\n"))
+        height = max(15,lines*(size+4)+4)
+        if height>409:
+            import warnings
+            warnings.warn(f"'{spec['sheet']}': title/note retained in full but may exceed Excel's row height; inspect the actual render and reorganize before visual acceptance")
+        ws.row_dimensions[row].height = min(409,height)
 
 
 def write_workbook(path: str | Path, tables: list[dict]) -> Path:
@@ -175,6 +201,8 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
             for row in sheet:
                 for cell in row:
                     if isinstance(cell.value, str): cell.value = label_text(cell.value,project,format_numbers=not (cell.row>=3 and cell.row<3+len(spec["rows"]) and cell.column in indices))
+    for sheet, spec in zip(wb.worksheets,tables):
+        _fit_merged_notes(sheet,spec)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     wb.save(p)
@@ -186,11 +214,13 @@ def write_workbook(path: str | Path, tables: list[dict]) -> Path:
 
 def write_table(path: str | Path, sheet: str, title: str, header: list,
                 rows: list, footnotes: list, align: list | None = None,
-                col_widths: list | None = None, identifier_columns: list | None = None) -> Path:
+                col_widths: list | None = None, identifier_columns: list | None = None,
+                group_rows: list | None = None, indent_rows: list | None = None) -> Path:
     """One workbook holding one table. Use this for each main table."""
     return write_workbook(path, [{
         "sheet": sheet, "title": title, "header": header, "rows": rows,
         "footnotes": footnotes, "align": align, "col_widths": col_widths,"identifier_columns":identifier_columns,
+        "group_rows":group_rows or [],"indent_rows":indent_rows or [],
     }])
 
 

@@ -5,6 +5,17 @@ history and not another skill, determines the current stage, allowed outputs, an
 
 ## Current quality policy (v1.14)
 
+At S07/S10/S11/S09 use the v1.22 medical display rules in `reference/project-benchmarking.md`.
+The medical scientific story determines the display inventory; implementation receipts and
+economy goals do not. Applicable selection is main Figure 1, with real counting units/branches;
+map population, primary findings and relevant comparisons to actual displays before building.
+R is the drawing language, not a certificate of figure quality: use independent upper-left
+panel tags. Tables need clinical variable hierarchy and appropriate descriptive summaries.
+Bind actual production renders in the existing display_review.json before Results. Preserve
+necessary scientific methods/uncertainty, centralized abbreviations and scoped incremental work.
+Borrow external workflow ideas only when they fit these native contracts; do not replace them
+wholesale or import unrelated stages, defaults, agents, checks or uploads.
+
 Read `reference/quality-before-writing.md` for S01-S09, assembly, journal adaptation and review.
 It supersedes old pre-display Results, numeric quota, blanket author-question and automatic
 reading-copy text below. S10 -> S11 -> S09 -> S12; stable IDs are not execution order.

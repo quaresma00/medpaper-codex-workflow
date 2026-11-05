@@ -94,3 +94,15 @@ Every value must come from `03_analysis/results/*.json`. The
 `numbers_have_provenance source=tables` gate reads every numeric cell out of the finished
 xlsx and rejects anything absent from the result files, so retyping from the Results prose
 fails.
+# Clinical hierarchy (v1.22)
+
+A three-line border is only the container. Prefer a variable heading (e.g. Sex) with indented
+Female/Male/Unknown categories rather than repeating "Sex distribution:" on every row.
+The reusable writer accepts `group_rows` and `indent_rows` as zero-based indices into the
+supplied data rows. Headers must contain no observations; category values remain untouched.
+No extra borders or colour shading are introduced. Preserve every unknown category and the
+true counting unit. Summarize population age/other relevant continuous characteristics when
+available; "Age recorded" is availability, not the age distribution. Category percentages
+refer to eligible reports/patients/available cases as stated, and need no invented exposure
+denominator. Counts-only exceptions require a scientific reason, not avoiding a fact export.
+

@@ -6,6 +6,23 @@ from . import Ctx,Result,check
 from ..readiness import load
 from ..packagefreeze import _safe_path,_sha256
 
+@check("medical_display_story")
+def medical_display_story(ctx):
+    from ..displayquality import story_problems
+    from ..benchmark import dossier
+    try:
+        problems=story_problems(load(ctx.project,"01_protocol/artifact_plan.json"),dossier(ctx.project))
+    except (OSError,ValueError,KeyError,TypeError) as exc: problems=[str(exc)]
+    return Result(not problems,"medical_display_story","; ".join(problems[:8]) or "Core medical reader tasks mapped to actual main/supplement displays and comparator decisions")
+
+@check("medical_display_production")
+def medical_display_production(ctx):
+    from ..displayquality import production_problems
+    try:
+        problems=production_problems(ctx.project,ctx.spec["kind"])
+    except (OSError,ValueError,KeyError,TypeError) as exc: problems=[str(exc)]
+    return Result(not problems,"medical_display_production","; ".join(problems[:8]) or "Actual production renders bound to medical reading; structural checks do not certify scientific understanding")
+
 @check("research_context_known")
 def research_context_known(ctx):
     try:
