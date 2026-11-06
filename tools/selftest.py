@@ -2405,7 +2405,8 @@ def main() -> int:
                              ("test_kiro_121.py","KIRO migration: review isolation, fail-fast incremental builds and actual upload rules"),
                              ("test_medical_displays_122.py","medical display story, actual rendered review, table hierarchy and independent R panel tags"),
                              ("test_medical_production_123.py","contextual medical wording, current lint evidence and numerical forest columns"),
-                             ("test_journal_context_124.py","official guide acquisition, exact current target and actual-file transfer compliance")):
+                             ("test_journal_context_124.py","official guide acquisition, exact current target and actual-file transfer compliance"),
+                             ("test_medical_authoring_125.py","clinical drafting context, source-preserving R recipes and measured legacy forest layout")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

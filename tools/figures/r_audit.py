@@ -92,6 +92,8 @@ def audit_svg(path, metadata):
         "baseline_zero": element(not bars or bar_zero, "Observed built bar xmin/ymin; no bar" if not bars else "Bar data start at zero"),
         "individual_points": element("GeomPoint" in geoms or "GeomJitter" in geoms, "Observed nonempty point/jitter layer"),
         "box_artist": element("GeomBoxplot" in geoms, "Observed nonempty GeomBoxplot"),
+        "box_nodes": element("GeomRect" in geoms and "GeomText" in geoms, "Observed nonempty rectangular nodes and text; selection meaning/counts still reviewed"),
+        "curve_line": element(bool(geoms & {"GeomLine", "GeomPath", "GeomStep"}), "Observed nonempty curve layer; estimator/scale remain source checks"),
         "violin_artist": element("GeomViolin" in geoms, "Observed nonempty GeomViolin"),
         "error_bars": element(bool(geoms & {"GeomErrorbar", "GeomErrorbarh", "GeomPointrange", "GeomLinerange"}), "Observed built interval layer"),
         "step_curve": element("GeomStep" in geoms, "Observed nonempty GeomStep"),

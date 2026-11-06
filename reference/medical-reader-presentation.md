@@ -49,25 +49,13 @@ supports research-appropriate organization and interpreting tables/figures with 
 asks for concise, accessible prose. These support reader-oriented judgment, not a universal
 template, journal choice, extra reporting checklist or fixed length/count requirement.
 
-## Drafting contracts: apply while writing, not after assembly
+## Drafting and subsequent medical reading
 
-At S08/S09/S14/S16 use the already-read close medical comparators and approved clinical
-story to choose each paragraph's job before drafting. This is a drafting decision, not a
-new outline file, checklist or approval. Adapt the route to the actual research design:
-
-| Section | Reader must understand | Avoid |
-|---|---|---|
-| Introduction | Clinical/scientific problem, relevant evidence, precise unresolved gap, objective | Paper-by-paper summaries, exaggerated novelty, generic technology introductions |
-| Methods | Design, setting/data source, eligible units, exposure/outcome definitions, relevant procedures and analysis | Code-execution order, pipeline logs, hiding core validity decisions in supplements |
-| Results | Eligible population, principal outcome with magnitude/uncertainty, necessary supporting or contrary results | Metric inventories, table-by-table transcription, interpreting software performance as a clinical finding |
-| Discussion | Main finding, source-supported comparison, plausible explanation, proportionate implications, specific limitations | Repeating Results, fabricated bias directions, unwarranted certainty or generic future-work paragraphs |
-
-Before closing the section, read it without code/notes: can a medical reader state its
-question, design or finding, evidence and limits? Resolve a concrete omission at its source
-now. Do not claim an automatic linter performed this judgement or add a routine agent/report.
-For Abstract at assembly, summarize the same question, population and principal estimate /
-uncertainty as the accepted body; do not introduce new numbers, causal strength or utility.
-Review Abstract and Discussion particularly for unsupported claims and empty generalities.
+For S08/S09/S14/S16/S17 use the concise, maintained routes and original examples in
+`medical-writing.md`, the already-read comparators and actual study sources. This reference
+owns display/whole-paper acceptance, not an additional bundle to reload before every section.
+Read the finished section without execution notes, resolve actual omissions at their source,
+and use the existing acceptance; neither a linter nor a new routine report replaces judgement.
 
 Density counts and wording patterns are advisory. Healthcare utilization, drug utilisation,
 regression leverage and justified uncertainty retain their scientific meaning; no synonym

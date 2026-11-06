@@ -355,6 +355,45 @@ def lint_structure(rel: str, text: str) -> list[dict]:
     return out
 
 
+def lint_medical(rel: str, text: str) -> list[dict]:
+    """Narrow reading prompts for Results/Abstract, never semantic certification.
+
+    Keep headings when locating sections so an abstract's Results subheading cannot be
+    mistaken for the main section. Do not police tense or participant names by word counts.
+    """
+    component = Path(rel).name.lower() in {"results.md", "abstract.md"}
+    active = component
+    levels = [len(m[1]) for m in re.finditer(r"^\s{0,3}(#{1,6})\s+", text, re.M)]
+    root_level = min(levels) if levels else 1
+    paragraphs = []
+    current = []
+    for line in text.splitlines() + [""]:
+        heading = re.match(r"^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$", line)
+        if heading:
+            if current: paragraphs.append(" ".join(current)); current = []
+            level, title = len(heading[1]), heading[2].casefold()
+            if not component and level == root_level:
+                active = title in {"results", "abstract"}
+            continue
+        if not line.strip():
+            if current: paragraphs.append(" ".join(current)); current = []
+        elif active:
+            current.append(line.strip())
+    out = []
+    estimate = re.compile(r"\b(?:HR|OR|RR|hazard ratio|odds ratio|risk ratio|mean difference)\s*(?:(?:was|is|of)\s+)?[,=:]?\s*-?\d", re.I)
+    interval = re.compile(r"\b(?:CI|CrI|confidence interval|credible interval)\b", re.I)
+    for paragraph in paragraphs:
+        if estimate.search(paragraph) and not interval.search(paragraph):
+            out.append({"file": rel, "kind": "medical_interval_context", "severity": "advisory",
+                        "detail": "Effect estimate without an explicit interval in this paragraph; inspect its actual source, design and cited display. Do not invent an interval.",
+                        "context": paragraph[:180]})
+        if re.search(r"\b(?:statistically significant|significantly (?:higher|lower|greater|reduced|increased))\b", paragraph, re.I) and not estimate.search(paragraph) and not interval.search(paragraph):
+            out.append({"file": rel, "kind": "medical_significance_context", "severity": "advisory",
+                        "detail": "Significance-led result; inspect whether magnitude, units and uncertainty are clear in this paragraph or its display. A p-value alone is not the finding.",
+                        "context": paragraph[:180]})
+    return out
+
+
 def lint_style(rel: str, text: str) -> list[dict]:
     out = []
     b = flow(text)
@@ -584,6 +623,7 @@ def cmd_lint(args) -> int:
     for rel, text in docs:
         ai += lint_ai(rel, text, allow)
         struct += lint_structure(rel, text)
+        struct += lint_medical(rel, text)
         style += lint_style(rel, text)
         read.append(readability(rel, text))
     style += lint_spelling(docs)

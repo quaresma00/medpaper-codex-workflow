@@ -75,9 +75,3 @@ requires local definitions, retain them only when `target_journal.json` records
 .\.venv\Scripts\python.exe tools/wf.py advance --note "author/admin facts supplied; title page and required statements assembled; missing user-owned fields=<none or list>"
 ```
 
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
-

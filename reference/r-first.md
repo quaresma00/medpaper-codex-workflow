@@ -34,11 +34,46 @@ R library or recreate an environment for a label change. With --vanilla explicit
 
 ## Plan, prototype and production
 
-For routine forest/ROC/calibration plots, source `tools/figures/r_recipes.R` after the
+For the relevant clinical plot, source `tools/figures/r_recipes.R` after the
 shared theme. These consume approved numeric coordinates, never refit/drop observations.
 Use `medpaper_forest`, `medpaper_roc`, or `medpaper_calibration` only when the archetype
 fits; add the study's required statistics, labels, uncertainty and layout before export.
 Missing elements still fail ordinary figure QC. Do not use a recipe as a waiver.
+
+### Ready-to-draw clinical results
+
+Select only figures justified by the study/comparators. The expanded taxonomy is not a
+list of mandatory analyses or a reason to add plots. These helpers draw every supplied
+row and stop on incomplete/invalid values instead of fitting, smoothing or dropping rows.
+
+| Helper | Actual source fields and decisions |
+|---|---|
+| `medpaper_selection_flow(nodes, edges)` | Nodes: unique `id`, concise clinical `label` including counting unit, actual `n`, layout-only `x,y`; edges: actual `from,to` ids. Declare each exclusion/final count from results. No count subtraction, invented exclusion categories or trial labels. Inspect branch logic, source/period and count reconciliation separately. |
+| `medpaper_dose_response(data, x_label, y_label, null)` | Approved `exposure,estimate,lower,upper,group`; explicit exposure unit, effect scale and reference. A restricted-cubic-spline analysis must already have been fitted and exported at its owner. |
+| `medpaper_decision_curve(data)` | Approved `threshold,net_benefit,group`; include only analysed strategies at actual decision thresholds. Do not calculate net benefit or add treat-all/none lines at plotting time. |
+| `medpaper_balance(data, threshold, absolute)` | Approved `variable,smd,group`; declare signed/absolute display and the study's justified threshold, or omit a threshold. No new weighting or balance calculation. |
+
+All are ggplots, exported by the same `medpaper_save` / managed R runner with the existing
+result/render identity and actual-page inspection. Flow layout coordinates change placement,
+never scientific counts. Large/complex flows need a study-specific measured layout; the helper
+does not certify allocation, exclusion logic or a reporting checklist. Specialized trial
+diagrams can use [consort](https://github.com/adayim/consort) only when appropriate; its grid
+output still needs the measured adapter. No trial/checklist dependency is installed by default.
+
+Optional `medpaper_colours(n, palette="nejm")` (also `lancet`, `jama`, `jco`) uses an already
+available `ggsci`; apply explicitly through ggplot manual scales. The default remains the
+colourblind-aware palette. Unsupported counts stop rather than recycle. Named palettes do
+not establish journal compliance; check contrast, grouping and grayscale/shape decoding.
+
+For approved survival/competing-risk fitted objects, consider `ggsurvfit` / `ggcuminc` and
+their matching risk-table inputs; select the actual event explicitly. For precomputed
+`cobalt::bal.tab` use `love.plot`; do not pass raw data and silently recalculate at S11.
+Meta-analysis funnel plots can use the approved `metafor` object. Existing dcurves output
+can supply decision coordinates. No new package bundle or parallel Word/table chain is added.
+Primary interfaces checked 2026-11-06: [ggsci](https://nanx.me/ggsci/reference/pal_nejm.html),
+[ggcuminc](https://www.danieldsjoberg.com/ggsurvfit/reference/ggcuminc.html),
+[cobalt love.plot](https://ngreifer.github.io/cobalt/reference/love.plot.html).
+These interfaces are references, not claims of installed versions or tested adapters for every package.
 
 New S07 entries declare renderer="R", a literal .R script beside PNG/PDF under 05_figures/out,
 width, source_results and the existing archetype/reader contract. Python exceptions declare

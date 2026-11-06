@@ -11,7 +11,7 @@ this stage only.
 - `01_protocol/protocol_final.md` -> the objective, stated exactly
 
 ## Procedure
-Use the drafting contract in `reference/medical-reader-presentation.md`; settle the actual
+Use the Introduction route in `reference/medical-writing.md`; settle the actual
 gap-to-objective argument before writing, then read it without the literature notes.
 
 1. Use this common clinical route, adapting it to the actual problem rather than imposing a template:

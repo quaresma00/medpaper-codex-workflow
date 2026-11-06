@@ -83,11 +83,6 @@ changed science. Unknown equivalence is not automatically presentation.
   reviews without such a request or a material defect. Save tokens by delta reading and
   dependency-based work, never by reducing analysis, sources, medical judgment or QA.
 
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
 
 ## Structural quality and bounded rework
 

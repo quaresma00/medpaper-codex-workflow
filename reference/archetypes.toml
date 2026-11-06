@@ -11,7 +11,7 @@
 # Detection lives in tools/figures/elements.py. Only put something in `requires`
 # if the detector is genuinely reliable - a gate that cries wolf gets ignored.
 #
-# The archetype taxonomy (5 domains, 17 types) and the per-type mandatory elements
+# The original archetype taxonomy and the per-type mandatory elements
 # are adapted from quaresma00/medical-sci-figure-skill (MIT), which in turn draws on
 # SciencePlots, ggsci and ggprism conventions. Content was rephrased and the
 # element lists were reduced to what is mechanically verifiable here.
@@ -91,10 +91,11 @@ label = "Participant or study-selection flow diagram"
 domain = "Trials and evidence"
 use_for = "RCTs, meta-analyses, cohort assembly"
 requires = ["box_nodes", "figure_statistics"]
-advisory = ["exclusion_reasons", "itt_pp_split"]
-notes = """One of the few figures where text inside the panel is mandatory. Account for every
-patient: screened, excluded with reasons, enrolled, lost to follow-up, analysed.
-Numbers must reconcile with dataset_summary.json, and the gate checks their provenance."""
+advisory = ["exclusion_reasons", "counting_units_and_branches"]
+notes = """Explain the actual selection of patients, reports, specimens or studies, with real
+source/period, exclusions and final analysis units. Do not invent trial allocation or follow-up
+boxes for retrospective mining. Reconcile actual counts with executed results; shapes/text
+detection alone does not establish selection validity."""
 
 [archetype.forest_plot]
 label = "Forest plot (subgroup or meta-analysis)"
@@ -214,3 +215,44 @@ advisory = []
 notes = """Using this bypasses archetype checking, so the artifact plan must carry an
 `archetype_rationale` field explaining why no archetype fits. Prefer a real archetype:
 that is where the domain rules live."""
+
+# Clinical curve types: select only for an actual study question, not as a figure quota.
+[archetype.dose_response]
+label = "Dose-response or restricted-cubic-spline curve"
+domain = "Clinical modelling"
+use_for = "Approved continuous-exposure association with an explicit reference and scale"
+requires = ["curve_line"]
+advisory = ["confidence_band", "reference_exposure_declared", "scale_and_unit_declared"]
+notes = "Draw exported predictions/intervals; do not fit splines or add knots at the figure stage."
+
+[archetype.decision_curve]
+label = "Decision curve"
+domain = "Clinical prediction"
+use_for = "Approved clinical net-benefit analysis across relevant probability thresholds"
+requires = ["curve_line", "legend_present"]
+advisory = ["decision_horizon_declared", "comparison_strategies_explained"]
+notes = "Plot only computed net benefit and comparator strategies; do not create a decision analysis to fill the plan."
+
+[archetype.balance_plot]
+label = "Covariate balance or Love plot"
+domain = "Observational studies"
+use_for = "Approved pre/post-adjustment covariate balance statistics"
+requires = ["individual_points", "legend_present"]
+advisory = ["balance_statistic_declared", "threshold_justified"]
+notes = "Declare signed/absolute SMD and samples. Thresholds are study choices, not proof of confounding control."
+
+[archetype.cumulative_incidence]
+label = "Competing-risk cumulative incidence curve"
+domain = "Survival"
+use_for = "An analysed competing-risk endpoint at its stated time origin and unit"
+requires = ["step_curve", "legend_present"]
+advisory = ["confidence_band", "risk_table", "competing_events_declared"]
+notes = "Use the approved cumulative-incidence estimate. One minus Kaplan-Meier is not a competing-risk estimator."
+
+[archetype.funnel_plot]
+label = "Funnel plot"
+domain = "Evidence synthesis"
+use_for = "Methodologically justified assessment within an actual meta-analysis"
+requires = ["individual_points"]
+advisory = ["effect_scale_declared", "precision_axis_declared", "asymmetry_limits_explained"]
+notes = "Do not infer publication bias from appearance alone; use the approved meta-analysis object's implementation."

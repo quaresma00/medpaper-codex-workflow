@@ -15,7 +15,7 @@ Interpret the finding against the literature you actually read. One file, this s
 - `01_protocol/protocol_diff.md` - internal context for material scientific limitations, not a manuscript change log
 
 ## Procedure
-Apply `reference/medical-reader-presentation.md`'s drafting contract before writing. Read
+Use the Discussion route and illustration in `reference/medical-writing.md` before writing. Read
 the finished argument against actual Results and cited source passages, especially its
 certainty and clinical implications; no additional review round is introduced.
 

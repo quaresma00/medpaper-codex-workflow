@@ -1,6 +1,7 @@
 # S09 - Results
 
-Read `reference/numeric-claims.md`. Save exact short finding bindings alongside Results in
+Use `reference/medical-writing.md` for Results. Consult `reference/numeric-claims.md` only
+while creating/checking bindings or resolving a source ambiguity. Save short finding bindings in
 `07_manuscript/claim_bindings.json`; source facts come from executed analysis, not the prose.
 
 ## Purpose
@@ -13,7 +14,7 @@ displays alongside source JSON; S12 does crosschecks, not a planned rewrite of t
 - `05_figures/legends.md`, `04_tables/table_captions.md` - so the prose does not repeat them
 
 ## Procedure
-Apply `reference/medical-reader-presentation.md`'s drafting contract now. Read the accepted
+Use the Results examples and reader questions in `reference/medical-writing.md`. Read the accepted
 tables/figures first, write the medical finding, then check the actual comparison and
 uncertainty; a successful model run is not the result narrative.
 
@@ -26,8 +27,8 @@ uncertainty; a successful model run is not the result narrative.
 2. Write `project/07_manuscript/results.md`. Every display item in the plan must be cited
    at least once, in order, as `(Figure 1)`, `(Table 2)`, `(Figure S1)`, `(Table S1)`.
    The gate rejects citations to items not in the plan, and items never cited.
-3. Report effects the way the design demands: point estimate, 95% CI, then the p-value -
-   never a bare p. Copy the values from the result JSONs; do not re-round to look tidier
+3. Report the effect and uncertainty appropriate to the design and statistical plan,
+   with a p-value only when applicable; descriptive results do not require a fabricated CI/test. Copy the values from the result JSONs; do not re-round to look tidier
    than the analysis was.
 4. Do not interpret. No "importantly", no "consistent with prior work", no mechanism.
    Those belong in the Discussion.
@@ -55,20 +56,6 @@ uncertainty; a successful model run is not the result narrative.
 .\.venv\Scripts\python.exe tools/wf.py advance --note "results drafted; primary: <estimate, CI, p>; all <n> display items cited"
 ```
 
-## v1.14 execution update
 
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
-
-## Structural quality and bounded rework
-
-Read `reference/structural-quality.md`. Use clinical display names and physical-size assumptions
-before production. Percentage claims bind numerator, denominator and source percentage basis.
-Every actionable point in every review section needs a stable ID and disposition, not only
-the must-fix subset. Review neutral actual artifacts; don't prime with the writer's conclusion.
-Use read-only rework preview and actual scoped checks; never infer scientific change from a
-publication label number or silently invalidate author approval. Existing privacy, freezes,
-centralized abbreviations, Word cleanup and final actual-page inspection remain in force.
-
-
+Use source-scoped medical labels and the actual percentage basis. Review/rework mechanics
+remain at their checkpoint; consult the relevant reference only when performing that operation.

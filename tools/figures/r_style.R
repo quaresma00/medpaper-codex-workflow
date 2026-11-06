@@ -18,6 +18,21 @@ medpaper_theme <- function(base_size = 10, family = "Arial") {
 
 medpaper_palette <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")
 
+# Optional journal-inspired colours; not a journal requirement or a quality certificate.
+medpaper_colours <- function(n, palette="okabe_ito") {
+  if (length(n)!=1L || !is.finite(n) || n<1 || n!=as.integer(n)) stop("Positive integer colour count required")
+  if (palette=="okabe_ito") {
+    if(n>length(medpaper_palette)) stop("Choose an explicit palette for more groups; do not recycle colours")
+    return(medpaper_palette[seq_len(n)])
+  }
+  palettes <- c(nejm="pal_nejm", lancet="pal_lancet", jama="pal_jama", jco="pal_jco")
+  if(!palette %in% names(palettes)) stop("Unknown selected palette")
+  medpaper_require("ggsci")
+  colours <- getExportedValue("ggsci",palettes[[palette]])()(n)
+  if(length(colours)!=n || anyNA(colours)) stop("Selected palette does not support this group count")
+  colours
+}
+
 # Independent panel letters at the outer upper-left corner; titles remain separate.
 # Supply these same component plots to medpaper_save(..., panels=panels).
 medpaper_compose <- function(panels, ncol = 1L, labels = LETTERS[seq_along(panels)]) {

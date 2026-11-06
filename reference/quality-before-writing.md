@@ -1,8 +1,7 @@
-# v1.14: validity first, displays before Results, explicit version acceptance
+# Study design, display order and author acceptance
 
-Use at intake/protocol, S05, S07-S09, assembly and review. This supersedes older generic
-quota, pre-display Results, blanket author-question and review-copy instructions.
-It changes execution, not the requirement for actual scientific evidence or visual QA.
+Use the relevant section at intake/design, assembly or review; do not preload all execution
+references into section drafting. The current policy lives in AGENTS.md.
 
 ## Early design, provenance and statistics
 

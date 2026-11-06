@@ -193,6 +193,12 @@ def connected_pairs(fig) -> tuple[bool, str]:
     return len(pairs) >= 3, f"{len(pairs)} two-point connecting line(s)"
 
 
+def curve_line(fig) -> tuple[bool, str]:
+    curves = [ln for ln in _lines(fig) if len(ln.get_xdata()) > 2 and
+              ln.get_linestyle() not in ("None", "none", "", " ")]
+    return bool(curves), f"{len(curves)} multi-point lines; estimator and clinical meaning still reviewed"
+
+
 def step_curve(fig) -> tuple[bool, str]:
     steps = [ln for ln in _lines(fig) if "steps" in str(ln.get_drawstyle())]
     return bool(steps), f"{len(steps)} step curve(s)"
@@ -326,6 +332,7 @@ def log_axis(fig) -> tuple[bool, str]:
 
 
 DETECTORS = {
+    "curve_line": curve_line,
     "axis_labels": axis_labels,
     "bar_artist": bar_artist,
     "baseline_zero": baseline_zero,

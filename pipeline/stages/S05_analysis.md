@@ -100,9 +100,3 @@ remains (not a claim that every possible future analysis would agree):
 Later scientific corrections use scoped `tools/rework.py` owner rules; do not replay the
 completed stage tail or refit unrelated models.
 
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
-

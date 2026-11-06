@@ -3,6 +3,9 @@
 Bind numeric Abstract findings under `reference/numeric-claims.md`. The assembler carries
 matching Abstract/Results bindings to full-manuscript mappings without printing them in prose.
 
+Read the Abstract/title section of `reference/medical-writing.md` before distilling the
+accepted paper. Reuse the existing close-paper observations.
+
 ## Purpose
 Create the first complete paper before asking for author or affiliation details. The paper
 must be readable as one medical-journal manuscript and becomes the canonical scientific
@@ -76,11 +79,6 @@ Out-of-range quantities need a coverage-based reason, not padded citations or lo
 .\.venv\Scripts\python.exe tools/wf.py advance --note "full manuscript assembled; selected title: <title>; keywords=<n>; figure legends=<n>"
 ```
 
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
 
 ## Medical-reader presentation
 

@@ -1,7 +1,6 @@
 # S08 - Methods
-Read `reference/data-and-review-isolation.md`: write actual methods and true post-hoc status,
-not internal plan-change/registration history for ordinary retrospective mining. Review
-supplementary prose too; no clinician/second-reviewer work is invented.
+Read the Methods section of `reference/medical-writing.md`. Use actual methods and true
+post-hoc status; internal plan history stays backstage. Reuse already-read study context.
 
 ## Purpose
 Write a concise, journal-native main Methods section. Create a supplementary Methods file
@@ -12,14 +11,14 @@ only when reproducibility requires detail that would obscure the main narrative.
 - `02_data/codebook.md`, `02_data/provenance.md`
 - `03_analysis/method_scan.md` (for the methods you cite)
 - `03_analysis/results/*.json` (for every number)
-- `reference/methods-structure.md` (structure and main-versus-supplement boundary)
+- `reference/methods-structure.md` only if a design/heading/supplement boundary needs detail
 
 ## Procedure
-Apply the drafting contract in `reference/medical-reader-presentation.md` before writing;
+Use the concise drafting guide and original illustration in `reference/medical-writing.md`;
 read the completed section as a medical explanation of the study, then verify it against
 executed methods. Use the existing notes/acceptance; no extra report is required.
 
-1. Read `reference/methods-structure.md`, then re-read the protocol and actual executed
+1. Use the protocol and actual executed
    methods. The guide supplies a flexible architecture, not a mandatory heading template.
    Do not choose, cite or fill a reporting checklist here; any explicitly requested journal
    form is handled after S20 in the submission integration copy.
@@ -75,19 +74,5 @@ executed methods. Use the existing notes/acceptance; no extra report is required
 .\.venv\Scripts\python.exe tools\wf.py check
 .\.venv\Scripts\python.exe tools\wf.py advance --note "methods drafted; heading map: <...>; supplementary Methods: <not needed/path and why>; citations used: <n>"
 ```
-
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
-
-## Medical-reader presentation
-
-Read `reference/medical-reader-presentation.md`: check actual clinical labels, counting units,
-denominators, statistical marks and state distinctions, table footnotes and figure decoding.
-Retain necessary methods; do not imply prespecification or change counts by renaming units.
-Use the existing acceptance/review, not an additional audit. At S23 verify actual rendered
-Word pages and journal-directed legend/figure placement; don't reintroduce forbidden controls.
 
 

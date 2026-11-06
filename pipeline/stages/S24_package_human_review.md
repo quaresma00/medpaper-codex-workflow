@@ -69,11 +69,6 @@ Preserve old
 rounds, releases and legacy archives. Review cannot create clinical facts, citations, private
 data transfer authority or actual journal submission. The portal remains user-controlled.
 
-## v1.14 execution update
-
-Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
-declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
-supersede older conflicting instructions. Do not create external-review materials by default.
 
 ## Structural quality and bounded rework
 

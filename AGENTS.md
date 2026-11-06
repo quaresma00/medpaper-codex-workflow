@@ -1,281 +1,148 @@
-# medpaper pipeline — Codex repository instructions
+# Medpaper Codex — current execution policy
 
-This repository is a gated medical-paper workflow. The pipeline CLI, not the conversation
-history and not another skill, determines the current stage, allowed outputs, and gate.
+`medpaper-codex-pipeline` is the sole workflow orchestrator. The CLI and current stage card
+determine work, outputs and checks. User instructions take
+precedence. Maintain one workflow, one scientific source and one build chain. Other skills
+provide a capability within the active stage; they do not create a second study or manuscript.
 
-## Current quality policy (v1.14)
+## Start, resume and read only what is relevant
 
-At S20-S25 and any journal transfer read `reference/journal-adaptation.md`. Start the actual
-journal/ISSN/article-type/initial-or-revision context before acquiring its complete official
-sources. Bind atomic rules to existing configuration, seal, then build only current-context
-uploads and measure actual compliance. Old guides, styles, CSL and approval pointers leave
-the active attempt together. Same-context resume preserves edits; no scientific rewind or
-new default agent/author stop. Sources and manual observations never substitute for real
-retrieval/inspection. Use the optional local extraction/browser route only when useful.
+Run `.\.venv\Scripts\python.exe tools/wf.py status`, then `tools/wf.py card`.
+If the environment is absent, run `uv run --python 3.13 python bootstrap.py`.
+After compaction use `wf handoff` and the active card; reuse guidance already read.
+Complete active work, run `wf check`, then `wf advance --note "..."`. Gates are not turn
+boundaries; continue unblocked work. S10 tables -> S11 figures -> S09 Results -> S12 crosscheck
+is the execution order despite stable IDs. Use `card <stage> --details` only when needed.
 
-At S07/S10/S11/S09 use the v1.22 medical display rules in `reference/project-benchmarking.md`.
-The medical scientific story determines the display inventory; implementation receipts and
-economy goals do not. Applicable selection is main Figure 1, with real counting units/branches;
-map population, primary findings and relevant comparisons to actual displays before building.
-R is the drawing language, not a certificate of figure quality: use independent upper-left
-panel tags. Tables need clinical variable hierarchy and appropriate descriptive summaries.
-Bind actual production renders in the existing display_review.json before Results. Preserve
-necessary scientific methods/uncertainty, centralized abbreviations and scoped incremental work.
-Borrow external workflow ideas only when they fit these native contracts; do not replace them
-wholesale or import unrelated stages, defaults, agents, checks or uploads.
+| Current task | Read when that operation is needed |
+|---|---|
+| Intake, design, declarations, statistical plan | reference/quality-before-writing.md |
+| Data acquisition / in-place originals | reference/data-acquisition-integrity.md / reference/data-and-review-isolation.md |
+| Execute/export/replay analysis | reference/analysis-execution.md and reference/numeric-claims.md |
+| Medical comparators, display inventory and prototypes | reference/project-benchmarking.md and reference/structural-quality.md |
+| Draft Methods/Results/Introduction/Discussion/Abstract | reference/medical-writing.md plus the actual study sources; narrow facts via readiness.py facts |
+| Produce/review tables, figures and pages | reference/medical-reader-presentation.md; relevant table/figure standards and reference/r-first.md |
+| User feedback and scoped correction | reference/rework-routing.md; reference/efficient-quality.md for rebuilds/check reuse |
+| Post-freeze changes or composed Word builds | reference/content-aware-amendments.md and reference/source-aligned-validation.md |
+| Current journal/transfer and final compliance | reference/journal-adaptation.md |
+| Independent review, exact author confirmation | reference/review-rounds-and-word-tables.md |
+| External skill, retrieval capability or plugin | reference/codex-integration.md |
 
-At section drafting use the contracts in `reference/medical-reader-presentation.md`, not
-only a final word scan. Language-pattern/density matches are advisory; preserve legitimate
-medical terms and justified uncertainty. Actual scientific defects, source integrity and
-explicit journal requirements still block. Use design-appropriate table summaries without
-default baseline P values and the relevant R figure route in `reference/r-first.md`.
-Do not add named reporting checklists before S20 or install an entire optional package stack.
+The drafting guide is the writing context, not a waiver of execution checks. Retrieve a
+technical schema only while using its tool or investigating a specific problem. Detailed
+references each own their topic; this policy contains no historical supersession stack.
 
-Read `reference/quality-before-writing.md` for S01-S09, assembly, journal adaptation and review.
-It supersedes old pre-display Results, numeric quota, blanket author-question and automatic
-reading-copy text below. S10 -> S11 -> S09 -> S12; stable IDs are not execution order.
-Only 我确认这一版 releases a NEW current-version author approval. Third-party reading copies
-are opt-in; independent review and freezes remain required. Judge declarations from actual
-source/design/policy evidence; ask only the unresolved material fact, never invent decisions.
+## Scientific integrity and boundaries
 
-## Medical reader presentation (v1.15)
+- Acquire the entire protocol-defined available data universe. Exhaust actual pages/cursors
+  and reconcile source totals, received records and analysis units; bind hashes/counts with
+  data_manifest.py. No speed-driven LIMIT, first-N, page cap, sampling or truncation. Pilots
+  are non-analytic and followed by full acquisition. Source-imposed partial access or a real
+  scientific sampling design requires explicit recorded user authorization. This cannot be forced.
+- Register authorized user data in place, preserve immutable originals and keep patient/private
+  data local. External transfer requires explicit authorization and de-identification decision.
+  Follow declared dependencies, replay copy budgets and owned cleanup; never read sibling studies
+  or delete/kill resources by broad path/process name. Scratch belongs in project/temp/.
+- A citable record comes from the bundled fresh PubMed EFetch verification, hashed raw XML,
+  exact library and recomputed PMID/DOI/metadata. Keep independent live gates from S13 onward.
+  Never hand-write the four library/verification/export files, invent DOI/metadata or repair a
+  failed gate with a boolean. An acquired full text must be registered by
+  tools/pubmed/fulltext.py register;
+  article identity comes from its own metadata or exact-file reader confirmation, not its references.
+- Own-study numbers come from executed analysis results under 03_analysis/results/*.json.
+  Bind Results/Abstract/table claims to the right population, endpoint, contrast, scale,
+  denominator and time, not a pool of matching digits. New/revised producers export/replay
+  actual full-precision findings before readiness. Never backfill receipts, calculate in prose,
+  refit solely for drawing or call untested legacy findings reproduced. Prior-study numbers
+  require exact original passages. Scientific support outranks token/time savings.
+- A failed integrity check means fix the cause. Data/reference/numeric provenance, approvals,
+  freezes and engine identity cannot be forced. Only an explicitly user-authorized non-integrity
+  exception may use --force and its existing handoff record. Installed engine drift stops work;
+  study executors never patch shared tools, public engine identity or workflow state ad hoc.
+- Ordinary retrospective/database mining has no default public registration/OSF step. For a
+  systematic review/meta-analysis or genuine prospective interventional trial, assess actual
+  current registration requirements at S03 and timing honestly. Ethics/access remain separate.
+  Assess declarations from real source/design/policy evidence and ask only an unresolved material
+  fact. Never invent committee approval, waiver, consent or redistribution rights.
+- Named reporting checklists/forms are considered only after S20 when the selected journal
+  explicitly requires one. Do not prepare a generic catalogue.
+  Do not draft or insert an AI-use disclosure without the user's explicit request;
+  a required item stays user-controlled.
+  External publishing/submission requires the user's instruction.
 
-At S07/S08/S10/S11/S17 and S22/S23 read `reference/medical-reader-presentation.md`.
-S18/S25 reviewers apply it to actual prose, tables and rendered images. Necessary statistical
-terms/software versions are not banned. Preserve prespecification timing, clinical counting
-units, source-specific models, and missing/nonestimable/unbounded distinctions when editing.
-Use existing executor acceptance with concrete per-display medical checks and real final-page
-layout observations; do not add another audit/agent/document or inspect an absent manuscript.
-Keep centralized abbreviations, journal-specific legend placement and Word-control prohibitions.
+## Medical outputs and production
 
-## Structural quality (v1.16)
+- Benchmark actual close medical full texts before writing or expensive production. Let the
+  scientific question and reader tasks determine references/displays, not universal quotas,
+  cost or a minimum viable set. Never pad references or weaken a target to pass. Applicable
+  selection is main Figure 1 with real units/branches; show the population, primary findings
+  and necessary comparisons. Resolve heading structure and display purposes before drafting.
+- Write a medical paper for readers: design, population, comparison, outcome, magnitude and
+  uncertainty. Preserve legitimate statistical terminology, prespecification timing and
+  missing/nonestimable/unbounded distinctions. Technical flags and language patterns are
+  contextual prompts, never automatic substitutions, AI detection or semantic acceptance.
+  Keep reproducibility/control records backstage. Use medical-writing.md for positive examples.
+- Tables use clinical hierarchy, appropriate summaries/denominators and three-line formatting;
+  baseline P values are not a default. New medical figures default to R; processing may use
+  Python. Use the managed R renderer and approved results, preserve R source beside vector PDF,
+  and inspect actual PNG/PDF. Missing R dependencies need repair, not silent Python fallback.
+  Preserve already-approved Python figures; justified Python exceptions use Tavotto, never R.
+  Independent A/B tags belong at panel upper-left corners, separate from clinical titles.
+- Tool success does not replace opening/reading the actual tables and rendered figures/pages.
+  Bind actual production renders in display_review.json before Results. ImageGen may act as a
+  second visual critic; it must not redraw statistical figures. Apply accepted fixes in source
+  code, render again and inspect. Do not infer quality from language/tool.
+- S17 selects an accurate title and assembles the complete paper before S21 author administration.
+  Keywords follow the abstract. References and Figure legends are explicit sections, with each
+  legend identifier/title once. Legends decode the display without repeating Results; consolidate
+  crowded abbreviations in Declarations and Statements > Abbreviations unless current journal
+  rules require local definitions. Keep essential units/symbol meanings locally understandable.
+- Supplementary Methods is prose; tables go in separate three-line supplementary tables. No
+  Markdown rules remain in Word. Actual journal typography governs size/spacing with medical
+  defaults Times New Roman and black. Word contains no literal U+2193, manual wrapping breaks,
+  hyperlinks, outlineLvl, keepNext, keepLines, pageBreakBefore or paragraph borders; use flat
+  Normal-based SectionHeading. Keep the existing deterministic Word chain and final visual QA.
 
-Read `reference/structural-quality.md` at S06/S07, percentage reporting, review and rework.
-Use one source-scoped clinical display dictionary and reversible physical production profile
-inside the existing artifact plan. New review rounds inventory/close every actionable point,
-not only the priority list. Later rounds use actual deltas; neutral instructions and full
-current context remain available. Preview revision scope before editing; scientific approval
-renewal needs explicit authorization, never an inferred numbered-label change. Keep the
-user's centralized abbreviations, Word cleanup and independent review/freeze boundaries.
+## Reviews, frozen sources and precise revisions
 
-## Runtime reliability (v1.17)
+- S18 gives the complete manuscript, supplement, tables and actual figures to exactly one
+  independent read-only subagent. S19/S24 use version-bound genuine review rounds, not review
+  ZIPs. Attach the real report before editing, resolve every actionable finding, and report
+  changes/unadopted reasons once with exact paths. Objective scientific defects cannot be
+  closed as preference. Ask whether another round is wanted and wait for the actual explicit
+  statement 我确认这一版 bound to that version. Silence or “continue” is not approval.
+- After S19 approval verify the scientific_master_freeze.json. Journal-specific wording,
+  structure, declarations, numbering and packaging belong in 08_submission/integration/.
+  Begin the exact journal/ISSN/article-type/initial-or-revision context, capture official rules,
+  seal configuration and measure actual uploads. Old guides/styles/approval pointers leave the
+  active attempt together. Same-context resume preserves author edits. Refreshing the engine
+  never silently migrates pinned gates or rewinds completed history.
+- At S17/S22/S23 complete the executor's own medical/content/visual acceptance before delivery.
+  Read all actual main/supplement materials without backstage context, then verify their meaning
+  against sources. Quantity ranges are advisory; source identity/support and explicit journal
+  limits are mandatory. Style comparators use the public cache, not changes to accepted science.
+- S24 presents actual uploads for author edits and explicit final-review request. Freeze those
+  files; S25 uses exactly one independent read-only reader/editor/compliance reviewer with the
+  current official instructions. Missing review stays pending. An unchanged freeze is not
+  repeatedly audited. Immutable releases contain actual uploads only, not caches/evidence.
+- User revisions remain inside a persisted tools/rework.py batch with verbatim requests and
+  acceptance criteria. Collect feedback before sealing; a complete apply-now request may seal.
+  Stay at S19/S24, call affected owner rules in place, update the earliest real source, and
+  rebuild only true dependants. Never reset stages or use wf loop for local revisions. Extend
+  newly discovered dependencies within the batch and distinguish inspected unchanged sources.
+  Close only after actual scoped checks on final files; reuse only hash/rule/config-matched
+  evidence and genuine unchanged optional author adjudications. New evidence/errors stay open.
+- Proven meaning-preserving presentation amendments preserve approval lineage without another
+  confirmation/audit. Equal digits alone do not prove equal science. A real scientific correction
+  needs affected owner work, renewed S19 review, explicit approval and freeze, then scoped S24
+  consumer updates instead of replaying S20-S23. Preserve unrelated author edits and prior releases.
+  Word-only layout repair requires the visible-text baseline. Never detach-patch final narrative.
+- Freeze the S06 analysis/story and test cheap S07 prototypes before production. At S23 derive
+  portal fields/counts from final Word and unified author facts. Use actual source/build
+  dependencies, bounded handoffs, exact UTF-8 author-text files and isolated figure jobs.
+  IO pending is not PASS. After two full builds diagnose cascades and correct incrementally;
+  do not omit necessary evidence, outputs or visual QA to save tokens.
 
-Read the runtime section of `reference/structural-quality.md` for exact UTF-8 author-text
-transport, real header/note unit constants, per-figure job isolation and IO pending states.
-After compaction use `wf handoff`; it is bounded local context, not a new check or report.
-Long S07/S20/S23/S25 cards are compact; `wf card <stage> --details` retrieves their single
-maintained full procedure. Read applicable details once, reuse already-loaded guidance.
-The engine/state/pinned gate versions are distinct; only explicit `wf migrate` changes pin.
-No modern engine refresh may silently rewind a journal-tail project or mark pending work PASS.
-
-## Start and resume
-
-For v1.19 use the existing medical-reader acceptance to read prose and every main/supplement
-display without backstage context, then verify that interpretation against sources. Actual
-uploaded supplements are included; technical-word flags never prove AI authorship or permit
-changing scientific meaning. S24/S25 explicitly cover Medical presentation. Keep genuine
-findings in their actual report sections and close each one. Follow rework-routing's smallest
-sufficient correction: classify source edits before expensive rebuilds, reuse only matching
-evidence and do not turn a local correction into a backward-stage/full-audit cycle.
-
-For v1.18 intake/data/analysis/replay and repeat review, read
-`reference/data-and-review-isolation.md`. User-supplied datasets are registered/read in
-place, not duplicated or aliased; full-data proof still applies. Follow declared producer
-dependencies, local replay budget and owned cleanup. Installed engine drift stops managed
-execution; study executors never repair public engine/state ad hoc. Internal plan history
-stays backstage while real post-hoc status remains. Reuse only genuine unchanged optional
-proposal adjudications; objective/new scientific issues are never waived. Classify actual
-source edits before expensive package rebuilding, then complete existing scoped checks.
-
-Before doing project work, run:
-
-```powershell
-.\.venv\Scripts\python.exe tools\wf.py status
-```
-
-`status` is compact/local. Read `tools/wf.py card` for active-stage instructions; use
-`status --full` only for diagnostics. Read `reference/efficient-quality.md` at S06/S07,
-when processing feedback and before building/finalizing a journal package.
-For composed builds, journal-only reorganisation and Word repair, also read
-`reference/source-aligned-validation.md`. Actual build receipts, not role guesses, determine
-consumers. Preserve checked-only sources; extend discovered dependencies in the same round.
-For post-freeze edits/S20-S25, read `reference/content-aware-amendments.md`. Proven
-presentation amendments preserve approval: no S19 rewind, new review round or confirmation.
-Validate actual content/meaning and affected outputs, retain old freezes/releases, report
-the delta once. Never infer equal science from equal numbers or exempt real errors.
-At S07/S13-S17 and S20-S23 read `reference/project-benchmarking.md`. Full-text medical
-comparators must shape structure, evidence coverage and the specific display inventory before
-writing/expensive builds. Legacy library/section/display quotas are retired, not lowered to
-pass. Seal project choices; complete real argument bindings and executor acceptance before
-independent/user delivery. User feedback is not routine quality control. Tool success,
-content acceptance, visual acceptance and actual submission are different states.
-
-If the virtual environment does not exist yet, run
-`uv run --python 3.13 python bootstrap.py`. After a context compaction, run `status` again.
-Complete only the active stage, then run `check` and `advance --note "..."`. Never infer or
-skip a stage.
-
-## Orchestration and capability routing
-
-### Registration and reporting paperwork: only when applicable
-
-Ordinary database mining, secondary analyses and retrospective institutional clinical-data
-studies do not require public study registration by default. A local analysis plan is not
-public preregistration. Do not request an OSF account, deposit, registration number or
-registration file, and do not block these studies on one. Ethics/data-access requirements
-remain separate. Do not publish anything externally without the user's explicit instruction.
-
-Only for a systematic review/meta-analysis or a genuine prospective interventional trial,
-check applicable current registration requirements/timing at S03 and state their actual
-basis in the existing protocol. A recommendation is not a universal mandate; do not invent
-registration or backdate a completed analysis. Do not ask routine data-mining users about it.
-
-Do not select, download, map or generate named reporting checklists before journal selection.
-At S20 inspect only the selected journal's explicit current requirements. If it requests a
-reporting checklist, prepare that requested form in the journal-specific integration/package
-at S23 and audit it at S25; otherwise omit it entirely. No fixed guideline catalogue or
-early mandatory reporting heading. Preserve scientific methods, transparency and ethics.
-The internal upload-completeness checklist is not a research-reporting checklist.
-
-At S05/S06 and scientific result revisions, read `reference/analysis-execution.md`.
-New/revised producers must export through the executed Python/R writer and replay their
-actual results before writing readiness. Never backfill receipts or weaken a failed comparison.
-Legacy outputs are not retroactively called reproduced; formatting changes do not refit models.
-For acquired full text, article identity must come from its own metadata or explicit reader
-confirmation of the exact registered file; an identifier in its references is insufficient.
-
-- `medpaper-codex-pipeline` is the sole workflow orchestrator in this repository. A different
-  workflow skill must not create a competing project layout, manuscript, reference library,
-  analysis plan, figure set, or submission package.
-- Other skills and plugins may supply a capability inside the active stage. They must write
-  to the paths declared by `wf status`, preserve provenance, and pass the same gate.
-- For scholarly discovery or permitted full-text acquisition, follow
-  `reference/codex-integration.md`. A record becomes citable only after the pipeline clients
-  re-fetch and verify its metadata. An externally acquired full text must be registered by
-  `tools/pubmed/fulltext.py register`.
-- Use the spreadsheet workflow at S10 to render and visually inspect the pipeline-generated
-  XLSX files. At S18, give the frozen complete manuscript, optional supplementary Methods
-  and tables to exactly one independent read-only subagent for publication-readiness review.
-  Read `reference/review-rounds-and-word-tables.md`. S18 starts manuscript round M001;
-  S19/S24 use independent subagent review rounds, not review ZIPs. The main executor applies
-  safe scoped corrections, reports changes and unadopted reasons once, then asks whether
-  another round is wanted. Show exact artifact/report paths. Stay until the user explicitly says
-  我确认这一版; do not infer approval from delivery, silence, thanks, completion
-  of one revision, or a generic instruction to continue.
-  Use the document/PDF workflows at S23 to render and inspect submission files.
-  At S24, present the actual upload package for the user's content/format edits and explicit
-  request for final review; freeze that revision. At S25, give only that frozen package and
-  the official journal instructions to one independent read-only subagent. It reads as a
-  first-time scientific reader, screens as an editor for low-level errors, then audits final
-  completeness, compliance and cross-file consistency.
-  These are QA helpers; the stage card remains authoritative.
-- At S11, ImageGen may participate as an optional second visual critic. It may identify
-  readability or layout defects, but it must never redraw or edit a statistical figure.
-  Implement accepted fixes in plotting code, re-render, and inspect the new output.
-
-## Non-negotiable validity rules
-
-1. Acquire the entire S03 protocol-defined data universe before analysis whenever the source
-   makes it available. Preserve source-total and received-count receipts, exhaust every
-   page/cursor, hash all raw/acquisition files with `tools/data_manifest.py`, and reconcile
-   received records to the analysis rows. Never add `LIMIT`, `TOP`, `head()`, `sample()`,
-   first-N slicing, a fixed page cap or a narrower query for speed, tokens, download volume or
-   compute. A pilot is non-analytic and must be followed by full acquisition. Source-imposed
-   partial access requires the user's explicit recorded authorization. A scientific sampling
-   design also requires explicit user authorization; the agent may not silently replace a
-   census with a sample. The gate is not waivable with `--force`; follow
-   `reference/data-acquisition-integrity.md`.
-2. Never invent or recall bibliographic facts. `verified: true` alone is not evidence. A
-   citable record must be produced by a fresh `tools/pubmed/verify.py` EFetch, bound to hashed
-   raw PubMed XML and the exact library hash, match PMID/DOI/metadata on recomputation, and
-   pass independent live PubMed gates from S13 through the final audit. Never write the four reference-library files
-   with an ad-hoc script; their integrity gates cannot be bypassed with `--force`.
-3. Every own-study result number must already exist in `project/03_analysis/results/*.json`,
-   produced by executed analysis code. Never calculate a result in prose. Read
-   `reference/numeric-claims.md` at S05/S06 and when writing or revising reported findings:
-   bind Results/Abstract claims and table cells to specific source facts; a matching number
-   elsewhere is insufficient. Keep these bindings backstage, outside submission uploads.
-4. Create only active-stage outputs. Scratch belongs in `project/temp/` and is removed before
-   advancing. Raw user data are immutable.
-5. Deterministic checks do not replace visual QA. Open rendered figures, tables, DOCX, and PDF
-   outputs when their stage requires it, then record the decision with a substantive reason.
-6. Keep patient-level/private data local. Do not upload it to web services or plugins without
-   explicit authorization and a de-identification decision.
-7. Do not draft or insert an AI-use disclosure. If a journal requires one, record it as a
-   user-controlled compliance item; the user decides whether and how it is written.
-8. A red gate means fix the cause. Use `--force` only for a deliberate, user-authorized
-   non-integrity exception recorded in the handoff log. Reference provenance, library,
-   BibTeX/RIS consistency and citekey resolution are non-overridable.
-9. Assemble and present the full scientific paper before asking for author information.
-   Author/affiliation administration is deferred to S21.
-10. Figure legends decode figures without repeating Results. At S17 consolidate crowded
-   display-item abbreviation lists under `Declarations and Statements > Abbreviations`, unless a
-   sourced journal rule requires local definitions. Final DOCX files contain neither the
-   literal U+2193 down arrow nor manual text-wrapping break controls. Every Word XML part is
-   cleared of `outlineLvl`, `keepNext`, `keepLines`, `pageBreakBefore` and paragraph borders;
-   headings use the Normal-based `SectionHeading` style. Supplementary Methods is prose only:
-   its tables belong in the separate three-line supplementary workbook, and it contains no
-   Markdown thematic rules. Figure legend section/figure titles cannot be duplicated.
-11. A built package is not initial approval. For first review or changed science, require an explicit request
-    for the final independent review, freeze the exact files, and complete the S25 reader,
-    editor and journal-compliance audit. Post-confirmation drift stops auditing until it is
-    classified and validated. A proven meaning-preserving presentation amendment uses the
-    scoped path and approval lineage instead of another review/confirmation loop. Actual
-    new science needs its affected owner/review rules, not a complete stage-tail replay.
-12. A user-requested revision remains inside the workflow. Read `reference/rework-routing.md`
-    and create or extend a persisted batch with `tools/rework.py batch` before editing. S19 is
-    the repeatable scientific-content loop and S24 is the repeatable journal-package loop;
-    recover compacted context with `tools/rework.py status`. Update the earliest owning source,
-    rebuild only its true dependants, and reuse unaffected hash-matched evidence. Every atomic
-    request must retain its acceptance criteria, changed-file hashes and validation before the
-    round closes. Token, context or time pressure never permits omitting an affected item,
-    output, gate, visual inspection or review. Never patch assembled Markdown or Word narrative
-    content as detached final files; S24 permits Word-only layout changes only when the S23
-    visible-text baseline passes.
-13. S19/S24 are explicit repeatable review stops. Use `tools/review_round.py` to start a
-    version-bound round, attach the genuine read-only subagent report before edits, correct
-    safe findings through scoped owner rules, close and report once. Ask for the exact statement 我确认这一版 or further changes/review. Record acceptance only from the actual explicit user answer,
-    bound to this round/current files. No review ZIP is created. Missing independent review
-    remains pending, unresolved objective defects cannot be dismissed as preferences, and
-    private data stays local. Legacy archives and freezes remain intact and verifiable.
-14. After explicit S19 approval, create and verify
-    `07_manuscript/scientific_master_freeze.json`. S20-S25 must not alter a frozen scientific
-    source for a journal-only requirement. Explicit master copyedits need a proven
-    presentation amendment, not a silently rewritten freeze. Initialize `08_submission/integration/` and keep every
-    journal-specific wording, structure, title-page, declaration and packaging change there.
-    A genuine scientific correction invalidates S19 approval, returns to its earliest owner,
-    and requires a new review round, explicit approval and freeze before submission work resumes.
-    New scoped revisions stay at the review checkpoint and call owner rules in place; do
-    not use `wf loop` or reset completed-stage history. `rework.py check` must pass on final
-    files before closure. After a late scientific correction is approved at S19, resume the
-    affected journal-package consumers at S24 rather than replaying S20-S23.
-15. At S06 freeze the analysis contract and clinical story; at S07 verify real low-cost display
-    prototypes before production. Feedback batches collect before they are sealed and built.
-    Rebuild true file dependencies, never an entire stage tail merely because an earlier stage
-    owns an edit. After two full builds use targeted correction; quality work remains mandatory.
-16. S23 derives portal fields/counts from final DOCX and unified administrative facts. S24 creates
-    a read-only release containing actual uploads only. Evidence/caches/control refreshes do not
-    require another author confirmation. Upload changes need actual scoped classification:
-    proven presentation amendments preserve approval; new science/initial approval follows
-    the required review and confirmation path. S25 binds the independent verdict
-    to upload identity and current guideline context. Never fabricate independent review.
-17. Read `reference/r-first.md`: processing may use Python; new medical statistical figures
-    default to R, and methods with a better-fitting established R implementation should use R.
-    Do not refit an approved model merely to plot it in R. Keep R source beside vector PDF;
-    use the managed R runner and inspect actual PNG/PDF. Preserve approved Python graphics
-    rather than converting solely to follow the new default. Tavotto is Matplotlib-only,
-    never for R graphs. Missing R packages are dependency work, not silent Python fallback.
-18. At S07 benchmark real medical content, record each display's reader contract and resolve
-    abbreviation placement before production. S18 reviews actual rendered figures alongside
-    prose/tables and records exact input hashes plus substantive comprehension findings.
-    Engineering QA belongs backstage; a numeric match or a PASS field is not proof of meaning.
-19. Finish the executor's own acceptance at S17, journal preproduction acceptance at S22,
-    and actual-upload acceptance at S23. Read the whole current paper and inspect actual
-    displays. Resolve routine omissions, unsupported arguments and copied display rationales
-    before delivery; quantities are advisory while identity, source support and explicit
-    journal caps remain mandatory. New same-journal style comparators use the public cache,
-    not edits to the accepted scientific bibliography. No extra mandatory user stop or agent.
-
-User instructions take precedence over this workflow. If a missing user choice would
-materially change the scientific result, target journal, private-data handling, or external
-action, stop and ask one concise question.
+Ask one concise question only when a missing choice, source or authorization materially
+changes the science, target, private-data handling or external action. Otherwise finish the
+authorized unblocked work. Distinguish generated, content-accepted, visually-accepted and submitted.
