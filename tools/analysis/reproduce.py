@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -19,6 +20,24 @@ from wfcore.readiness import atomic_json
 from wfcore.datasources import input_path,REGISTRY
 
 PROOFS = ".wf/analysis_reproduction.json"
+
+
+def renv_context(project):
+    """Identify an explicitly configured study environment without installing packages.
+
+    Project-local activation wins; installed workspaces may keep renv beside tools/project.
+    A declared but incomplete environment is an error, never a global-library fallback.
+    """
+    for root in dict.fromkeys((Path(project).resolve(), ROOT.resolve())):
+        activation, lock = root / "renv/activate.R", root / "renv.lock"
+        if activation.is_file():
+            return {"active": True, "project": str(root), "activation": str(activation),
+                    "activation_sha256": _sha256(activation),
+                    "lockfile": str(lock) if lock.is_file() else None,
+                    "lockfile_sha256": _sha256(lock) if lock.is_file() else None}
+        if lock.is_file():
+            raise ValueError("The study declares renv.lock but renv/activate.R is missing; restore that environment rather than using global R packages")
+    return {"active": False}
 
 
 def results(project):
@@ -49,6 +68,8 @@ def identity(project, rel, value):
     hashes = {r: _sha256(input_path(project,r)) for r in inputs}
     if hashes != inputs:
         raise ValueError(f"{rel}: input changed; run only the affected producer and true dependents")
+    if env.get("language") == "R" and "renv" in env and env["renv"] != renv_context(project):
+        raise ValueError(f"{rel}: R environment activation/lockfile changed; rerun the affected producer before reusing its evidence")
     return {"output": _sha256(_safe_path(project, rel)[1]), "script": env["script_sha256"], "inputs": hashes}
 
 
@@ -72,9 +93,25 @@ def run(project, script, timeout=3600, *, log_project=None):
     env = {**os.environ, "MEDPAPER_PROJECT": str(project), "MEDPAPER_ROOT": str(ROOT),
            "MEDPAPER_PYTHON": sys.executable, "PYTHONPATH": str(ROOT / "tools") + os.pathsep + os.environ.get("PYTHONPATH", ""),
            "PYTHONDONTWRITEBYTECODE": "1"}
-    args = [exe, str(file)] if file.suffix.lower() == ".py" else [exe, "--vanilla", "--encoding=UTF-8", str(file)]
     from wfcore.execution import run_logged
-    process = run_logged(args, project=log_project or project,cwd=project,env=env,timeout=timeout)
+    if file.suffix.lower() == ".py":
+        process = run_logged([exe, str(file)], project=log_project or project,cwd=project,env=env,timeout=timeout)
+    else:
+        context = renv_context(log_project or project)
+        env["MEDPAPER_RENV_CONTEXT"] = json.dumps(context)
+        if context["active"]:
+            # --vanilla includes --no-init-file and would ignore renv. A task-owned
+            # profile loads only the selected activation; the real --file stays intact.
+            temporary_root = project / "temp"; temporary_root.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(prefix="analysis-r-env-",dir=temporary_root) as directory:
+                profile = Path(directory) / "activate.R"
+                profile.write_text("local({ tryCatch(source(Sys.getenv('MEDPAPER_RENV_ACTIVATE'), local=.GlobalEnv), error=function(e) { writeLines(conditionMessage(e), stderr()); quit(save='no', status=2L) }); Sys.setenv(MEDPAPER_RENV_ACTIVE='1') })\n", encoding="utf-8")
+                env.update(R_PROFILE_USER=str(profile), RENV_PROJECT=context["project"],
+                           MEDPAPER_RENV_ACTIVATE=context["activation"], MEDPAPER_RENV_ACTIVE="")
+                args = [exe,"--no-save","--no-restore","--no-environ","--no-site-file","--encoding=UTF-8",str(file)]
+                process = run_logged(args,project=log_project or project,cwd=project,env=env,timeout=timeout)
+        else:
+            process = run_logged([exe,"--vanilla","--encoding=UTF-8",str(file)],project=log_project or project,cwd=project,env=env,timeout=timeout)
     log=process.log_path
     if process.returncode:
         raise ValueError(f"Producer failed ({process.returncode}); full log: {log}")

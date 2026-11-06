@@ -29,9 +29,20 @@ runner. `write_results("primary.json", result_object, seed=37, inputs=[...])` ru
 end of the actual scientific producer. R sources the helper through `MEDPAPER_ROOT`, sets
 `set.seed(37)` before analysis, and calls `medpaper_write_results` with the same arguments.
 For R arrays of length one use `I(...)` when the schema needs an array, not a scalar.
-Activate the study's pinned renv environment explicitly when applicable; do not silently
-install/upgrade the full medical package catalogue. Missing values are explicit JSON null;
+The managed R runner activates an existing project `renv/activate.R`, or the workspace's
+when that is where its environment lives, before executing the actual producer. It suppresses
+unrelated user/site startup files and preserves the producer's real `--file` identity. A
+lockfile without activation or failed activation stops execution, rather than using global
+packages. The receipt binds activation/lockfile hashes; a change invalidates affected R
+evidence. Replay uses the original environment in place, not a copied R library or a fresh
+installation in every sandbox. Restore the selected environment separately when missing;
+do not silently install/upgrade the full medical package catalogue. Missing values are explicit JSON null;
 never round statistics for storage or silently discard missing observations.
+
+The controlled startup is deliberate: R's `--vanilla` disables user profiles, including
+an activation placed in one. The runner instead permits only its task-owned profile when
+renv is selected, while disabling unrelated startup files. See the official
+[R startup options](https://stat.ethz.ch/R-manual/R-devel/library/base/html/Startup.html).
 
 ## Reuse without redoing the whole study
 

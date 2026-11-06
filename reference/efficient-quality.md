@@ -29,6 +29,27 @@ the analysis log. This does not authorize manuscript/production graphics before 
 for inapplicable items give a reason. Do not invent a validation exercise or label post-hoc
 choices as prespecified. Protocol v1 and its deviations remain the historical record.
 
+For new/explicitly migrated 1.26 contracts, make the following existing fields concrete at
+S03 and reconcile them at S06 (other existing fields remain in the same file):
+
+- `population_and_period`: `design`, `population`, `period`, `time_origin`, `follow_up`.
+- `unit_and_denominators`: `analysis_unit`, actual `key_fields` (including composite keys),
+  and `denominator_basis`. Distinguish rows, people, events, reports, specimens or studies.
+- `models_and_sensitivity`: `primary_analysis`, `target_question_or_quantity`, `confounding`,
+  `sensitivity`. A descriptive/qualitative synthesis is an analysis, not a reason to invent a model.
+- `missing_duplicates_outliers`: `missing_data`, `duplicates`, `outliers`.
+
+The first three ordinary descriptions in population, unit/denominator descriptions and the
+primary analysis/target are specific text. Time origin, follow-up, confounding, sensitivity
+and missing/duplicate/outlier choices use `{"applicable":true,"definition":"actual rule"}`
+or `{"applicable":false,"reason":"actual design-based reason"}`. Bare `N/A` is not an
+explanation. This checks specificity, not design or model correctness; existing scientific
+judgment/review remains. No universal causal estimand, survival clock, confounder model or
+new sensitivity analysis is prescribed. The old nine-field text form remains historical
+for an older engine pin; `contract_detail_version: 2` explicitly opts into this shape.
+Ordinary engine refresh does not rewrite/refreeze approved science. Reassess changed choices
+at their real owner and preserve unrelated work.
+
 `01_protocol/study_facts.json` holds four short statements: `clinical_question`, `main_finding`,
 `clinical_relevance`, `cannot_claim`, plus `result_sources` pointing to executed result JSONs.
 These are concise internal facts, not a prematurely drafted abstract. The clinical story must

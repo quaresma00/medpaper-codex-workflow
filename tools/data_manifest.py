@@ -69,7 +69,7 @@ def _skeleton() -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="manage the medpaper acquisition proof")
-    parser.add_argument("command", choices=["init", "sync", "verify"])
+    parser.add_argument("command", choices=["init", "sync", "verify", "audit-joins"])
     from wfcore.paths import project_dir
     parser.add_argument("--project", type=Path, default=project_dir())
     args = parser.parse_args()
@@ -104,6 +104,22 @@ def main() -> int:
         print(f"synchronized {len(raw)} raw and {len(code)} acquisition file(s) -> {manifest_path}")
         print(f"copy this exact value to dataset_summary.json source_hash: {manifest['raw_bundle_sha256']}")
         return 0
+
+    if args.command == "audit-joins":
+        try:
+            analysis = manifest.get("analysis_dataset", {})
+            if analysis.get("relationship") != "complex_join":
+                raise ValueError("audit-joins applies only to actual complex_join datasets")
+            observed = dataproof.observe_join_steps(project, analysis)
+            for step, actual in zip(analysis["join_steps"], observed):
+                step["observed"] = actual
+            from wfcore.readiness import atomic_json
+            atomic_json(manifest_path, manifest)
+            print(f"recounted {len(observed)} material join checkpoint(s); source data were read in place, not copied or rejoined")
+            return 0
+        except (OSError, UnicodeError, ValueError, TypeError, KeyError, ImportError) as exc:
+            print(f"cannot audit joins: {exc}", file=sys.stderr)
+            return 2
 
     state = None
     state_path = project / ".wf/state.json"

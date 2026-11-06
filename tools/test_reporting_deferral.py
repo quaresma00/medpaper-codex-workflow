@@ -61,7 +61,8 @@ class ReportingDeferralTests(unittest.TestCase):
         from wfcore.studypolicy import save
         fixture=QualityTests(); fixture.project=self.project; fixture.public_context()
         base={"source_field":"test_field","definition":"Synthetic source codebook definition","unit":"participant","coding":"Recorded binary source code","time_window":"Baseline observation","missing_rule":"Keep missing as missing","source_locator":"Synthetic codebook field"}
-        contract={"variable_definitions":[{**base,"role":"eligibility"},{**base,"role":"outcome"}],
+        from test_design_data_126 import design_contract
+        contract={**design_contract(),"variable_definitions":[{**base,"role":"eligibility"},{**base,"role":"outcome"}],
                   "statistical_reporting":{"primary_comparisons":1,"multiplicity":"One primary comparison; secondary tests are exploratory.","effect_measures":"Report the actual relative effect estimate.","intervals":"Two-sided 95% confidence intervals.","exploratory_labeling":"Secondary comparisons explicitly exploratory."}}
         self.write("01_protocol/analysis_contract.json",json.dumps(contract)); save(self.project)
         results=gates.run_stage(self.pipe,self.state,self.project,self.pipe.stage("S03_protocol"))

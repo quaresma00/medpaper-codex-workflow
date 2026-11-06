@@ -32,6 +32,13 @@ a local protocol does not imply public preregistration.
      confounders were chosen, how missing data is handled, what sensitivity analyses
      will run, and what constitutes the primary result. State what was planned versus
      decided after inspecting data; do not call a retrospective plan preregistered.
+     Persist these concrete choices in the existing `analysis_contract.json` now, not just
+     at S06. Under the existing fields specify the analysis unit/key and denominator;
+     actual time origin/follow-up when relevant; target question or quantity; primary
+     analysis and confounding/missing-data/sensitivity decisions. A descriptive or qualitative
+     study may explain why a model, longitudinal follow-up or sensitivity analysis is N/A.
+     Use the compact field shape in `reference/efficient-quality.md`; do not invent analyses
+     to fill a generic checklist. This is not public registration or an extra approval stop.
    - `Sample size / power`: if the dataset is fixed, state the precision it affords
      rather than pretending to a prospective calculation.
 3. Write `project/02_data/acquisition_plan.md` with exactly these headings:
@@ -62,6 +69,7 @@ a local protocol does not imply public preregistration.
 
 ## Outputs
 - `01_protocol/protocol_v1.md`
+- `01_protocol/analysis_contract.json` (existing contract, concrete design choices)
 - `02_data/acquisition_plan.md`
 
 ## Hard rules

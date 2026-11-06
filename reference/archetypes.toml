@@ -68,9 +68,10 @@ use_for = "Trials and oncology survival endpoints (OS, PFS, RFS, DFS)"
 requires = ["step_curve", "censoring_marks", "risk_table", "legend_present", "figure_statistics"]
 advisory = ["median_survival_reported", "hr_with_ci", "logrank_p", "confidence_band"]
 forbids = []
-notes = """A KM curve without a number-at-risk table is incomplete, and censoring ticks are
-not optional. Report median survival with 95% CI, and the HR with its 95% CI and the
-log-rank p. Stop the curve where the risk set is too small to interpret.
+notes = """Keep an aligned number-at-risk table and show actual censoring marks. A genuinely
+uncensored R population may use the source-bound censoring N/A path documented in r-first.md;
+never invent marks. Show relevant already-analysed estimates/tests and uncertainty, not a
+mandatory new HR/log-rank. Declare and justify sparse-tail display choices without changing estimates.
 Prefer R survival for new medical analyses; an already validated lifelines producer may
 remain the source. Do not hand-roll or refit the estimator merely to change graphics."""
 

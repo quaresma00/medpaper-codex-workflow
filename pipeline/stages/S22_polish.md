@@ -20,7 +20,9 @@ unchanged.
    abstract structure, spelling, word/reference limits and permitted headings with the
    chosen journal. Preserve medical-journal prose: continuous narrative, calibrated claims,
    concise Methods in the main paper, and detailed implementation only in the supplement.
-3. Keep Keywords immediately after the Abstract, comma-delimited, 3-6 items. Preserve the
+3. Keep Keywords immediately after the Abstract. Use the actual selected journal's keyword
+   count and final-output separator, already recorded in the target profile. The scientific
+   source's 3-6 comma-delimited convention does not override that journal. Preserve the
    explicit References heading and concise Figure legends at the end.
 4. Run `tools/text/polish.py diff` and `tools/text/polish.py lint` again. Restore and redo
    any wording edit that loses or adds a number, citation or artifact reference.

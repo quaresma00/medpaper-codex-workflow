@@ -3,6 +3,10 @@
 Use `reference/medical-writing.md` for Results. Consult `reference/numeric-claims.md` only
 while creating/checking bindings or resolving a source ambiguity. Save short finding bindings in
 `07_manuscript/claim_bindings.json`; source facts come from executed analysis, not the prose.
+For 1.26+ bindings include current source/text fingerprints and concise context_evidence;
+read the prose-context subsection of numeric-claims.md when first recording them. Reuse
+valid same-section context; do not repeat metadata in the paper. Unresolved attribution is
+pending, not a source-verified finding or an invented independent-review verdict.
 
 ## Purpose
 Write Results only after S10 tables and S11 rendered figures are accepted. Read those actual

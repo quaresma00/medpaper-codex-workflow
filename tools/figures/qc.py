@@ -244,6 +244,13 @@ def _qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pa
                 _, source = _safe_path(project, rel)
                 if not source.is_file() or _sha256(source) != expected:
                     problems.append(f"result changed: {rel}")
+            if "renv" in art:
+                from analysis.reproduce import renv_context
+                try:
+                    if art["renv"] != renv_context(project):
+                        problems.append("R environment activation/lockfile changed after rendering")
+                except (OSError, ValueError) as exc:
+                    problems.append(str(exc))
             add("r_render_provenance", not problems, "; ".join(problems) or "R script, result inputs and rendered outputs match")
             mf, ml = art.get("min_font_pt"), art.get("min_line_pt")
             add("min_font_size", mf is not None and mf >= float(tgt.get("figure_font_pt_min", 6)),
@@ -260,7 +267,12 @@ def _qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pa
             add("r_visual_measurement_limits", False, "; ".join(art.get("measurement_limits", [])), severity="warn")
             elements_found = art.get("elements", {})
             if archetype and arch_reg:
-                checks.extend(_archetype_checks(archetype, elements_found, arch_reg))
+                not_applicable = {}
+                try:
+                    not_applicable = _km_censoring_exception(project, entry, art)
+                except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+                    add("km_censoring_context", False, str(exc))
+                checks.extend(_archetype_checks(archetype, elements_found, arch_reg, not_applicable))
             blocking = [c for c in checks if not c["ok"] and c["severity"] == "fail"]
             return {"id": fid, "png": png_rel, "engine": "R", "archetype": archetype,
                     "width_class": width_class, "pixels": [w_px, h_px], "effective_dpi": round(eff_dpi, 1),
@@ -332,7 +344,36 @@ def _qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pa
     }
 
 
-def _archetype_checks(archetype: str, found: dict, reg: dict) -> list[dict]:
+def _km_censoring_exception(project, entry, art):
+    """Only a source-bound, genuinely uncensored KM population can omit censor ticks.
+
+    This is not a general element waiver and does not certify the estimator or population
+    interpretation. Existing result provenance and medical display review remain required.
+    """
+    ref = entry.get("censoring_not_applicable")
+    if ref is None:
+        return {}
+    if entry.get("archetype") != "km_survival" or not isinstance(ref, dict):
+        raise ValueError("Censoring N/A is a KM-only result reference, not a boolean waiver")
+    from wfcore.packagefreeze import _safe_path, _sha256
+    from wfcore.claims import pointer
+    rel, source = _safe_path(project, ref["file"])
+    if rel not in entry.get("source_results", []) or art.get("source_hashes", {}).get(rel) != _sha256(source):
+        raise ValueError("KM censoring N/A must refer to a current declared, rendered result source")
+    counts = pointer(json.loads(source.read_text(encoding="utf-8")), ref["pointer"])
+    if not isinstance(counts, dict) or not isinstance(counts.get("counting_unit"), str) or not counts["counting_unit"].strip():
+        raise ValueError("KM censoring summary needs its actual counting unit")
+    values = [counts.get(k) for k in ("observations", "events", "censored")]
+    def count(x):
+        return (type(x) is int and x >= 0) or (type(x) is float and x >= 0 and x.is_integer())
+    if any(not count(x) for x in values) or values[0] <= 0 or values[1] != values[0] or values[2] != 0:
+        raise ValueError("KM censoring N/A requires positive observations, all observed events and exactly zero censored units")
+    if art.get("elements", {}).get("censoring_marks", {}).get("found"):
+        raise ValueError("Rendered censoring marks contradict the proposed zero-censoring exception")
+    return {"censoring_marks": f"N/A: {values[0]} {counts['counting_unit']}, all events and zero censored; current source {rel}{ref['pointer']}"}
+
+
+def _archetype_checks(archetype: str, found: dict, reg: dict, not_applicable=None) -> list[dict]:
     """Mandatory-element checks for the declared chart type."""
     spec = (reg.get("archetype") or {}).get(archetype)
     if spec is None:
@@ -345,6 +386,10 @@ def _archetype_checks(archetype: str, found: dict, reg: dict) -> list[dict]:
     universal = (reg.get("meta") or {}).get("universal_requires", [])
     universal=[key for key in universal if key not in spec.get("universal_exempt",[])]
     for key in list(dict.fromkeys(list(universal) + list(spec.get("requires", [])))):
+        if key in (not_applicable or {}):
+            out.append({"name": f"element:{key}", "ok": True, "severity": "fail",
+                        "detail": not_applicable[key], "not_applicable": True})
+            continue
         rec = found.get(key)
         if rec is None:
             out.append({"name": f"element:{key}", "ok": False, "severity": "warn",

@@ -79,7 +79,13 @@ small local receipts; existing original payloads may stay in the registered sour
    Include the study period here even if it is just calendar years: every number that
    later appears in the manuscript must exist in a results JSON, dates included.
    Reconcile its `n_rows` against records received and explicit post-acquisition exclusions
-   in `acquisition_manifest.json`. Complex joins require a substantive reconciliation note.
+   in `acquisition_manifest.json`. For actual `complex_join`, retain the explanation and
+   `analysis_dataset.join_steps` for material before/after checkpoints: existing input/output
+   files, unit/key, join keys and relationship, and planned versus final analysis unit.
+   Run `data_manifest.py audit-joins` to calculate actual rows, unique units and input units
+   absent from output, then verify. Do not type a few agreeing counts or call every unmatched
+   record a clinical exclusion. Read the complex-join section in the acquisition reference.
+   Simple one-record-per-analysis-row data keep the existing count reconciliation only.
 7. Run the standalone verifier, then delete scratch files from `project/temp/`:
 ```powershell
 .\.venv\Scripts\python.exe tools\data_manifest.py verify

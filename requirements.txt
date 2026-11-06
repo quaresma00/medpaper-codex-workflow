@@ -21,7 +21,7 @@ pandas==3.0.5
 scipy==1.18.1           # also used by figure QC for grey-region labelling
 statsmodels==0.15.0
 
-# survival: required by the km_survival recipe. Do not hand-roll a product-limit estimator.
+# survival analysis / legacy helper compatibility; production plots consume approved results.
 lifelines==0.30.0
 
 # optional: force-directed label repulsion for volcano plots

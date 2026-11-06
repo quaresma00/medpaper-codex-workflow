@@ -91,3 +91,50 @@ compute, or convenience are never external source restrictions.
 The `data_acquisition_complete` gate is non-overridable. It runs before analysis, at the
 second publishability decision, at manuscript assembly, and again before package/final audit
 checkpoints so a partial or altered data foundation cannot silently reach submission.
+
+## Actual complex joins: rows are not analysis units
+
+Only `analysis_dataset.relationship="complex_join"` uses this path. Ordinary
+`one_record_per_analysis_row` retains its existing received = analysed + excluded proof.
+For a new/explicitly migrated 1.26 project, a narrative alone is insufficient. Describe
+material unit-changing/selection checkpoints in the same manifest's `analysis_dataset`:
+
+```json
+{"relationship":"complex_join","n_rows":123,"planned_analysis_unit":"patients",
+ "explanation":"actual join and exclusion logic",
+ "join_steps":[{"id":"cohort_medications","operation":"join","relationship":"one_to_many",
+   "explanation":"actual clinical and key relationship for this checkpoint",
+   "inputs":[
+     {"path":"02_data/raw/cohort.csv","unit":"patients","unit_key":["patient_id"],"join_key":["patient_id"]},
+     {"path":"02_data/raw/medications.csv","unit":"medication records","unit_key":["medication_id"],"join_key":["patient_id"],"output_key":["medication_id"]}],
+   "output":{"path":"02_data/processed/cohort_medications.csv","unit":"patients","unit_key":["patient_id"]}}]}
+```
+
+The number/path above illustrate shape, not facts or a ready-to-use receipt. Supply only
+actual existing data paths, authorized `data:` references and actual column names. Include
+`output_key` when an input unit maps to different column names in the output. Other material
+operations may be `filter`, `aggregate` or `reshape`; sequential steps must connect through
+their actual outputs. Do not duplicate original datasets or create every temporary merge
+as a separate retained file just for an audit; choose scientifically material checkpoints.
+If the existing data format lacks a reader, implement/test its real adapter rather than
+handwriting a pass. Current readers cover CSV/TSV, JSON/JSONL, Parquet (its installed engine)
+and explicitly named XLSX sheets. Counts read complete files/selected key columns in place.
+
+```powershell
+.\.venv\Scripts\python.exe tools/data_manifest.py audit-joins
+.\.venv\Scripts\python.exe tools/data_manifest.py verify
+```
+
+`audit-joins` computes each input/output's actual row count, unique units, missing-unit rows,
+source hash and input units absent from output; it does not execute the join or alter source
+files. Declared one-sided unique join relationships reject actual duplicate keys. `verify`
+independently recounts and detects modified/stale `observed` values; the final rows must match
+the analysis summary. Planned versus final units must be explained and reconciled with the
+existing analysis contract. Missing matches are not automatically clinical exclusions, and
+key/row agreement does not prove the scientific validity of a join or a cohort definition.
+Record the actual exclusion/denominator meaning in existing provenance/protocol notes and
+retain normal scientific review. No patient keys are written to the count evidence.
+
+Completed older pins keep their historical proof. An explicit new join_steps audit can be
+used without rewinding the project; genuine changed science still follows existing scoped
+owner/review rules. No extra agent, full-analysis replay or generic data-join report is added.

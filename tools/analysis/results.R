@@ -41,6 +41,17 @@ medpaper_write_results <- function(name, payload, seed, inputs) {
   payload$environment <- list(schema_version=1L, language="R", version=as.character(getRversion()),
     packages=packages, seed=seed, script=substring(script,nchar(prefix)+1), script_sha256=hash(script),
     inputs=ih, written_at=format(Sys.time(),"%Y-%m-%dT%H:%M:%OS6Z",tz="UTC"),writer="medpaper-results-v1")
+  context <- Sys.getenv("MEDPAPER_RENV_CONTEXT")
+  if (nzchar(context)) {
+    context <- jsonlite::fromJSON(context,simplifyVector=FALSE)
+    if (isTRUE(context$active)) {
+      if (!identical(Sys.getenv("MEDPAPER_RENV_ACTIVE"),"1") ||
+          !identical(hash(context$activation),context$activation_sha256) ||
+          (!is.null(context$lockfile) && !identical(hash(context$lockfile),context$lockfile_sha256)))
+        stop("Selected R environment did not activate or changed during execution; no result receipt written")
+    }
+    payload$environment$renv <- context
+  }
   out <- file.path(project,"03_analysis/results",name)
   if (file.exists(file.path(project,".wf/state.json"))) {
     code <- "import pathlib,sys; from wfcore.revision import guard_outputs; guard_outputs(pathlib.Path(sys.argv[1]),[pathlib.Path(sys.argv[2])])"

@@ -218,6 +218,10 @@ def run_checks(proj: Path) -> None:
     pipe = registry.load()
     st = State(proj, ".wf")
     st.create(pipe.meta["name"], pipe.meta["version"], pipe.first().id)
+    # Historical rendering/number-pool fixture, not a clinical context-readback claim.
+    # Current-version attribution and per-occurrence safety have dedicated v1.26 cases.
+    st.data["engine_pin"] = "1.25.0"
+    st.save()
 
     def run(check_name: str, stage_id: str, **spec) -> Result:
         fn = get(check_name)
@@ -2406,7 +2410,11 @@ def main() -> int:
                              ("test_medical_displays_122.py","medical display story, actual rendered review, table hierarchy and independent R panel tags"),
                              ("test_medical_production_123.py","contextual medical wording, current lint evidence and numerical forest columns"),
                              ("test_journal_context_124.py","official guide acquisition, exact current target and actual-file transfer compliance"),
-                             ("test_medical_authoring_125.py","clinical drafting context, source-preserving R recipes and measured legacy forest layout")):
+                             ("test_medical_authoring_125.py","clinical drafting context, source-preserving R recipes and measured legacy forest layout"),
+                             ("test_context_bindings_126.py","current scientific context and per-occurrence result attribution"),
+                             ("test_design_data_126.py","design-specific contracts and actual complex-join unit reconciliation"),
+                             ("test_table_proportions_126.py","actual table percentage denominators and non-count percentage scope"),
+                             ("test_runtime_km_126.py","unified real R environments and source-bound uncensored KM applicability")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

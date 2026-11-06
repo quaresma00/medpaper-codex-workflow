@@ -38,7 +38,11 @@ def km_survival(groups, time_points=None, width="single", height_mm=95.0,
                 risk_table_frac=None, ylabel="Overall survival", xlabel="Time (months)",
                 hr=None, hr_ci=None, logrank_p=None, show_ci=True, show_median=True,
                 colors=None, min_at_risk=10):
-    """Kaplan-Meier curves with a number-at-risk table, via lifelines.
+    """Legacy combined estimation/graphics helper, not the S11 production renderer.
+
+    Retained for compatibility; no current workflow calls this helper. New/updated
+    production figures consume approved analysis exports in R and must not use this
+    helper to refit curves or supply an unplanned log-rank test at plotting time.
 
     groups: [{"name": str, "time": array, "event": array(0/1)}, ...]
     hr, hr_ci, logrank_p: values from your results JSON. If logrank_p is omitted and

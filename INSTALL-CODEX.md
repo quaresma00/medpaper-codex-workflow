@@ -4,9 +4,9 @@
 
 - Windows PowerShell
 - `uv`
-- Python 3.13 (installed or provisionable by `uv`)
+- Python 3.13 (installed or provisionable by `uv`); the pinned science dependencies require at least 3.12
 - Network access for current literature, indexing, journal, and open-access checks
-- Pandoc and Microsoft Word for final DOCX rendering/visual QA; R is optional unless an analysis uses it
+- Pandoc and Microsoft Word for final DOCX rendering/visual QA; R is the default for new medical figures, with a recorded reason for an applicable Python exception
 
 ## Bootstrap
 
@@ -70,8 +70,9 @@ The command loop is:
 .\.venv\Scripts\python.exe tools\wf.py advance --note "specific handoff note"
 ```
 
-Use `loop --to <stage> --why "..."` for a deliberate return to an earlier stage. Use
-`clean` to report undeclared files; inspect the report before using `clean --apply`.
+User feedback uses a scoped `tools/rework.py` batch at S19/S24, not a `loop` or reset of
+completed stages. Run owner rules in place and rebuild actual dependants. Use `clean` to
+report undeclared files; inspect the report before using `clean --apply`.
 
 At S04, a raw file is not enough to prove complete acquisition. The stage creates and checks
 `02_data/acquisition_manifest.json`:
@@ -122,12 +123,11 @@ cannot waive them.
 
 The workflow chooses one title automatically, assembles `full_manuscript.md`, and presents
 that file together with supplementary Methods, tables, rendered figures, verified BibTeX/RIS
-exports and the independent verdict at S19. Every initial or scientifically revised S19 version is also packaged as a
-versioned, hash-verified ZIP suitable for third-party review. Codex shows the exact ZIP and
-artifact paths and remains at S19 until the user explicitly states that no further review is
-needed; delivery, silence, thanks or a generic “continue” is not approval. The decision is
-bound to the current ZIP package ID and cannot be bypassed with `--force`; a newly built ZIP
-requires a fresh explicit confirmation.
+exports and the independent verdict at S19. Genuine read-only subagent review rounds and
+reports are bound to the current files; no routine review ZIP is generated. Codex shows exact
+artifact/report paths, applies safe scoped corrections and remains at S19 until the user
+explicitly says “我确认这一版” for the current version. Delivery, silence, thanks or a generic
+“continue” is not approval. An external read-only review copy is produced only if requested.
 Author and affiliation details are intentionally deferred until S21. S23 converts every
 narrative upload—including the cover letter and supplementary Methods—to DOCX. The chosen
 journal's explicit typography rules win; where it is silent the recorded fallback is Times
@@ -137,9 +137,11 @@ and paragraph borders; headings use the Normal-based `SectionHeading` style. Fig
 have one section title and one title per figure. Supplementary Methods is prose-only: its
 tables are delivered in the separate three-line supplementary workbook and Markdown thematic
 rules are rejected before conversion.
-S24 does not advance until the user explicitly confirms the revalidated package is `OK`.
-S25 requires an independent three-lens `PASS`; a changed or deficient package loops back to
-S24 for correction and renewed confirmation.
+Initial S24 review requires current-version author confirmation and an explicit final-review
+request. S25 requires the genuine independent reader/editor/compliance verdict on that frozen
+package. Defects use scoped corrections at the same checkpoint. Proven meaning-preserving
+presentation amendments retain approval lineage; new science needs its affected scientific
+review and approval. A change is not an instruction to repeat the entire stage tail.
 
 User-requested revisions do not bypass the pipeline. `tools/rework.py` calls the source owner's
 rules described in `reference/rework-routing.md` without rewinding the stage tail. Repeated feedback

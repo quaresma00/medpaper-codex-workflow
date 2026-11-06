@@ -62,7 +62,8 @@ class QualityTests(unittest.TestCase):
         self.data("01_protocol/analysis_contract.json",{"variable_definitions":[{"source_field":"x"}]})
         self.assertFalse(self.ctx("variable_definitions").ok)
         base={"source_field":"source_column","definition":"Explicit source-codebook definition","unit":"person","coding":"source coding mapped without ambiguity","time_window":"baseline record","missing_rule":"Preserve source missing values","source_locator":"Synthetic codebook section 2"}
-        self.data("01_protocol/analysis_contract.json",{"variable_definitions":[{**base,"role":"eligibility"},{**base,"role":"outcome"}]})
+        from test_design_data_126 import design_contract
+        self.data("01_protocol/analysis_contract.json",{**design_contract(),"variable_definitions":[{**base,"role":"eligibility"},{**base,"role":"outcome"}]})
         self.assertTrue(self.ctx("variable_definitions").ok)
     def test_spotcheck_is_not_count_only(self):
         self.data("03_analysis/results/dataset_summary.json",{"source_record_check":{"eligible_records":100,"cases":[{}]*10}})

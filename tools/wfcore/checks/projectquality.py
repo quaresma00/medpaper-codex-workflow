@@ -56,6 +56,9 @@ def study_governance(ctx):
 def variable_definitions(ctx):
     try:
         plan=load(ctx.project,"01_protocol/analysis_contract.json")
+        from ..readiness import contract_problems
+        problems=contract_problems(ctx.project,plan)
+        if problems: raise ValueError("; ".join(problems[:6]))
         rows=plan.get("variable_definitions",[]); needed={"role","source_field","definition","unit","coding","time_window","missing_rule","source_locator"}
         if not rows: raise ValueError("Before analysis, record the variable-definition crosswalk in analysis_contract.json")
         if any(any(not str(r.get(k,"")).strip() for k in needed) for r in rows): raise ValueError("Each crosswalk row needs role, field, definition, units, coding, time, missing rule and actual source locator")

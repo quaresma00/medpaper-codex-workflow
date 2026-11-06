@@ -50,7 +50,8 @@ class OptimizationTests(unittest.TestCase):
         return self.project / rel
 
     def writing_fixture(self):
-        self.data(CONTRACT, {key: "Defined from the real protocol and completed analysis." for key in CONTRACT_KEYS})
+        from test_design_data_126 import design_contract
+        self.data(CONTRACT, design_contract())
         self.data(FACTS, {**{key: "Bounded clinical statement supported by the completed analysis." for key in STORY_KEYS},
                           "result_sources": ["03_analysis/results/main.json"]})
         self.data("03_analysis/results/main.json", {"n": 100, "script": "03_analysis/code/main.py"})

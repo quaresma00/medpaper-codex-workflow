@@ -48,9 +48,11 @@ executed methods. Use the existing notes/acceptance; no extra report is required
 6. Cite methodological choices with pandoc markers `[@key]`—the cutoff you adopted, the
    scoring system and model. Keys must come from records already
    retrieved this session.
-7. Numbers—study period, follow-up, n screened/excluded/analysed, software versions—must
-   already exist in `03_analysis/results/*.json`. If a necessary fact is absent, make a
-   scoped correction to its producing analysis/export; do not reset completed stages or type it.
+7. Own-study counts, follow-up and findings come from executed analysis JSON. Genuine design
+   dates or software versions may use the existing typed Methods-constant path with actual
+   protocol/environment evidence, not an invented result export or free-number whitelist.
+   If a scientific finding is missing, correct its actual producer/export in scope; a metadata
+   clarification does not require refitting models or resetting completed stages.
 8. Do not describe an analysis you did not run, and do not omit reportable methods you did.
    Explain scientifically necessary methods, not checklist paperwork or an invented registration.
 
@@ -65,7 +67,8 @@ executed methods. Use the existing notes/acceptance; no extra report is required
 - Supplementary Methods contains no embedded table or Markdown horizontal-rule residue.
   Tabular content belongs in the supplementary-tables workbook and must pass the S10
   three-line-table gate.
-- Every number traceable to results JSON (gate: `numbers_have_provenance`).
+- Every finding traceable to results JSON; genuine Methods constants need typed source evidence
+  under `numbers_have_provenance`.
 - No placeholders. `TODO`, `TBD`, `xx.x` and friends fail the gate.
 - Past tense, declarative. No "we aimed to comprehensively investigate".
 

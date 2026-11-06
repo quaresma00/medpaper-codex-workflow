@@ -28,6 +28,11 @@ the effect size and the data's limits are known. This is the last cheap exit.
    clinical ambiguity, preserve relevant null/contradictory findings and reconcile every
    planned primary/secondary outcome with its result or explained limitation. Do not invent
    validation or silently replace a failed primary question with a favourable exploratory one.
+   Reconcile the same concrete unit/time/model/missing-data choices begun at S03 with the
+   actual results and source transformations. Inapplicable items retain their design reason;
+   do not manufacture a follow-up model, confounder set or sensitivity analysis. A changed
+   analysis unit or denominator needs its scientific explanation in this contract/protocol,
+   not merely an updated count. Legacy approved contracts are not rewritten by engine refresh.
 4. Confirm required analysis and validity work are complete:
 ```
 .\.venv\Scripts\python.exe tools/wf.py decide analysis_converged YES --why "<required questions resolved; remaining optional work and why it does not block the current inference>"

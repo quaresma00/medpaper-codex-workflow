@@ -27,6 +27,11 @@ class IncrementalQualityTests(unittest.TestCase):
         self.project = Path(self.tmp.name)
         self.pipe = registry.load()
         self.state = State(self.project).create("medpaper", self.pipe.meta["version"], "S19_human_review")
+        # These fixtures exercise the original value/endpoint binding and reuse rules.
+        # Their intentionally terse prose omits 1.26 read-back; current-context positives
+        # and attribution faults are covered in test_context_bindings_126.py.
+        self.state.data["engine_pin"] = "1.25.0"
+        self.state.save()
         load_all()
 
     def text(self, rel, value):

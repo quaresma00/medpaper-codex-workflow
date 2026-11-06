@@ -31,6 +31,10 @@ restoration is needed; snapshot the working environment once and restore it rath
 upgrading on each revision. Record actual R/package versions. Do not modify the user's global
 R library or recreate an environment for a label change. With --vanilla explicitly source
 <workspace>/renv/activate.R when present; the managed runner already does so.
+Analysis and figure runners share the same selection: project-local renv first, otherwise
+the workspace environment. Activation failure does not fall back to global packages. Both
+record the actual activation/lockfile identity; an environment change invalidates only its
+affected result/render evidence. Figure staging keeps earlier outputs on activation failure.
 
 ## Plan, prototype and production
 
@@ -134,6 +138,22 @@ still needs the existing measured adapter, not false QC metadata. `survminer` ca
 curves/risk tables when the existing analysis inputs support them. These are conditional
 choices, not newly installed defaults or a reason to bypass the renderer. A risk table is
 supporting information for its curve, not automatically a second clinical panel.
+
+For an R KM figure with genuinely no censoring, keep real curves and the risk table; do not
+invent censor ticks. An optional artifact-plan `censoring_not_applicable` reference may point
+to its declared, render-hash-matched result object, for example
+`{"file":"03_analysis/results/survival.json","pointer":"/censoring_summary"}`.
+That object must name `counting_unit`, positive integer `observations`, `events` equal to
+observations, and `censored` exactly zero. Any missing/contrary/stale source fails. The exception
+applies only to the censor-tick requirement, never risk tables, curve meaning or visual QA.
+Confirm that this summary describes the plotted population, follow-up and censor definition
+in the existing medical display review; a zero from a different population is not a waiver.
+
+The old Python `recipes.py::km_survival` combines fitting and graphics and has no current
+workflow call site. It is retained for legacy compatibility, not an S11 production recipe.
+Do not call it to redraw accepted findings: use source-exported approved R results/fitted
+objects. Its automatic log-rank and tail defaults are not a statistical plan or an instruction
+to analyse. No existing clinical figure is refitted/converter-rewritten by this maintenance.
 
 ### Optional medical table route
 

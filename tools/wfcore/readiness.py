@@ -41,12 +41,79 @@ def _populated(value) -> bool:
     return True
 
 
+def specific_contract_required(project: Path, state=None) -> bool:
+    """New/explicitly migrated contracts only; engine refresh never rewrites old science."""
+    from .state import State, version_tuple
+    if state is None:
+        try:
+            state = State(project).load()
+        except (OSError, ValueError):
+            return False
+    return version_tuple(str(state.data.get("engine_pin", state.data.get("pipeline_version", "0")))) >= (1, 26, 0)
+
+
+def contract_problems(project: Path, contract=None, *, strict=None) -> list[str]:
+    """Validate concrete design choices, not whether those choices are scientifically right.
+
+    Extend the existing nine-field contract rather than creating a second checklist. Choices
+    can be inapplicable with an actual design reason; no model/follow-up/sensitivity is invented.
+    """
+    if contract is None:
+        try:
+            contract = load(project, CONTRACT)
+        except (OSError, ValueError) as exc:
+            return [str(exc)]
+    if not isinstance(contract, dict):
+        return ["analysis_contract must contain one object"]
+    if strict is None:
+        strict = specific_contract_required(project) or contract.get("contract_detail_version") == 2
+    if not strict:
+        return []
+    problems = []
+    plain = {
+        "population_and_period": ("design", "population", "period"),
+        "unit_and_denominators": ("analysis_unit", "denominator_basis"),
+        "models_and_sensitivity": ("primary_analysis", "target_question_or_quantity"),
+    }
+    choices = {
+        "population_and_period": ("time_origin", "follow_up"),
+        "models_and_sensitivity": ("confounding", "sensitivity"),
+        "missing_duplicates_outliers": ("missing_data", "duplicates", "outliers"),
+    }
+    for field in dict.fromkeys([*plain, *choices]):
+        section = contract.get(field)
+        if not isinstance(section, dict):
+            problems.append(f"analysis_contract.{field} must specify its actual design choices, not generic text")
+            continue
+        for name in plain.get(field, ()):
+            value = section.get(name)
+            if not isinstance(value, str) or len(value.strip()) < 8 or not _populated(value):
+                problems.append(f"analysis_contract.{field}.{name} needs a concrete study-specific description")
+        for name in choices.get(field, ()):
+            choice = section.get(name)
+            if not isinstance(choice, dict) or not isinstance(choice.get("applicable"), bool):
+                problems.append(f"analysis_contract.{field}.{name} must state applicable true/false")
+                continue
+            required = "definition" if choice["applicable"] else "reason"
+            value = choice.get(required)
+            minimum = 8 if choice["applicable"] else 20
+            if not isinstance(value, str) or len(value.strip()) < minimum or not _populated(value) or value.strip().lower() in {"n/a", "na", "not applicable"}:
+                problems.append(f"analysis_contract.{field}.{name}.{required} needs the actual rule or design-based N/A reason")
+    keys = contract.get("unit_and_denominators", {}).get("key_fields") if isinstance(contract.get("unit_and_denominators"), dict) else None
+    if not isinstance(keys, list) or not keys or any(not isinstance(k, str) or not k.strip() for k in keys) or len(set(keys)) != len(keys):
+        problems.append("analysis_contract.unit_and_denominators.key_fields must identify the actual analysis unit (including composite keys)")
+    return problems
+
+
 def writing_sources(project: Path, *, validate_analysis: bool = True) -> dict[str, str]:
     from analysis.reproduce import verify
     defects = verify(project) if validate_analysis else []
     if defects:
         raise ValueError("Analysis replay evidence: " + "; ".join(defects[:5]))
     contract, facts = load(project, CONTRACT), load(project, FACTS)
+    problems = contract_problems(project, contract)
+    if problems:
+        raise ValueError("; ".join(problems[:8]))
     for rel, doc, keys in ((CONTRACT, contract, CONTRACT_KEYS), (FACTS, facts, STORY_KEYS)):
         missing = [key for key in keys if not _populated(doc.get(key))]
         if missing:

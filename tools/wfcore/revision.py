@@ -60,6 +60,31 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
               for folder in ("tools", "pipeline", "reference") for p in (paths.repo_root() / folder).rglob("*")
               if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
     files = snapshot(project) if files is None else files
+    # Project-local join files already participate in snapshot. Follow only actually
+    # consumed external references using cheap stat identity, not full source rereads.
+    join_external_inputs = {}
+    acquisition = project / "02_data/acquisition_manifest.json"
+    if acquisition.is_file():
+        manifest = json.loads(acquisition.read_text(encoding="utf-8"))
+        analysis = manifest.get("analysis_dataset", {})
+        if isinstance(analysis, dict) and analysis.get("relationship") == "complex_join":
+            from .datasources import input_path
+            steps = analysis.get("join_steps", [])
+            if not isinstance(steps, list):
+                raise ValueError("complex_join join_steps must be an array, not silently ignored")
+            for step in steps:
+                if not isinstance(step, dict) or not isinstance(step.get("inputs"), list) or not isinstance(step.get("output"), dict):
+                    raise ValueError("complex_join step input/output references are invalid")
+                for item in [*step["inputs"], step["output"]]:
+                    if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                        raise ValueError("complex_join data reference is missing")
+                    ref = item["path"]
+                    if ref.startswith("data:"):
+                        source = input_path(project, ref)  # Missing/unauthorized references fail.
+                        if not source.is_file():
+                            raise ValueError(f"complex_join data reference is not a file: {ref}")
+                        stat = source.stat()
+                        join_external_inputs[ref] = {"resolved_path": str(source), "bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns}
     from .buildproof import load as build_receipts
     observed={}
     for output,receipt in build_receipts(project).items():
@@ -79,7 +104,8 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
                "engine": engine, "decisions": state.data.get("decisions", {}),
                "pipeline_version": state.data.get("pipeline_version"), "engine_pin": state.data.get("engine_pin"),
                "config": state.config(), "scope": revision.get("allowed_files", []),
-               "checks": revision.get("checks", []), "stages": revision.get("validation_stages", []),"observed_build_inputs":observed}
+               "checks": revision.get("checks", []), "stages": revision.get("validation_stages", []),"observed_build_inputs":observed,
+               "join_external_inputs": join_external_inputs}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 

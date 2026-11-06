@@ -81,18 +81,26 @@ def _render(project, figure_id, timeout=180):
     labels.update({key:next(iter(values)) for key,values in internal.items() if len(values)==1})
     policy = {**production,"labels":labels,"spelling": profile.get("spelling") or State(project).config().get("targets", {}).get("spelling", ""), "number_format": profile.get("number_format") or production.get("number_format", {})}
     policy_files = [path for path in (project/"08_submission/target_journal.json", project/".wf/config.toml") if path.is_file()]
-    before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values(), *policy_files]}
+    from analysis.reproduce import renv_context
+    context = renv_context(project)
+    environment_files = [Path(context[key]) for key in ("activation", "lockfile") if context.get(key)]
+    before = {str(p): _sha256(p) for p in [script, helper, recipes, plan_path, *sources.values(), *policy_files, *environment_files]}
     (project / "temp").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="r-figure-", dir=project / "temp") as temporary:
         stem = Path(temporary) / png.stem
         env = {**os.environ, "MEDPAPER_ROOT": str(ROOT), "MEDPAPER_PROJECT": str(project),
                "MEDPAPER_RENDER_STEM": str(stem), "MEDPAPER_FIGURE_SCRIPT": str(script),
-               "MEDPAPER_SOURCE_RESULTS": json.dumps(list(sources)), "MEDPAPER_LABEL_POLICY": json.dumps(policy)}
+               "MEDPAPER_SOURCE_RESULTS": json.dumps(list(sources)), "MEDPAPER_LABEL_POLICY": json.dumps(policy),
+               "MEDPAPER_RENV_CONTEXT": json.dumps(context), "MEDPAPER_RENV_ACTIVATE": context.get("activation", "")}
+        if context["active"]:
+            env["RENV_PROJECT"] = context["project"]
+        else:
+            env.pop("RENV_PROJECT", None)
         if os.name == "nt":
             env.update({"LC_ALL": "C", "LANG": "C"})
-        expression = ("a <- file.path(Sys.getenv('MEDPAPER_ROOT'), 'renv/activate.R'); "
-                      "if(file.exists(a)) source(a); options(warn=2); "
-                      "sys.source(Sys.getenv('MEDPAPER_FIGURE_SCRIPT'), envir=.GlobalEnv)")
+        expression = ("local({ a <- Sys.getenv('MEDPAPER_RENV_ACTIVATE'); "
+                      "if(nzchar(a)) source(a, local=.GlobalEnv); options(warn=2); "
+                      "sys.source(Sys.getenv('MEDPAPER_FIGURE_SCRIPT'), envir=.GlobalEnv) })")
         from wfcore.execution import run_logged
         process = run_logged([rscript,"--vanilla","--encoding=UTF-8","-e",expression],
                              project=project,cwd=ROOT,env=env,timeout=timeout)
@@ -104,7 +112,7 @@ def _render(project, figure_id, timeout=180):
         if metadata.get("width_class") != entry.get("width"):
             raise ValueError("R physical width differs from the artifact plan")
         report = audit_svg(Path(str(stem) + ".svg"), metadata)
-        if any(not Path(p).is_file() or _sha256(Path(p)) != h for p, h in before.items()):
+        if context != renv_context(project) or any(not Path(p).is_file() or _sha256(Path(p)) != h for p, h in before.items()):
             raise ValueError("Source changed during rendering; prior output preserved")
         for suffix, destination in destinations.items():
             from wfcore.determinism import normalize
@@ -114,11 +122,12 @@ def _render(project, figure_id, timeout=180):
         report["source_hashes"] = {r: before[str(p)] for r, p in sources.items()}
         report["script"] = script_rel
         report["script_sha256"] = before[str(script)]
+        report["renv"] = context
         report["render_hashes"] = {p.relative_to(project).as_posix(): _sha256(p) for p in destinations.values()}
         atomic_json(sidecar, report)
         for output in [*destinations.values(), sidecar]:
-            record_build(project, output, [script, helper, recipes, plan_path, *sources.values(), *policy_files,
-                                          ROOT/"tools/wfcore/clinicalpresentation.py", ROOT/"tools/wfcore/determinism.py"], parameters={"label_policy":policy})
+            record_build(project, output, [script, helper, recipes, plan_path, *sources.values(), *policy_files, *environment_files,
+                                          ROOT/"tools/wfcore/clinicalpresentation.py", ROOT/"tools/wfcore/determinism.py"], parameters={"label_policy":policy,"renv":context})
     return {"figure": figure_id, "engine": "R", "png": str(png), "pdf": str(pdf), "audit": str(sidecar)}
 
 

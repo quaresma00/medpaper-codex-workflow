@@ -202,6 +202,193 @@ def _same_inventory(declared: object, actual: list[dict], label: str, problems: 
         problems.append(f"{label} does not match current files ({'; '.join(detail)})")
 
 
+def _join_dataset(project: Path, spec: dict, cache: dict) -> tuple[dict, set]:
+    """Read existing data in place; keep only aggregate counts and ephemeral unit keys."""
+    if not isinstance(spec, dict):
+        raise ValueError("complex_join dataset must describe an actual file and unit_key")
+    rel, keys = spec.get("path"), spec.get("unit_key")
+    if not isinstance(keys, list) or not keys or any(not isinstance(k, str) or not k.strip() for k in keys) or len(set(keys)) != len(keys):
+        raise ValueError("complex_join unit_key must contain distinct actual column names")
+    if not isinstance(rel, str) or not (rel.startswith("data:") or _safe_rel(rel, "02_data") or _safe_rel(rel, "03_analysis/results")):
+        raise ValueError("complex_join paths must be authorized data: references or existing project data/results")
+    from .datasources import input_path
+    path = input_path(project, rel)
+    options = (rel, spec.get("sheet"), spec.get("pointer"), spec.get("encoding"), spec.get("delimiter"))
+    identity = (options, tuple(keys))
+    if identity in cache:
+        return cache[identity]
+    key_groups = cache.get("requests", {}).get(options, [tuple(keys)])
+    required_fields = set(key for group in key_groups for key in group)
+    before = path.stat()
+    suffix = path.suffix.lower()
+    handle = None
+    workbook = None
+    if suffix in {".csv", ".tsv", ".tab"}:
+        handle = path.open("r", encoding=spec.get("encoding", "utf-8-sig"), newline="")
+        rows = csv.DictReader(handle, delimiter=spec.get("delimiter", "\t" if suffix in {".tsv", ".tab"} else ","))
+        if not required_fields.issubset(rows.fieldnames or []):
+            handle.close(); raise ValueError(f"complex_join {rel}: unit key column missing")
+    elif suffix in {".jsonl", ".ndjson"}:
+        handle = path.open("r", encoding=spec.get("encoding", "utf-8"))
+        rows = (json.loads(line) for line in handle if line.strip())
+    elif suffix == ".json":
+        payload = json.loads(path.read_text(encoding=spec.get("encoding", "utf-8")))
+        rows = _json_pointer(payload, str(spec.get("pointer", "")))
+        if not isinstance(rows, list):
+            raise ValueError(f"complex_join {rel}: JSON data pointer must select actual records")
+    elif suffix == ".parquet":
+        import pandas as pd
+        rows = pd.read_parquet(path, columns=sorted(required_fields)).to_dict("records")
+    elif suffix == ".xlsx":
+        from openpyxl import load_workbook
+        workbook = load_workbook(path, read_only=True, data_only=True)
+        if not isinstance(spec.get("sheet"), str) or spec["sheet"] not in workbook.sheetnames:
+            workbook.close(); raise ValueError(f"complex_join {rel}: name the actual worksheet")
+        values = workbook[spec["sheet"]].iter_rows(values_only=True)
+        header = next(values, ())
+        if not required_fields.issubset(header):
+            workbook.close(); raise ValueError(f"complex_join {rel}: unit key column missing")
+        rows = (dict(zip(header, row)) for row in values)
+    else:
+        raise ValueError(f"complex_join {rel}: unsupported data format; use a real reader adapter, never a hand-filled count")
+    count = 0
+    missing_counts = {group: 0 for group in key_groups}
+    groups = {group: set() for group in key_groups}
+    def missing_key(value):
+        if value is None or (isinstance(value, str) and value == ""):
+            return True
+        try:
+            return bool(value != value)
+        except (TypeError, ValueError):
+            return True  # pandas nullable NA/NaT, not a dropped record
+    try:
+        for row in rows:
+            if not isinstance(row, dict) or not required_fields.issubset(row):
+                raise ValueError(f"complex_join {rel}: a record lacks its declared unit key")
+            count += 1
+            for group in key_groups:
+                values = [row[key] for key in group]
+                if any(missing_key(v) for v in values):
+                    missing_counts[group] += 1
+                else:
+                    if any(isinstance(v, (dict, list, tuple, set)) for v in values):
+                        raise ValueError(f"complex_join {rel}: unit keys must be scalar source fields")
+                    # Preserve identifiers/leading zeros. Integral spreadsheet numbers
+                    # compare with ordinary CSV string representations.
+                    groups[group].add(tuple(str(int(v)) if isinstance(v, float) and v.is_integer() else str(v) for v in values))
+    finally:
+        if handle is not None: handle.close()
+        if workbook is not None: workbook.close()
+    after = path.stat()
+    if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+        raise ValueError(f"complex_join input changed while counting: {rel}")
+    digest = file_sha256(path)
+    for group in key_groups:
+        observed = {"path": rel, "unit_key": list(group), "rows": count, "unique_units": len(groups[group]),
+                    "missing_unit_rows": missing_counts[group], "sha256": digest}
+        cache[(options, group)] = (observed, groups[group])
+    return cache[identity]
+
+
+def observe_join_steps(project: Path, analysis: dict) -> list[dict]:
+    """Recount material complex-join checkpoints; never execute the join/model itself."""
+    steps = analysis.get("join_steps")
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("complex_join needs actual join_steps; use data_manifest.py audit-joins")
+    # Gather every actual key/projection first: count a file once, even when several
+    # unit/merge keys are needed. No source copies or repeated join/model execution.
+    requests = {}
+    def request(spec, keys=None):
+        if not isinstance(spec, dict): return
+        keys = spec.get("unit_key") if keys is None else keys
+        if not isinstance(keys, list) or not keys or any(not isinstance(k, str) or not k for k in keys): return
+        options = (spec.get("path"), spec.get("sheet"), spec.get("pointer"), spec.get("encoding"), spec.get("delimiter"))
+        group = tuple(keys)
+        if group not in requests.setdefault(options, []): requests[options].append(group)
+    for step in steps:
+        if not isinstance(step, dict): continue
+        output = step.get("output")
+        request(output)
+        for spec in step.get("inputs", []) if isinstance(step.get("inputs"), list) else []:
+            request(spec)
+            if isinstance(spec, dict):
+                request(spec, spec.get("join_key"))
+                request(output, spec.get("output_key", spec.get("unit_key")))
+    cache, seen, observed = {"requests": requests}, set(), []
+    previous_output = None
+    for step in steps:
+        sid = step.get("id") if isinstance(step, dict) else None
+        if not isinstance(sid, str) or not sid.strip() or sid in seen:
+            raise ValueError("complex_join steps need distinct nonempty ids")
+        seen.add(sid)
+        if len(str(step.get("explanation", "")).strip()) < 30:
+            raise ValueError(f"complex_join {sid}: explain actual join/exclusion/unit transformation")
+        inputs, output = step.get("inputs"), step.get("output")
+        if not isinstance(inputs, list) or not inputs or not isinstance(output, dict):
+            raise ValueError(f"complex_join {sid}: actual input and output datasets required")
+        operation = step.get("operation")
+        if operation not in {"join", "filter", "aggregate", "reshape"}:
+            raise ValueError(f"complex_join {sid}: specify the actual join/filter/aggregate/reshape operation")
+        if operation == "join" and (len(inputs) != 2 or step.get("relationship") not in {"one_to_one", "one_to_many", "many_to_one", "many_to_many"}):
+            raise ValueError(f"complex_join {sid}: a join checkpoint needs two inputs and its actual key relationship")
+        if previous_output is not None and previous_output not in {x.get("path") for x in inputs if isinstance(x, dict)}:
+            raise ValueError(f"complex_join {sid}: steps must continue from the preceding material output")
+        if not isinstance(output.get("unit"), str) or len(output["unit"].strip()) < 3:
+            raise ValueError(f"complex_join {sid}: name the actual output analysis unit")
+        out, _ = _join_dataset(project, output, cache)
+        if out["missing_unit_rows"]:
+            raise ValueError(f"complex_join {sid}: final checkpoint has missing analysis-unit keys")
+        incoming = []
+        for index, spec in enumerate(inputs):
+            if not isinstance(spec, dict) or not isinstance(spec.get("unit"), str) or len(spec["unit"].strip()) < 3:
+                raise ValueError(f"complex_join {sid}: name each input counting unit")
+            summary, units = _join_dataset(project, spec, cache)
+            if operation == "join":
+                key_summary, _ = _join_dataset(project, {**spec, "unit_key": spec.get("join_key")}, cache)
+                summary = {**summary, "join_key": spec["join_key"], "unique_join_keys": key_summary["unique_units"],
+                           "missing_join_key_rows": key_summary["missing_unit_rows"]}
+                one_side = ((index == 0 and step["relationship"] in {"one_to_one", "one_to_many"}) or
+                            (index == 1 and step["relationship"] in {"one_to_one", "many_to_one"}))
+                if one_side and key_summary["unique_units"] != key_summary["rows"] - key_summary["missing_unit_rows"]:
+                    raise ValueError(f"complex_join {sid}: duplicate keys contradict declared {step['relationship']} relationship")
+            output_keys = spec.get("output_key", spec.get("unit_key"))
+            projected = {**output, "unit_key": output_keys}
+            _, kept = _join_dataset(project, projected, cache)
+            incoming.append({**summary, "unit": spec["unit"], "output_key": output_keys,
+                             "input_units_not_in_output": len(units - kept)})
+        observed.append({"id": sid, "inputs": incoming, "output": {**out, "unit": output["unit"]}})
+        previous_output = output["path"]
+    final = observed[-1]["output"]
+    if final["rows"] != analysis.get("n_rows"):
+        raise ValueError("complex_join final observed row count differs from analysis_dataset.n_rows")
+    planned = analysis.get("planned_analysis_unit")
+    if not isinstance(planned, str) or len(planned.strip()) < 3:
+        raise ValueError("complex_join planned_analysis_unit must state the intended scientific counting unit")
+    contract_path = project / "01_protocol/analysis_contract.json"
+    if contract_path.is_file():
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        unit_section = contract.get("unit_and_denominators")
+        contract_unit = unit_section.get("analysis_unit") if isinstance(unit_section, dict) else None
+        if contract_unit and contract_unit != planned:
+            raise ValueError("complex_join planned_analysis_unit differs from the analysis contract; reconcile at its scientific owner")
+    if final["unit"] != planned and len(str(analysis.get("unit_change_reason", "")).strip()) < 30:
+        raise ValueError("complex_join planned and final units differ; explain and reconcile the scientific change")
+    return observed
+
+
+def join_step_problems(project: Path, analysis: dict, *, required=False) -> list[str]:
+    if not required and "join_steps" not in analysis:
+        return []
+    try:
+        observed = observe_join_steps(project, analysis)
+        recorded = [step.get("observed") for step in analysis["join_steps"]]
+        if recorded != observed:
+            return ["complex_join observed counts/units/source hashes are missing or stale; run audit-joins on actual datasets"]
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, ImportError) as exc:
+        return [str(exc)]
+    return []
+
+
 def _scan_caps(project: Path, files: list[dict], manifest: dict, state: object | None,
                problems: list[str]) -> None:
     pilot = manifest.get("pilot")
@@ -437,6 +624,8 @@ def validate(project: Path, state: object | None = None) -> Validation:
         elif relationship == "complex_join":
             if len(str(analysis.get("explanation", "")).strip()) < 40:
                 problems.append("complex_join requires a substantive count-reconciliation explanation")
+            from .readiness import specific_contract_required
+            problems.extend(join_step_problems(project, analysis, required=specific_contract_required(project, state)))
         else:
             problems.append("analysis_dataset.relationship must be one_record_per_analysis_row or complex_join")
 
