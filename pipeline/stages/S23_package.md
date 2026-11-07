@@ -1,18 +1,21 @@
 # S23 - Build and verify only actual journal uploads
 
-Follow `reference/journal-adaptation.md`: verify the current sealed guide context before
-builds. Use actual selected CSL/official template assets, inspect manual guide clauses in the
-same rendered QA pass, then run existing submission measurements once. Required clauses
-without implementation/current evidence remain pending; a built Word is not compliance.
+Use `reference/journal-adaptation.md`: verify the sealed current guide, selected CSL/template
+and actual upload list. Inspect manual guide clauses in the final rendered QA and measure
+uploads once. A successful build alone does not prove compliance.
 
 Freeze content, author/blinding facts, official rules and the exact upload list before
 expensive builds. Keep one source/dependency path; compose from the real build entrypoint.
 Resolve routine medical prose, table/figure meaning and reference coverage before building.
+Apply the current `submission_layout` policy: nonblinded author front matter from author_info;
+separate title page only if required/blinded; images separate by default; tables after
+References, each on a new page, then final legends. Only explicitly required guide clauses
+override those positions, with image and caption placement handled separately. Name actual
+supplements `Supplemental_File_<n>_<description>.<ext>` unless the guide mandates otherwise.
 Build the necessary DOCX/supplements/figures once, then correct only affected dependants.
 
-Use the managed R renderer and matching per-figure QC sequentially. A pending job or Excel
-IO lock is incomplete work, never a QC/provenance pass. Process logs belong in .wf/processes
-or .wf/logs, never inside the temporary scratch area that temp_clean must clear.
+Use managed R rendering then matching figure QC sequentially. Pending jobs/IO locks remain
+incomplete. Keep process logs in .wf/processes or .wf/logs, outside disposable scratch.
 
 Apply necessary layout repair -> final XML cleanup -> final rendering -> visible-content
 baseline and measured portal fields. Inspect a complete overview plus changed/critical

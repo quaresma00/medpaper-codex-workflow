@@ -289,7 +289,7 @@ def _docx_text(root) -> str:
                        for p in root.findall(".//w:p", NS))
 
 
-def _docx_legend_problems(root, expected: list[str], cap: int) -> list[str]:
+def _docx_legend_problems(root, expected: list[str], cap: int, heading="Figure legends") -> list[str]:
     paragraphs: list[tuple[str, str]] = []
     for p in root.findall(".//w:p", NS):
         text = "".join(t.text or "" for t in p.findall(".//w:t", NS)).strip()
@@ -299,7 +299,7 @@ def _docx_legend_problems(root, expected: list[str], cap: int) -> list[str]:
             paragraphs.append((text, style_id))
     try:
         start = next(i for i, (text, _) in enumerate(paragraphs)
-                     if text.casefold() == "figure legends") + 1
+                     if text.casefold() == heading.casefold()) + 1
     except StopIteration:
         return ["Figure legends heading is missing"]
     headings = []
@@ -427,24 +427,36 @@ def _audit_docx(path: Path, style: dict, role: str,
             problems.append(f"{path.name}: built-in outline heading style remains on visible text")
             break
     if role == "manuscript":
+        from ..submissionlayout import inline_legends,caption_problems
+        from ..journalspec import aliases
+        heading_labels=aliases(style.get("journal_profile",{}))
+        captions_inline=bool(style.get("journal_project")) and inline_legends(Path(style["journal_project"]))
         lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
-        exact = {name: [i for i, line in enumerate(lines) if line.casefold() == name]
+        mapped={label.casefold():canonical.casefold() for canonical,label in heading_labels.items()}
+        exact = {name: [i for i, line in enumerate(lines) if mapped.get(line.casefold(),line.casefold()) == name]
                  for name in ("abstract", "references", "figure legends")}
         keywords = [i for i, line in enumerate(lines) if line.casefold().startswith("keywords:")]
         for name, indices in exact.items():
+            if name=="figure legends" and captions_inline:
+                if indices: problems.append(f"{path.name}: duplicated end Figure legends with inline captions")
+                continue
             if len(indices) != 1:
                 problems.append(f"{path.name}: expected one {name.title()} heading, found {len(indices)}")
         if len(keywords) != 1:
             problems.append(f"{path.name}: expected one Keywords line, found {len(keywords)}")
         positions = [exact["abstract"][0] if len(exact["abstract"]) == 1 else -1,
                      keywords[0] if len(keywords) == 1 else -1,
-                     exact["references"][0] if len(exact["references"]) == 1 else -1,
-                     exact["figure legends"][0] if len(exact["figure legends"]) == 1 else -1]
+                     exact["references"][0] if len(exact["references"]) == 1 else -1]
+        if not captions_inline: positions.append(exact["figure legends"][0] if len(exact["figure legends"])==1 else -1)
         if all(x >= 0 for x in positions) and positions != sorted(positions):
             problems.append(f"{path.name}: protected manuscript sections are out of order")
         if planned_figures is not None:
-            problems.extend(f"{path.name}: {problem}" for problem in
-                            _docx_legend_problems(root, planned_figures, legend_cap))
+            if captions_inline:
+                from docx import Document
+                problems.extend(caption_problems(Document(path),planned_figures,legend_cap))
+            else:
+                problems.extend(f"{path.name}: {problem}" for problem in
+                                _docx_legend_problems(root, planned_figures, legend_cap,heading_labels.get("Figure legends","Figure legends")))
     elif role == "figure_legends":
         count = sum(1 for line in raw_text.splitlines()
                     if line.strip().casefold() == "figure legends")
@@ -465,6 +477,8 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
     try:
         manifest = ctx.read_json(manifest_rel)
         style = ctx.read_json(style_rel)
+        from ..journalspec import load
+        style={**style,"journal_project":str(ctx.project),"journal_profile":load(ctx.project)}
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         return Result(False, "docx_bundle_ready", f"cannot read manifest/style config: {exc}")
     roles: dict[str, list[Path]] = {}
@@ -496,8 +510,16 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
         if path.suffix.casefold() == ".docx":
             problems.extend(_audit_docx(path, style, role, planned,
                                         check_limit(ctx)))
+            from ..journalspec import docx_problems
+            problems.extend(docx_problems(path,style["journal_profile"],ctx.project,role))
     requirements = ctx.read_json("08_submission/submission_requirements.json") if ctx.exists("08_submission/submission_requirements.json") else {}
-    for role in [name for name in requirements.get("required_upload_roles", ["manuscript", "title_page", "cover_letter"]) if name in TEXT_ROLES]:
+    from ..submissionlayout import required_roles,manifest_problems
+    try:
+        required=required_roles(ctx.project)
+        problems.extend(manifest_problems(ctx.project,manifest))
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        problems.append(str(exc));required=[]
+    for role in [name for name in required if name in TEXT_ROLES]:
         if not any(p.suffix.casefold() == ".docx" for p in roles.get(role, [])):
             problems.append(f"no DOCX for required role '{role}'")
     if ctx.p(supplementary_rel).exists():

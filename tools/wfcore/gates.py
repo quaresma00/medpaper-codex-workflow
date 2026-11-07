@@ -23,7 +23,7 @@ def run_stage(pipeline, state, project: Path, stage, *, reuse: bool = False, rec
     for spec in stage.gate:
         name = spec.get("check")
         if name in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid",
-                    "medical_display_story", "medical_display_production", "journal_requirements_current"} and state.pin_excludes(stage.id, spec.get("since")):
+                    "medical_display_story", "medical_display_production", "journal_requirements_current", "discussion_ready"} and state.pin_excludes(stage.id, spec.get("since")):
             results.append(Result(True, name, "new presentation gate not retroactive to this pinned completed stage; wf migrate opts in"))
             continue
         fn = checks.get(name)
@@ -48,7 +48,7 @@ def run_stage(pipeline, state, project: Path, stage, *, reuse: bool = False, rec
             res.severity = spec["severity"]
         results.append(res)
         if res.blocking and name in {"outputs_exist", "writing_ready", "feedback_batch_sealed", "medical_benchmark", "literature_coverage", "executor_acceptance",
-                                    "medical_display_story", "medical_display_production", "journal_requirements_current"}:
+                                    "medical_display_story", "medical_display_production", "journal_requirements_current", "discussion_ready"}:
             results.append(Result(False, "dependent_checks_pending", "Required inputs failed; dependent gates were not executed and cannot be forced."))
             break  # Fix missing inputs before costly dependent checks; never mark them passed.
     if receipts:

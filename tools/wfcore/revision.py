@@ -20,6 +20,11 @@ REVIEW_OUTPUTS = {"07_manuscript/human_review.md", "07_manuscript/scientific_mas
                   "08_submission/package_human_review.md", "08_submission/package_review_freeze.json"}
 
 
+def discussion_wording_item(item: dict) -> bool:
+    return (item.get("kind") == "discussion" and item.get("change_type") == "wording"
+            and item.get("owning_stage", "S16_discussion") == "S16_discussion")
+
+
 def active(project: Path) -> dict | None:
     state = project / ".wf/state.json"
     if not state.is_file():
@@ -41,7 +46,8 @@ def snapshot(project: Path) -> dict[str, str]:
             continue
         rel = path.relative_to(project).as_posix()
         tracked_acceptance = rel.startswith((".wf/executor_acceptance_", ".wf/benchmark_")) and rel.endswith(".json")
-        if ((rel.startswith(".wf/") and not tracked_acceptance) or rel.startswith(("temp/", "08_submission/releases/", "07_manuscript/review_packages/"))
+        tracked_writing = rel in {".wf/discussion_materials.md", ".wf/discussion_outline.md"}
+        if ((rel.startswith(".wf/") and not (tracked_acceptance or tracked_writing)) or rel.startswith(("temp/", "08_submission/releases/", "07_manuscript/review_packages/"))
                 or "__pycache__" in path.parts or path.name == ".gitkeep"):
             continue
         if rel.startswith("02_data/raw/") or "/cache/" in rel or "/fulltext/" in rel:
@@ -149,7 +155,14 @@ def scope_problems(project: Path, revision: dict, files: dict | None = None) -> 
             tail = rel.split("/", 3)[-1]
             return before.get("08_submission/" + tail) == now.get(rel)
         return False
-    return [f"unplanned change: {rel}" for rel in sorted(changed - allowed) if not maintenance(rel)]
+    problems = [f"unplanned change: {rel}" for rel in sorted(changed - allowed) if not maintenance(rel)]
+    narrative_guard = revision.get("discussion_notes_guard")
+    if narrative_guard:
+        from .discussion import notes_outside_discussion_hash
+        notes = project / "03_analysis/notes.md"
+        if (not notes.is_file() or notes_outside_discussion_hash(notes.read_text(encoding="utf-8")) != narrative_guard):
+            problems.append("non-Discussion analysis notes changed in a narrative-only revision; use a scientific source-owned item")
+    return problems
 
 
 def plan_scope(project: Path, pipeline, revision: dict) -> None:
@@ -157,6 +170,17 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     sources = sorted({rel.replace("\\", "/") for item in revision["items"] for rel in item["affected_sources"]})
     for rel in sources:
         _safe_path(project, rel)
+    narrative_notes = ("03_analysis/notes.md" in sources and all(discussion_wording_item(item)
+                       for item in revision["items"] if "03_analysis/notes.md" in item["affected_sources"]))
+    if narrative_notes and "discussion_notes_guard" not in revision:
+        from .discussion import notes_outside_discussion_hash
+        notes = project / "03_analysis/notes.md"
+        if not notes.is_file() or revision.get("baseline", {}).get("03_analysis/notes.md") != _sha256(notes):
+            raise ValueError("Declare the Discussion narrative revision before editing analysis notes")
+        revision["discussion_notes_guard"] = notes_outside_discussion_hash(notes.read_text(encoding="utf-8"))
+    elif not narrative_notes:
+        revision.pop("discussion_notes_guard", None)
+    validity_sources = [r for r in sources if not (narrative_notes and r == "03_analysis/notes.md")]
     rebuild = set()
     for item in revision["items"]:
         rebuild.update(closure(project, item["affected_sources"], change_type=item["change_type"],
@@ -173,7 +197,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     if revision["review_stage"] == "S19_human_review":
         rebuild = {r for r in rebuild if not r.startswith("08_submission/")}
     stages = {item["owning_stage"] for item in revision["items"]}
-    if any(r.startswith("03_analysis/") or r in {"01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in sources):
+    if any(r.startswith("03_analysis/") or r in {"01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in validity_sources):
         stages.add("S06_protocol_final")
         rebuild.update({"01_protocol/study_facts.json", "01_protocol/writing_readiness.json",
                         "01_protocol/analysis_contract.json", "01_protocol/protocol_final.md", "01_protocol/protocol_diff.md"})
@@ -194,7 +218,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         stages.add("S17_assemble")
     substantive = any(i["change_type"] == "scientific" for i in revision["items"])
     scientific_inputs = substantive or any(r.startswith(("02_data/", "03_analysis/")) or r in {
-        "01_protocol/protocol_v1.md", "01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in sources)
+        "01_protocol/protocol_v1.md", "01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in validity_sources)
     if substantive and revision["review_stage"] == "S19_human_review":
         stages.add("S18_independent_review")
         if any(r.startswith(("04_tables/", "05_figures/", "03_analysis/results/")) for r in rebuild):
@@ -251,6 +275,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         controls.add("08_submission/journal_context.json")
     if "S05_analysis" in stages:
         controls.update({"03_analysis/analysis_log.md", "03_analysis/notes.md", "03_analysis/method_scan.md"})
+    if "S16_discussion" in stages:
+        controls.update({".wf/discussion_materials.md", ".wf/discussion_outline.md"})
     if "S12_reconcile" in stages:
         controls.add("07_manuscript/reconciliation.md")
     if "S22_polish" in stages:
@@ -299,7 +325,7 @@ def _selected_checks(state, revision):
     seen = set()
     for row in revision["checks"]:
         spec = row["spec"]
-        if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid"} and state.pin_excludes(row["stage"], spec.get("since")):
+        if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid", "discussion_ready"} and state.pin_excludes(row["stage"], spec.get("since")):
             continue
         contextual = spec["check"] in {"outputs_exist", "handoff_recorded", "decision_recorded", "reference_provenance"}
         identity = json.dumps([row["stage"] if contextual else None, spec], sort_keys=True)

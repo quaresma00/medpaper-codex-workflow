@@ -16,7 +16,7 @@ MANIFEST = "08_submission/bundle/manifest.json"
 AUTHOR_FACTS = "00_input/author_info.json"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 SECTIONS = ("Abstract", "Keywords", "Introduction", "Methods", "Results", "Discussion",
-            "Conclusion", "Declarations and Statements", "References", "Figure legends")
+            "Conclusion", "Declarations and Statements", "References", "Tables", "Figure legends")
 ALIASES = {"materials and methods": "Methods", "patients and methods": "Methods",
            "statistical methods": "Methods", "conclusions": "Conclusion",
            "declarations": "Declarations and Statements", "statements": "Declarations and Statements",
@@ -39,6 +39,10 @@ def docx_sections(path: Path, aliases: dict | None = None) -> tuple[str, dict[st
     section, title, collected, all_text = "front", "", {}, []
     explicit = any((n.get(W+"name","").startswith("medpaper_section_") for n in root.iter(W+"bookmarkStart")))
     styled = any(n.get(W+"val","") in {"Heading1","SectionHeading"} for n in root.iter(W+"pStyle"))
+    table_paragraphs = {p for table in root.iter(W+"tbl")
+                        if any(n.get(W+"val", "").startswith("medpaper-threeline:")
+                               for n in table.iter(W+"tblCaption"))
+                        for p in table.iter(W+"p")}
     for paragraph in root.iter(W + "p"):
         text = "".join(node.text or "" for node in paragraph.iter(W + "t")).strip()
         if not text:
@@ -46,6 +50,14 @@ def docx_sections(path: Path, aliases: dict | None = None) -> tuple[str, dict[st
         all_text.append(text)
         normalized = re.sub(r"^\d+(?:\.\d+)*[. ]*", "", text).strip().rstrip(":").casefold()
         markers = [n.get(W+"name","") for n in paragraph.iter(W+"bookmarkStart")]
+        if any(marker.startswith("medpaper_caption_") for marker in markers):
+            collected.setdefault("Figure legends",[]).append(text)
+            continue
+        if paragraph in table_paragraphs or any(marker.startswith("medpaper_table_") for marker in markers):
+            collected.setdefault("Tables",[]).append(text)
+            continue
+        if "medpaper_section_tables" in markers:
+            section="Tables";collected.setdefault(section,[])
         pstyle = paragraph.find(W+"pPr/"+W+"pStyle")
         style_id = pstyle.get(W+"val","") if pstyle is not None else ""
         structural = (any(n.startswith("medpaper_section_") for n in markers) if explicit else

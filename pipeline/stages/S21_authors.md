@@ -24,6 +24,13 @@ Write the response faithfully to `project/00_input/author_info.json`, then creat
   user-supplied facts, the exact sections required by the selected journal, and the verified
   master abbreviation list when consolidation is triggered.
 
+For nonblinded journals the final manuscript starts with title, ordered authors, affiliations,
+correspondence/contact and supplied actual ORCIDs, derived by the builder from author_info.json.
+Generate a separate uploaded title page only when the current guide explicitly requires it.
+For double-blind journals keep the main manuscript anonymous and upload the separate title
+page. Both use the same selected integration title and administrative facts; never maintain
+independent author lists. The working title_page.md is not an unconditional upload requirement.
+
 If the chosen journal requires administrative declarations in the manuscript file, merge them
 into the integration manuscript's existing Declarations and Statements section between Discussion and References;
 otherwise package administrative facts separately. Keep the centralized Abbreviations subsection

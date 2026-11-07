@@ -66,6 +66,20 @@ does not establish a gap. Explain why the question matters without asserting nov
 
 ## Discussion
 
+First prepare the display-free Discussion packet and a short six-point outline through
+the S16 procedure. The writer receives narrative principal findings, actual literature
+comparisons, plausible explanations, clinical implications and limitations. It does not
+receive this study's Results file, result tables, figure/table identifiers or internal
+analysis/revision logs. Keep those for the executor's separate factual check after drafting.
+Use a clean writing context; a single scoped writer may use the packet, outline and necessary
+published-source passages without inheriting the full analysis conversation.
+
+The outline covers the principal finding; comparison and reasons for differences; possible
+mechanisms; clinical meaning; limitations and bias direction; conclusion. These are short
+working points, **not six compulsory subheadings in the paper**. A supported explanation
+that a mechanism cannot be tested or a net bias direction cannot be determined is appropriate.
+Resolve missing source-based notes rather than generating a generic biological story.
+
 Use connected paragraphs: principal finding and uncertainty; comparison with genuinely read
 studies; plausible interpretation distinguished from evidence; limitations and implications.
 Subheadings are optional when the design/target examples justify them. Prior-study numbers
@@ -82,6 +96,10 @@ Original illustration continuing the synthetic example:
 
 Replace this argument with the study's real evidence and cite actual prior work where used.
 Do not add generic limitations absent from the design or pretend an unmeasured bias was tested.
+Do not turn the Discussion into a walk through supplementary figures/tables. A few necessary
+references can clarify interpretation; repeated long Results sentences and numerical
+recapitulation need to become a source-supported argument. The S16 diagnostic checks clear
+copying and display-reference concentration, not whether the discussion is medically adequate.
 
 ## Abstract and title
 

@@ -9,6 +9,13 @@ statistical source per result. Do not refit or rerun imputation to adjust a grap
 Retain an approved legacy Python graph or a concrete documented Python exception.
 Missing R packages require repair, not an unannounced Python fallback.
 
+Read every word inside the actual main/supplement image, not only the legend: group keys,
+axes, panel titles, annotations, statistics-column headers and flow boxes must decode the
+medical finding without code or analysis notes. Apply the existing clinical display
+dictionary to genuine internal codes, preserve necessary method names and state distinctions,
+and record one actual wording/location with its clinical reading in the existing acceptance.
+The current bound SVG helps locate text; a diagnostic PASS is not medical understanding.
+
 ## Procedure
 Choose the design-appropriate recipe using `reference/r-first.md`'s medical figure routes.
 The endpoint, measure and required uncertainty determine the graph; a theme cannot supply

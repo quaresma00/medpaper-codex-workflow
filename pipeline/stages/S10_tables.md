@@ -7,6 +7,12 @@ the existing `07_manuscript/claim_bindings.json`, preserving all existing prose 
 Render the planned tables as three-line xlsx files a reader and a reviewer can use.
 Generated from result JSONs by code, never retyped.
 
+Before acceptance read the actual title, headers, body and footnotes as a medical reader,
+including all supplementary tables. Use source-scoped clinical display labels, not dataframe
+column names or unexplained model/source codes. Keep the true units, denominator and summary
+type. Record one actual wording/location and clinical reading in the existing executor
+display finding; see `reference/medical-reader-presentation.md`. Do not add another report.
+
 ## Procedure
 1. Write `project/04_tables/code/build_tables.py`. It reads
    `03_analysis/results/*.json` and `01_protocol/artifact_plan.json`, and writes every

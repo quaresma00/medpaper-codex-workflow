@@ -4,6 +4,9 @@ Use `reference/journal-adaptation.md` for this stage and later journal switches.
 user chooses the target, begin its exact journal/article/initial-or-revision context, capture
 complete official sources, map atomic clauses in existing requirements, seal and then
 initialize integration. Old guide/style/configuration must not enter a new attempt.
+Use the native browser when direct retrieval is blocked. If its actual page shows login or
+human verification, keep it visible, record `journal.py browser-handoff`, and let the user
+complete it there. Re-observe and capture the real guide afterward; a user reply is not proof.
 
 Verify current official author instructions, article type, indexing and realistic fit. Q3/Q4
 are acceptable; do not claim a current JCR quartile from an inaccessible primary source.
@@ -20,15 +23,16 @@ Record actual font/width/resolution/heading/keyword/legend rules in the existing
 configuration. The optional boolean line_numbers applies continuous numbering to the main
 manuscript only; do not add line numbers by default. Early production assumptions are
 reversible and are not an author-approved journal selection.
-
-For selection evidence, journal schemas and integration initialization, use full details.
+Resolve `submission_layout` before builds: separate images, post-reference tables on separate
+pages and final legends by default. Inline image/caption/table placement and an additional
+nonblinded title-page upload each need their own explicit required guide evidence. See the
+single policy in `reference/journal-adaptation.md`; do not infer placement from permission.
 
 ## Full procedure, read once when needed
 `reference/stage_details/S20_journal.md` (`tools/wf.py card S20_journal --details`).
 On first execution read the applicable detailed procedure; later local corrections reuse
 already-read guidance and go directly to affected owner rules. After compaction use
 `tools/wf.py handoff`, then retrieve only missing context. The actual gates remain unchanged.
-`reference/structural-quality.md` v1.17 explains runtime fixes and preserved boundaries.
 
 ## Outputs
 Before closing, read `reference/project-benchmarking.md`, read same-journal close full texts

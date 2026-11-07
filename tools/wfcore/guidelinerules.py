@@ -14,7 +14,7 @@ TOPICS = {"article_type", "length", "abstract", "keywords", "references", "figur
 STATUSES = {"required", "recommended", "allowed", "unspecified", "not_applicable"}
 STYLE = {"font_family", "body_font_pt", "title_font_pt", "section_heading_font_pt", "subsection_heading_font_pt",
          "line_spacing", "paragraph_spacing_after_pt", "margins_in", "paper_size", "all_text_black", "external_hyperlinks"}
-PROFILE = {"keywords", "main_text_headings", "line_numbers", "blinded_main_manuscript"}
+PROFILE = {"keywords", "main_text_headings", "line_numbers", "blinded_main_manuscript", "submission_layout"}
 METHODS = {"style", "profile", "limit", "uploads", "figure", "csl", "template", "manual", "context"}
 
 
@@ -87,6 +87,10 @@ def validate(project, context):
                     raise ValueError("selected CSL/template must be captured for this context")
         except (OSError,ValueError,KeyError,TypeError) as exc: failures.append(f"{row.get('id','rule')}: {exc}")
     if TOPICS-topics: failures.append("Guide topics unassessed: "+", ".join(sorted(TOPICS-topics)))
+    from .submissionlayout import enabled,policy
+    if enabled(project):
+        try: policy(project)
+        except (OSError,ValueError,KeyError,TypeError) as exc: failures.append(str(exc))
     return failures
 
 

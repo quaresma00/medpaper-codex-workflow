@@ -261,6 +261,8 @@ def acceptance_inputs(project, layer="science", *, final=False, report=None):
     if report and final:
         from .medicalstyle import layout_inputs
         result.update(layout_inputs(project,report))
+    from .medicalstyle import display_language_inputs
+    result.update(display_language_inputs(project,layer,final,report))
     return result
 
 

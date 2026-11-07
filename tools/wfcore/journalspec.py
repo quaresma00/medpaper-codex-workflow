@@ -108,8 +108,19 @@ def identities(project: Path) -> list[str]:
         if isinstance(author, str): result.append(author)
         elif isinstance(author, dict):
             result += [str(author[key]) for key in ("name", "full_name", "email") if author.get(key)]
+            for key in ("orcid","ORCID"):
+                if author.get(key):
+                    result.extend([str(author[key]),re.sub(r"^https?://orcid\.org/","",str(author[key]))])
     corresponding = value.get("corresponding", {})
-    if isinstance(corresponding, dict): result += [str(corresponding[key]) for key in ("name", "email") if corresponding.get(key)]
+    if isinstance(corresponding, dict): result += [str(corresponding[key]) for key in ("name", "email", "phone", "telephone", "address") if corresponding.get(key)]
+    affiliations=value.get("affiliations", [])
+    rows=affiliations.values() if isinstance(affiliations,dict) else affiliations if isinstance(affiliations,list) else []
+    for row in rows:
+        if isinstance(row,str):result.append(row)
+        elif isinstance(row,dict):
+            # Full author-affiliation identities, not generic words such as
+            # "medicine", cities or countries that may legitimately occur.
+            result += [str(row[key]) for key in ("name","text","affiliation","institution") if row.get(key)]
     return sorted({name.strip() for name in result if len(name.strip()) >= 4})
 
 
@@ -140,6 +151,8 @@ def apply_docx(doc, target: dict, role: str) -> None:
         doc.core_properties.author = ""; doc.core_properties.last_modified_by = ""
     for paragraph in doc.paragraphs:
         name = paragraph.style.name if paragraph.style else ""
+        admin = any(n.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name","").startswith("medpaper_admin_")
+                    for n in paragraph._p.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bookmarkStart"))
         if re.match(r"Heading [1-9]$", name) and paragraph.text in heads: paragraph.text = heads[paragraph.text]
         if paragraph.text.strip().casefold().startswith("keywords:"):
             terms = [term.strip() for term in re.split(r"[,;]", paragraph.text.split(":", 1)[1]) if term.strip()]
@@ -148,9 +161,12 @@ def apply_docx(doc, target: dict, role: str) -> None:
                 if limit is not None and (type(limit) is not int or not passes(len(terms), limit)):
                     raise ValueError(f"actual keywords violate journal keywords.{key}")
             paragraph.text = "Keywords: " + separator.join(terms)
-        if role not in {"title_page", "cover_letter", "statements", "coi_forms"} and name != "Bibliography":
+        if role not in {"title_page", "cover_letter", "statements", "coi_forms"} and name != "Bibliography" and not admin:
             for run in paragraph.runs:
-                run.text = number_text(spelling(run.text, target.get("spelling", "")), target.get("number_format", {}))
+                updated=number_text(spelling(run.text, target.get("spelling", "")), target.get("number_format", {}))
+                # Assigning run.text clears drawings/fields. An unchanged/empty image
+                # run must survive a journal spelling/number-format pass.
+                if updated!=run.text: run.text=updated
 
 
 LOCAL_PATH = re.compile(r"(?i)(?:\b[A-Z]:[\\/]|file://|\\\\[^\\\s]+\\|/(?:Users|home|workspace)/)")
@@ -196,4 +212,6 @@ def docx_problems(path: Path, target: dict, project: Path, role: str) -> list[st
                 if (separator == ";" and "," in value) or (separator == "," and ";" in value): problems.append("actual Word keyword separator differs from journal")
     problems += blind_problems(path, project, role)
     problems += metadata_problems(path)
+    from .submissionlayout import docx_problems as layout_problems
+    problems += layout_problems(path,project,role)
     return problems

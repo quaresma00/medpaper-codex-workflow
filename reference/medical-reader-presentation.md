@@ -85,6 +85,13 @@ Retain limitations caused by approximate linkage, residual duplicates or sparse 
 
 ## Tables: title, body and footnotes are one statistical statement
 
+Read the title, every header/row label, body cell and footnote together, including
+supplementary tables. A verified value beneath `n_cases` or an unexplained source/model
+code is still an unfinished medical display. Use the existing source-scoped display
+dictionary for real internal identifiers; choose clinical wording from the actual source,
+not an automatic synonym. Keep a precise short definition where readers need it. A normal
+`Unknown`, `Not estimable`, gene name or statistical symbol is not an engineering error.
+
 - Title accurately describes the actual population, unit, comparison and outcome scope.
   A broad phenotype label must not silently convert clinical manifestations into diagnoses.
 - Header and row labels use clinical names. Define source-specific model covariates and
@@ -108,6 +115,13 @@ Retain limitations caused by approximate linkage, residual duplicates or sparse 
   implementation manual. Put detailed algorithms/derivations in Methods or supplement.
 
 ## Figures: actual graphical marks must match the claimed statistic
+
+Inspect words inside the actual image as well as its legend: axes, group keys, facet/panel
+titles, annotations, numerical-column headers and flow boxes. Decode the clinical population,
+comparison, outcome, scale and counting unit without access to a script or an analysis report.
+Necessary `log(OR)`, FDR and established medical/biological terms may remain with appropriate
+definitions. Replace/define source-internal codes; do not hide a different model, an unbounded
+interval or a missing result by making its label sound simpler.
 
 For each plot identify the unit/person/report distinction, group comparison, endpoint,
 measure, denominator (including each sensitivity/subgroup population), and uncertainty.
@@ -164,6 +178,20 @@ Extend the EXISTING executor report, not a new document:
   `denominators_and_summaries`, `footnotes_and_model_states`; figures use `title_and_labels`,
   `statistic_and_encodings`, `population_and_denominators`. Write concrete observations about
   actual inspected rows/marks/notes. Explain inapplicability; generic copied PASS is not review.
+- For v1.27-pinned or explicitly opted-in acceptance, add one short
+  `display_findings[ID].visible_wording: {quote, locator, clinical_reading}`. Quote actual
+  display wording and explain what a medical reader understands there; use a real location
+  such as `Characteristics!A3` or `SVG text 7`. The existing `display_surfaces()` helper exposes
+  those actual cell/text locations without creating another file. Quotes are checked against
+  readable current evidence. A raster without a text layer still needs actual image reading;
+  no filename, plotting variable or fabricated OCR stands in for it. This one observation
+  supplements all three medical checks, not a semantic certificate for the whole display.
+  Older pinned projects opt in through `display_language_version: 1` on that existing
+  executor report; do not silently migrate state or backfill an old observation.
+- Current managed R PNGs are scanned through their exact hash-bound rendered SVG, producer
+  and result sources. An unbound neighbouring SVG, hidden/definition text or a changed script
+  cannot certify image wording. These small inputs join the existing acceptance identity;
+  a label correction only rebuilds that figure, not its analysis or unrelated displays.
 - S23 only, `document_layout` has one row per relevant actual DOCX: `upload`, `source_sha256`,
   existing Word-rendered `render` (PNG/PDF under evidence/), `render_sha256`, substantive page
   `locator` and `observation`. Bind current source/render bytes; do not invent inspection or

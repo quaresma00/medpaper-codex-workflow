@@ -205,7 +205,9 @@ def _read_batch_plan(path: Path, kinds: list[str], review_stage: str, pipe) -> d
             raise ValueError("change_type must distinguish layout, wording, administrative or scientific")
         if kind in scoped.SCIENTIFIC_KINDS and change_type != "scientific":
             raise ValueError("data/design/model changes cannot be downgraded to cosmetic revisions")
-        if change_type != "scientific" and any(s.replace("\\", "/").startswith(("02_data/", "03_analysis/", "01_protocol/protocol", "01_protocol/analysis_contract")) for s in sources):
+        narrative_item = scoped.discussion_wording_item({"kind": kind, "change_type": change_type, "owning_stage": owner})
+        if change_type != "scientific" and any(s.replace("\\", "/").startswith(("02_data/", "03_analysis/", "01_protocol/protocol", "01_protocol/analysis_contract"))
+                and not (narrative_item and s == "03_analysis/notes.md") for s in sources):
             raise ValueError("non-scientific revision may not edit scientific analysis sources")
         if change_type == "layout" and any(s.replace("\\", "/").endswith(".md") for s in sources):
             raise ValueError("Markdown wording changes are not layout-only")

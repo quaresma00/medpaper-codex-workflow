@@ -44,6 +44,14 @@ Use `medpaper_forest`, `medpaper_roc`, or `medpaper_calibration` only when the a
 fits; add the study's required statistics, labels, uncertainty and layout before export.
 Missing elements still fail ordinary figure QC. Do not use a recipe as a waiver.
 
+The shared clinical recipes apply the approved display dictionary through discrete axis/key
+label functions (and flow-box text), without renaming data values, factor levels or groups.
+Numerical axes/statistical side columns keep their actual values. Ambiguous source-internal
+aliases are not guessed: use the dictionary's unique source key or a precise clinical
+definition in the study-specific display. If overriding a discrete scale, retain its
+`labels=medpaper_label` where that declared mapping is intended. Actual rendered reading and
+source agreement remain necessary; automatic label formatting is not medical acceptance.
+
 ### Ready-to-draw clinical results
 
 Select only figures justified by the study/comparators. The expanded taxonomy is not a

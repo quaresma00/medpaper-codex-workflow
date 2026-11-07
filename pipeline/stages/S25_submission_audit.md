@@ -44,3 +44,13 @@ replace the release.
 Run `tools/wf.py check` (or the active scoped revision check). Fix actual failures before
 `tools/wf.py advance --note "<actual completed work>"`. Stages are not turn boundaries.
 Review stages still require the real author statement; generic continuation is not approval.
+
+## Discussion reading
+
+Read the actual Discussion as an interpretation, checking it against Results and real cited
+passages after the first reader pass. Flag Results transcription, unnecessary supplementary
+display walkthrough, comparisons that do not explain differences, unsupported mechanisms,
+and clinical implications or conclusions beyond this design. Limitations and any bias direction
+must be defensible; an explicitly uncertain mechanism/direction is acceptable. Record concrete
+locations in the existing reader/editor/scientific findings. No extra reviewer or report is
+introduced, and a repetition scan/working outline does not certify Discussion quality.

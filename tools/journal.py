@@ -30,6 +30,9 @@ def main():
     template=subs.add_parser("template",help="register a genuine official DOCX reference template")
     template.add_argument("--file",required=True,type=Path);template.add_argument("--url",required=True)
     template.add_argument("--retrieved-at",required=True);template.add_argument("--why",required=True)
+    handoff=subs.add_parser("browser-handoff",help="record an observed native-browser login/CAPTCHA; only actual guide capture resolves it")
+    handoff.add_argument("--url",required=True);handoff.add_argument("--reason",choices=["captcha","login"],required=True)
+    handoff.add_argument("--tab-ref",default="",help="actual tab reference only; no credentials/cookies")
     subs.add_parser("seal",help="bind real guide clauses to the actual current configuration")
     subs.add_parser("status",help="bounded context/source status; never a scientific quality verdict")
     subs.add_parser("check",help="verify current guide/context/configuration, without rebuilding")
@@ -43,6 +46,7 @@ def main():
             result=guides.capture(project,args.url,file=getattr(args,"file",None),mode=getattr(args,"mode","auto"),why=getattr(args,"why",""),retrieved_at=getattr(args,"retrieved_at",None))
         elif args.command=="csl": result=guides.fetch_csl(project,args.id)
         elif args.command=="template": result=guides.register_template(project,args.file,args.url,args.why,args.retrieved_at)
+        elif args.command=="browser-handoff": result=guides.browser_handoff(project,args.url,args.reason,args.tab_ref)
         elif args.command=="seal": result=jc.seal(project)["seal"]
         elif args.command=="review": result=gr.record_review(project,args.rule,args.file,args.render,args.observation_file.read_text(encoding="utf-8-sig"))
         elif args.command=="show":
@@ -57,7 +61,7 @@ def main():
         elif args.command=="status":
             context=jc.current(project)
             result={k:context.get(k) for k in ("identity","context_id","attempt_id","previous_archive")}
-            result.update(sources=[{k:r.get(k) for k in ("id","url","mode","text","fetched_at")} for r in context["sources"].values()],sealed=bool(context.get("seal")))
+            result.update(sources=[{k:r.get(k) for k in ("id","url","mode","text","fetched_at")} for r in context["sources"].values()],sealed=bool(context.get("seal")),browser_handoff=context.get("browser_handoff"))
         else:
             failures=jc.problems(project)
             print("\n".join(failures) if failures else "Current journal, actual sources and executable configuration agree")

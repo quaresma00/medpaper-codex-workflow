@@ -84,6 +84,30 @@ async def browser_download(url):
         return result.html.encode("utf-8"),getattr(result,"redirected_url",None) or url,"text/html"
 
 
+def browser_handoff(project, url, reason, tab_ref=""):
+    """Record a real human handoff after a browser shows verification/login.
+
+    The driver opens/shows the actual tab using its available browser API. This helper
+    never logs in, solves a challenge, stores browser credentials or asserts acquisition.
+    """
+    if reason not in {"captcha","login"}:
+        raise ValueError("A human browser handoff needs an observed captcha or login blocker")
+    jc.allowed_url(project,url); context=jc.current(project)
+    previous=context.get("browser_handoff",{})
+    if previous.get("status")=="waiting_for_user" and previous.get("url")!=url:
+        raise ValueError("Finish the current browser handoff before opening another verification request")
+    if not isinstance(tab_ref,str) or len(tab_ref)>200:
+        raise ValueError("Use only the actual short browser/tab reference, never a cookie or login payload")
+    continuing=previous.get("status")=="waiting_for_user"
+    row={"context_id":context["context_id"],"url":url,"reason":reason,"tab_ref":tab_ref or (previous.get("tab_ref","") if continuing else ""),
+         "status":"waiting_for_user","requested_at":previous.get("requested_at",jc.now()) if continuing else jc.now(),
+         "main_guide":url==jc.load(project,jc.TARGET).get("guidelines_url")}
+    context["browser_handoff"]=row
+    context.pop("seal",None)
+    atomic_json(project/jc.CONTEXT,context)
+    return row
+
+
 def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
     context=jc.current(project);jc.allowed_url(project,url)
     if file is not None:
@@ -104,7 +128,8 @@ def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
         except (OSError,ValueError) as exc:
             if mode=="http": raise ValueError(f"Guide acquisition failed: {exc}") from exc
             try: raw,final,mime=asyncio.run(browser_download(url));kind="browser";suffix=".html"
-            except (OSError,ValueError) as fallback: raise ValueError(f"Direct acquisition: {exc}; browser: {fallback}") from fallback
+            except (OSError,ValueError) as fallback:
+                raise ValueError(f"Direct acquisition: {exc}; browser: {fallback}. Use the available native browser; hand over only an observed login/CAPTCHA to the user, then read/register the actual official guide") from fallback
     jc.allowed_url(project,final)
     suffix,text,reader=extract(raw,suffix)
     key=jc.digest(url)[:16]; root=project/"08_submission/cache/guides"
@@ -124,6 +149,15 @@ def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
         context.pop("seal",None)
     context["sources"][key]=source;atomic_json(project/jc.CONTEXT,context)
     target=jc.load(project,jc.TARGET)
+    handoff=context.get("browser_handoff",{})
+    if handoff.get("status")=="waiting_for_user" and (
+            handoff.get("url") in {url,final} or
+            (handoff.get("main_guide") is True and url==target.get("guidelines_url") and url!=handoff.get("url"))):
+        # A changed main-guide URL may legitimately have a public official alternative.
+        # An unrelated page cannot clear a subsidiary-guide verification request.
+        context["browser_handoff"]={**handoff,"status":"source_captured","source_id":key,
+                                     "completed_at":jc.now(),"raw_sha256":source["raw_sha256"]}
+        atomic_json(project/jc.CONTEXT,context)
     if url==target.get("guidelines_url"):
         target["guidelines_fetched_at"]=source["fetched_at"][:10];atomic_json(project/jc.TARGET,target)
     return source

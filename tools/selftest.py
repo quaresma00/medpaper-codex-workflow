@@ -2414,7 +2414,11 @@ def main() -> int:
                              ("test_context_bindings_126.py","current scientific context and per-occurrence result attribution"),
                              ("test_design_data_126.py","design-specific contracts and actual complex-join unit reconciliation"),
                              ("test_table_proportions_126.py","actual table percentage denominators and non-count percentage scope"),
-                             ("test_runtime_km_126.py","unified real R environments and source-bound uncensored KM applicability")):
+                             ("test_runtime_km_126.py","unified real R environments and source-bound uncensored KM applicability"),
+                             ("test_submission_structure_127.py","actual author front matter blinding display placement and descriptive uploads"),
+                             ("test_discussion_127.py","display-free Discussion materials outline and source-bound incremental interpretation"),
+                             ("test_display_language_127.py","actual figure text and table cells retain medical meaning and source values"),
+                             ("test_browser_handoff_127.py","native-browser human handoff resolves only on genuine guide capture")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

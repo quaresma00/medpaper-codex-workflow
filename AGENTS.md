@@ -89,6 +89,8 @@ references each own their topic; this policy contains no historical supersession
   Preserve already-approved Python figures; justified Python exceptions use Tavotto, never R.
   Independent A/B tags belong at panel upper-left corners, separate from clinical titles.
 - Tool success does not replace opening/reading the actual tables and rendered figures/pages.
+  Read figure labels and actual table titles/headers/cells/notes as a medical reader; map only
+  source-authorized display labels, preserving units, denominators and actual statistics.
   Bind actual production renders in display_review.json before Results. ImageGen may act as a
   second visual critic; it must not redraw statistical figures. Apply accepted fixes in source
   code, render again and inspect. Do not infer quality from language/tool.
@@ -97,6 +99,13 @@ references each own their topic; this policy contains no historical supersession
   legend identifier/title once. Legends decode the display without repeating Results; consolidate
   crowded abbreviations in Declarations and Statements > Abbreviations unless current journal
   rules require local definitions. Keep essential units/symbol meanings locally understandable.
+- S16 uses display-free narrative materials and a short six-topic outline before prose. Use one
+  clean-context first-draft writer when available; then separately verify against real findings.
+  Routine edits remain local. Do not feed own results tables/display identifiers to that writer.
+- At submission, derive nonblinded author front matter from author_info.json; separate title-page
+  upload only if explicitly required or blinded. Default to separate images, tables after
+  References each on a new page, and final legends. Inline images/tables/captions are independent
+  explicit-required-guide exceptions. Number supplements with descriptive Supplemental_File names.
 - Supplementary Methods is prose; tables go in separate three-line supplementary tables. No
   Markdown rules remain in Word. Actual journal typography governs size/spacing with medical
   defaults Times New Roman and black. Word contains no literal U+2193, manual wrapping breaks,

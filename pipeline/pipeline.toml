@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.26.0"
+version = "1.27.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -523,6 +523,9 @@ outputs = ["07_manuscript/discussion.md"]
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
+check = "discussion_ready"
+since = "1.27.0"
+[[stage.gate]]
 check = "single_section_written"
 [[stage.gate]]
 check = "reference_provenance"
@@ -555,6 +558,12 @@ id = "S17_assemble"
 title = "Automatically select the title and assemble the complete manuscript"
 card = "stages/S17_assemble.md"
 outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md", "06_refs/usage.json"]
+[[stage.gate]]
+check = "discussion_ready"
+path = "07_manuscript/full_manuscript.md"
+results_path = "07_manuscript/full_manuscript.md"
+presentation_only = true
+since = "1.27.0"
 [[stage.gate]]
 check = "prose_not_lists"
 path = "07_manuscript/full_manuscript.md"
@@ -783,6 +792,12 @@ id = "S22_polish"
 title = "Journal-specific de-AI and academic-English polish, fact-preserving"
 card = "stages/S22_polish.md"
 outputs = ["08_submission/integration/polish_report.json", "08_submission/integration/polish_log.md"]
+[[stage.gate]]
+check = "discussion_ready"
+path = "08_submission/integration/full_manuscript.md"
+results_path = "08_submission/integration/full_manuscript.md"
+presentation_only = true
+since = "1.27.0"
 [[stage.gate]]
 check = "scientific_master_unchanged"
 [[stage.gate]]

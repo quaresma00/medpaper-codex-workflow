@@ -113,6 +113,9 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
     for rel in ("title", "abstract", "keywords", "methods", "results", "introduction", "discussion", "statements"):
         link(f"07_manuscript/{rel}.md", "07_manuscript/full_manuscript.md")
         link(f"07_manuscript/{rel}.md", "07_manuscript/claim_bindings.json")
+    # These are writing inputs, not a reason to replay data acquisition or analysis.
+    link(".wf/discussion_materials.md", "07_manuscript/discussion.md")
+    link(".wf/discussion_outline.md", "07_manuscript/discussion.md")
     link("07_manuscript/supplementary_methods.md", "07_manuscript/claim_bindings.json")
     for group in ("main_tables", "supp_tables"):
         for entry in plan.get(group, []):

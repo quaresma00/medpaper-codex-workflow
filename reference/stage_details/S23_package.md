@@ -51,12 +51,15 @@ Check double-blind supplements and document metadata, not only the main manuscri
    It also converts Shift+Enter/text-wrapping controls to ordinary paragraphs and rejects the
    literal down-arrow character. Use blank lines for paragraph boundaries in Markdown and
    natural wrapping within paragraphs; never pad layout with manual line breaks.
-5. Confirm manuscript order: Abstract then Keywords; explicit References heading before
-   the bibliography; concise Figure legends as the final section. There must be exactly one
+5. Confirm manuscript order: author front matter unless double-blind; Abstract then Keywords;
+   explicit References heading before the bibliography, then main tables each on a new page,
+   then concise Figure legends as the final section. There must be exactly one
    `Figure legends` section title, exactly one heading per figure, and the legend body must
    not repeat `Figure N` immediately after its heading. Build separate figure
-   legend Word files only when the journal explicitly asks, but the legends always remain
-   in the manuscript.
+   legend Word files only when the journal explicitly asks. The legends remain in the
+   manuscript; a required inline-caption clause changes their position, independently of
+   separate image uploads. Resolve any explicit inline table/image rule with exact current
+   evidence through `submission_layout`, never the executor's preference.
 6. Add figures and tables in the exact editable/separate forms required by the journal.
    Never omit the supplementary file. Supplementary Methods must contain prose only and no
    Markdown horizontal rules. Put every supplementary table in the separate three-line
@@ -66,6 +69,10 @@ Check double-blind supplements and document metadata, not only the main manuscri
    `08_submission/evidence/SUBMISSION_CHECKLIST.md` and `bundle/manifest.json`;
    every bundle upload is listed with its role, exact guideline rule and `source_files`
    dependency list. Keep renders and backstage QA outside the upload folder.
+   Main author front matter and any required title-page upload derive from author_info.json;
+   the title_page command above is conditional on blinding or an explicit separate-upload
+   requirement. Use Supplemental_File_<n>_<description> names for supplements unless explicitly
+   mandated otherwise. Do not create an extra title page or embed images for convenience.
 7. After all affected DOCX files are final, derive portal text/counts from them:
 ```
 .\.venv\Scripts\python.exe tools/manuscript/submission_fields.py
@@ -122,7 +129,9 @@ merely because local files exist; never draft an AI-use disclosure without the e
 - All text is black; no external hyperlinks; no Aptos/theme-font leakage when the selected
   font is Times New Roman; no outline numbering, `outlineLvl`, `keepNext`, `keepLines`,
   `pageBreakBefore`, paragraph-border residue or collapsible heading level in any Word XML.
-- `References` and `Figure legends` must be visible in the manuscript.
+- `References` and actual figure captions must be visible in the manuscript. `Figure legends`
+  is a single final heading by default; an explicitly required inline-caption policy removes
+  that empty end heading and places the actual captions at their planned first-citation anchors.
 - Any title-page reference count must equal the distinct citations actually used in the
   journal integration manuscript; both the Markdown source and generated Word title page are checked.
 - Figure legends only identify and decode the display; they do not restate result direction

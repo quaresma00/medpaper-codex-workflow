@@ -13,7 +13,7 @@ CHECKLIST = "08_submission/evidence/SUBMISSION_CHECKLIST.md"
 BEGIN, END = "<!-- medpaper measured begin -->", "<!-- medpaper measured end -->"
 RULE_FILES = [Path(__file__), *(Path(__file__).with_name(name + ".py") for name in
     ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch", "qualitylimits",
-     "journalcontext", "guides", "guidelinerules")),
+     "journalcontext", "guides", "guidelinerules", "submissionlayout")),
     Path(__file__).parents[1]/"manuscript/build_docx.py"]
 
 
@@ -28,6 +28,10 @@ def measure(project: Path) -> dict:
     style_path = project / "08_submission/docx_style.json"
     style = load_style(style_path)
     rows = []
+    from .submissionlayout import manifest_problems
+    layout_defects=manifest_problems(project,manifest)
+    rows.append({"file":"08_submission/bundle/manifest.json","status":"FAIL" if layout_defects else "PASS",
+                 "checks":"current title-page/figure/supplement upload organization","defects":layout_defects})
     for entry in manifest.get("items", []):
         rel = entry.get("file")
         if rel not in files:

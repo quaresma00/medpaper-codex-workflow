@@ -295,7 +295,7 @@ def normalize_docx(path: Path, style: dict, kind: str) -> None:
         if text:
             nonempty_seen += 1
         _remove_heading_metadata(p, strip_numbering=False)
-        if original == "Title" or (kind == "manuscript" and nonempty_seen == 1):
+        if original == "Title" or (kind in {"manuscript","title_page"} and nonempty_seen == 1):
             p.style = title_style
             size = title_pt
             _remove_heading_metadata(p)
@@ -428,7 +428,7 @@ def _canon_figure_id(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().rstrip(".")).casefold()
 
 
-def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
+def _legend_problems(root, expected: list[str], cap: int, heading="Figure legends") -> list[str]:
     paragraphs: list[tuple[str, str]] = []
     for paragraph in root.findall(".//w:p", NS):
         paragraph_text = "".join(t.text or "" for t in paragraph.findall(".//w:t", NS)).strip()
@@ -438,7 +438,7 @@ def _legend_problems(root, expected: list[str], cap: int) -> list[str]:
             paragraphs.append((paragraph_text, style_id))
     try:
         start = next(i for i, (value, paragraph_style) in enumerate(paragraphs)
-                     if value.casefold() == "figure legends" and paragraph_style=="SectionHeading") + 1
+                     if value.casefold() == heading.casefold() and paragraph_style=="SectionHeading") + 1
     except StopIteration:
         return ["Figure legends heading is missing"]
     headings: list[tuple[int, str, str]] = []
@@ -626,26 +626,36 @@ def audit_docx(path: Path, style: dict, kind: str = "",
     if "\u2193" in text:
         problems.append(f"{path.name}: forbidden down-arrow character remains")
     if kind == "manuscript":
+        from wfcore.submissionlayout import inline_legends,caption_problems
+        from wfcore.journalspec import aliases
+        heading_labels=aliases(style.get("journal_profile",{}))
+        captions_inline=inline_legends(Path(style.get("journal_project",project_root())))
         lines = [line.strip() for line in text.splitlines() if line.strip()]
-        exact = {name: [i for i, line in enumerate(lines) if line.casefold() == name]
+        mapped={label.casefold():canonical.casefold() for canonical,label in heading_labels.items()}
+        exact = {name: [i for i, line in enumerate(lines) if mapped.get(line.casefold(),line.casefold()) == name]
                  for name in ("abstract", "references", "figure legends")}
         keywords = [i for i, line in enumerate(lines) if line.casefold().startswith("keywords:")]
         for name, indices in exact.items():
+            if name=="figure legends" and captions_inline:
+                if indices: problems.append(f"{path.name}: inline captions must not leave a duplicated end legend section")
+                continue
             if len(indices) != 1:
                 problems.append(f"{path.name}: expected one {name.title()} heading, found {len(indices)}")
         if len(keywords) != 1:
             problems.append(f"{path.name}: expected one Keywords line, found {len(keywords)}")
-        order = [exact[name][0] if len(exact[name]) == 1 else -1
-                 for name in ("abstract",)] + [keywords[0] if len(keywords) == 1 else -1] + [
-                 exact[name][0] if len(exact[name]) == 1 else -1
-                 for name in ("references", "figure legends")]
+        order = [exact["abstract"][0] if len(exact["abstract"]) == 1 else -1,
+                 keywords[0] if len(keywords) == 1 else -1,
+                 exact["references"][0] if len(exact["references"]) == 1 else -1]
+        if not captions_inline: order.append(exact["figure legends"][0] if len(exact["figure legends"])==1 else -1)
         if all(x >= 0 for x in order) and order != sorted(order):
             problems.append(f"{path.name}: Abstract/Keywords/References/Figure legends order is wrong")
         if planned_figures is None:
             problems.append(f"{path.name}: artifact_plan.json is missing or invalid")
+        elif captions_inline:
+            problems.extend(caption_problems(Document(path),planned_figures,legend_cap))
         else:
             problems.extend(f"{path.name}: {problem}" for problem in
-                            _legend_problems(root, planned_figures, legend_cap))
+                            _legend_problems(root, planned_figures, legend_cap,heading_labels.get("Figure legends","Figure legends")))
     elif kind == "figure_legends":
         count = sum(1 for line in docx_text(path).splitlines()
                     if line.strip().casefold() == "figure legends")
@@ -701,11 +711,25 @@ def build(args) -> int:
     if tables_path:
         from wfcore.wordtables import load_spec
         tables, table_inputs = load_spec(project_root(), tables_path)
+    from wfcore import submissionlayout
+    layout_enabled=submissionlayout.enabled(project_root(),style.get("journal_profile",{}))
+    layout=submissionlayout.policy(project_root(),style.get("journal_profile",{})) if layout_enabled else None
+    if layout_enabled and args.kind=="manuscript" and not tables_path:
+        tables,table_inputs=submissionlayout.table_entries(project_root())
     profile_path = project_root()/"08_submission/target_journal.json"
     profile_inputs = [profile_path] if profile_path.is_file() else []
     author_input = project_root()/"00_input/author_info.json"
-    if style.get("journal_profile", {}).get("blinded_main_manuscript") and author_input.is_file():
+    if (style.get("journal_profile", {}).get("blinded_main_manuscript") or
+            (layout_enabled and args.kind in {"manuscript","title_page"})) and author_input.is_file():
         profile_inputs.append(author_input)
+    title_source=project_root()/"08_submission/integration/title_page.md"
+    if layout_enabled and args.kind in {"manuscript","title_page"} and title_source.is_file():
+        profile_inputs.append(title_source)
+    if layout_enabled and args.kind=="title_page":
+        profile_inputs.append(project_root()/"08_submission/integration/full_manuscript.md")
+    if layout_enabled and args.kind=="manuscript" and layout["figures"]=="inline":
+        for entry in submissionlayout.main_plan(project_root()).get("main_figures",[]):
+            profile_inputs.append(project_root()/entry["file"])
     patch_path = getattr(args, "csl_patch", None) or project_root()/"08_submission/integration/csl_patch.json"
     patch_path = patch_path if patch_path.is_file() else None
     if patch_path:
@@ -732,7 +756,15 @@ def build(args) -> int:
                 apply(args.csl, patch_path, used_csl)
             if reference_doc: run_pandoc(args.input,candidate,args.bibliography,used_csl,reference_doc=reference_doc)
             else: run_pandoc(args.input, candidate, args.bibliography, used_csl)
-            if tables:
+            if layout_enabled and args.kind in {"manuscript","title_page"}:
+                document=Document(candidate)
+                submissionlayout.apply_front(document,project_root(),args.kind,layout)
+                if args.kind=="manuscript":
+                    if tables: submissionlayout.place_tables(document,project_root(),tables,style,layout)
+                    submissionlayout.place_figures(document,project_root(),layout,style)
+                    submissionlayout.place_legends(document,project_root(),layout)
+                document.save(candidate)
+            elif tables:
                 from wfcore.wordtables import append_tables
                 document = Document(candidate)
                 append_tables(document, project_root(), tables, style)
@@ -761,6 +793,7 @@ def build(args) -> int:
                 ROOT/"tools/wfcore/qualitylimits.py",
                 ROOT/"tools/wfcore/cslpatch.py",
                 ROOT/"tools/wfcore/wordtables.py",
+                ROOT/"tools/wfcore/submissionlayout.py",
                 project.parent/"pipeline/pipeline.toml", plan if plan.is_file() else None]
     observed = [p for p in observed if p is not None and p.is_file()]
     record_build(project, args.output, observed,
@@ -821,7 +854,9 @@ def audit_manifest(args) -> int:
             scope=item.get("legend_scope",style.get("figure_legend_scope","all"))
             wanted=planned_figure_ids(scope=scope) if role in {"manuscript","figure_legends"} else planned
             problems += audit_docx(path, style, role, wanted, legend_cap)
-    for role in ("manuscript", "title_page", "cover_letter"):
+    from wfcore.submissionlayout import required_roles,manifest_problems
+    problems+=manifest_problems(project_root(),manifest)
+    for role in required_roles(project_root()):
         if not any(p.suffix.lower() == ".docx" for p in roles.get(role, [])):
             problems.append(f"manifest lacks a DOCX item for role '{role}'")
     if (project_root() / "08_submission/integration/supplementary_methods.md").exists():

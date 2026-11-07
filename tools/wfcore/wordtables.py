@@ -66,8 +66,18 @@ def _geometry(section, orientation: str, style: dict) -> None:
         numbering.attrib.pop(qn("w:start"), None)
 
 
-def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
+def append_tables(doc, project: Path, entries: list[dict], style: dict, *, inline=False) -> None:
     from openpyxl import load_workbook
+    def mark(paragraph):
+        # Keep table captions/notes distinct from surrounding prose, including
+        # journals that explicitly place complete tables inside the Results.
+        used = [int(n.get(qn("w:id"))) for n in doc.element.iter(qn("w:bookmarkStart"))
+                if str(n.get(qn("w:id"), "")).isdigit()]
+        number = max([70000, *used]) + 1
+        start = OxmlElement("w:bookmarkStart"); start.set(qn("w:id"), str(number))
+        start.set(qn("w:name"), f"medpaper_table_{number}")
+        end = OxmlElement("w:bookmarkEnd"); end.set(qn("w:id"), str(number))
+        paragraph._p.insert(0, start); paragraph._p.append(end)
     for entry in entries:
         source = _safe_path(project, entry["file"])[1]
         workbook = load_workbook(source, data_only=False)
@@ -128,9 +138,15 @@ def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
             orientation = entry.get("orientation", "auto")
             if orientation == "auto":
                 orientation = "landscape" if ncol > 7 or estimated > portrait_width else "portrait"
-            section = doc.add_section(WD_SECTION_START.NEW_PAGE)
-            _geometry(section, orientation, style)
-            doc.add_paragraph(caption)
+            current=doc.sections[-1]
+            current_orientation="landscape" if current.orientation==WD_ORIENT.LANDSCAPE else "portrait"
+            if inline and orientation==current_orientation:
+                section=current
+                _geometry(section, orientation, style)
+            else:
+                section = doc.add_section(WD_SECTION_START.CONTINUOUS if inline else WD_SECTION_START.NEW_PAGE)
+                _geometry(section, orientation, style)
+            mark(doc.add_paragraph(caption))
             table = doc.add_table(rows=last - start + 1, cols=ncol)
             table.autofit = False
             caption_node = OxmlElement("w:tblCaption")
@@ -183,7 +199,7 @@ def append_tables(doc, project: Path, entries: list[dict], style: dict) -> None:
                     cell = _Cell(tc, table)
                     _border(cell, 12 if r == 0 else 0, 6 if r == end - start else 12 if r == len(values) - 1 else 0)
             for note in notes:
-                doc.add_paragraph(note)
+                mark(doc.add_paragraph(note))
         finally:
             workbook.close()
 

@@ -42,6 +42,10 @@ finding. Follow S19 for close, one report, one question and the actual user answ
    without repeating Results, including paraphrased findings that a phrase check cannot catch.
    Verify that centralized abbreviation definitions cover the terms used in the figures and
    tables, including mixed-case medical terms; do not treat every uppercase label as an acronym.
+   Read table titles/headers/cells/footnotes and all words inside main and supplementary
+   figures without code or analysis notes. Report the actual location of unexplained internal
+   variables, model/source labels or ambiguous clinical units; preserve genuine statistical
+   terminology and distinguish missing, not estimable and unbounded results.
 4. Preserve the review in `project/07_manuscript/independent_publishability_review.md`
    under these exact headings: `Verdict`, `Critical barriers`, `Scientific validity`,
    `Reporting completeness`, `Tables and supplementary material`, `Journal suitability`,
@@ -107,5 +111,15 @@ the must-fix subset. Review neutral actual artifacts; don't prime with the write
 Use read-only rework preview and actual scoped checks; never infer scientific change from a
 publication label number or silently invalidate author approval. Existing privacy, freezes,
 centralized abbreviations, Word cleanup and final actual-page inspection remain in force.
+
+## Discussion reading
+
+Read the actual Discussion as a medical argument, then verify it against Results and cited
+source passages. Identify Results transcription, excessive supplementary-display walkthrough,
+name-checking of literature without an actual comparison/difference explanation, unsupported
+mechanistic claims, or implications stronger than the design permits. Check that limitations
+and any stated bias direction are study-specific; an honestly unknown direction/mechanism
+is acceptable. Record concrete findings in the existing scientific/reader report, not another
+agent/report. A six-point working outline or a passed repetition scan does not certify content.
 
 

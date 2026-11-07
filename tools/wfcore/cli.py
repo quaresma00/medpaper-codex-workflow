@@ -341,6 +341,10 @@ def cmd_handoff(args) -> int:
         journal=json.loads((project/CONTEXT).read_text(encoding="utf-8"))
         print("Active journal (recorded): "+json.dumps(journal.get("identity",{}),ensure_ascii=False)+
               "; context="+str(journal.get("context_id",""))+"; guide sealed="+str(bool(journal.get("seal"))))
+        handoff=journal.get("browser_handoff",{})
+        if handoff.get("status")=="waiting_for_user":
+            print("Guide browser handoff pending: "+str(handoff.get("reason",""))+" at "+
+                  str(handoff.get("url",""))[:500]+"; capture actual guide after the user completes it")
     print("Card: "+str(stage.card_path()))
     detail=paths.repo_root()/"reference/stage_details"/stage.card_path().name
     if detail.is_file(): print("Details (read relevant procedure once): "+str(detail))

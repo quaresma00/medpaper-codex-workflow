@@ -143,7 +143,10 @@ def allowed_url(project, url):
 
 def source_problems(project, context):
     problems = []
-    if not context.get("sources"): return ["No actual guideline source captured for this attempt"]
+    handoff=context.get("browser_handoff",{})
+    if isinstance(handoff,dict) and handoff.get("status")=="waiting_for_user":
+        problems.append("Official-guide browser handoff is waiting for the user; obtain the actual guide after verification before sealing/building")
+    if not context.get("sources"): return problems+["No actual guideline source captured for this attempt"]
     main = load(project, TARGET).get("guidelines_url")
     if not any(main in {r.get("url"), r.get("final_url")} for r in context["sources"].values()):
         problems.append("The current target guidelines_url has no captured source")
