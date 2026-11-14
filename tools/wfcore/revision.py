@@ -216,6 +216,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
             stages.add(stage.id)
     if any(r.startswith("07_manuscript/") for r in rebuild):
         stages.add("S17_assemble")
+    if ".wf/early_review.json" in rebuild:
+        stages.add("S12_reconcile")
     substantive = any(i["change_type"] == "scientific" for i in revision["items"])
     scientific_inputs = substantive or any(r.startswith(("02_data/", "03_analysis/")) or r in {
         "01_protocol/protocol_v1.md", "01_protocol/protocol_final.md", "01_protocol/analysis_contract.json"} for r in validity_sources)
@@ -225,6 +227,11 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
             stages.add("S12_reconcile")
     stages.discard(revision["review_stage"])
     stages.update(revision.get("extra_validation_stages", []))
+    if revision["review_stage"] == "S12_reconcile":
+        # Early scientific corrections cannot demand a not-yet-written manuscript
+        # or construct future publication assets just because they are consumers.
+        stages = {sid for sid in stages if pipeline.stage(sid).index <= pipeline.stage("S12_reconcile").index}
+        rebuild = {rel for rel in rebuild if (project/rel).exists() or rel in sources}
     # A copyedit owned by S19 still uses content checks, not S19's approval lifecycle.
     checks = []
     for sid in sorted(stages, key=lambda s: pipeline.stage(s).index):
@@ -247,7 +254,7 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         for spec in pipeline.stage("S19_human_review").gate:
             if spec["check"] in consistency:
                 checks.append({"stage": "S19_human_review", "spec": spec})
-    else:
+    elif revision["review_stage"] in {"S24_package_human_review","S25_submission_audit"}:
         for spec in pipeline.stage("S24_package_human_review").gate:
             if spec["check"] not in LIFECYCLE_CHECKS | {"outputs_exist", "md_sections", "decision_recorded"}:
                 checks.append({"stage": "S24_package_human_review", "spec": spec})
@@ -279,6 +286,11 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
         controls.update({".wf/discussion_materials.md", ".wf/discussion_outline.md"})
     if "S12_reconcile" in stages:
         controls.add("07_manuscript/reconciliation.md")
+    if "S12_reconcile" in stages or revision["review_stage"] == "S12_reconcile":
+        controls.add(".wf/early_review.json")
+        early = project/".wf/early_review.json"
+        sequence = json.loads(early.read_text(encoding="utf-8")).get("sequence",0) if early.is_file() else 0
+        controls.update(f".wf/review_inbox/E{n:03d}.md" for n in (max(1,sequence),sequence+1))
     if "S22_polish" in stages:
         controls.update({"08_submission/integration/polish_report.json", "08_submission/integration/polish_log.md"})
         controls.add("08_submission/integration/presentation_map.json")
@@ -325,7 +337,7 @@ def _selected_checks(state, revision):
     seen = set()
     for row in revision["checks"]:
         spec = row["spec"]
-        if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid", "discussion_ready"} and state.pin_excludes(row["stage"], spec.get("since")):
+        if spec["check"] in {"prose_not_lists", "display_numbering_consistent", "journal_profile_valid", "discussion_ready", "early_original_article_review", "section_medical_polished"} and state.pin_excludes(row["stage"], spec.get("since")):
             continue
         contextual = spec["check"] in {"outputs_exist", "handoff_recorded", "decision_recorded", "reference_provenance"}
         identity = json.dumps([row["stage"] if contextual else None, spec], sort_keys=True)

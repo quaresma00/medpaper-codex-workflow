@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-r"""Fetch open-access full text for the deep-read papers.
+r"""Retrieve and register actual full text, with truthful route and article identity.
 
-Legal open-access routes only, tried in order: Europe PMC / PMC OA -> Unpaywall ->
-OpenAlex. Paywalled papers are recorded as paywalled; they are never
-silently treated as read.
+Built-in public routes: Europe PMC -> Unpaywall -> OpenAlex. Unresolved records
+continue through the executor's available scholarly tools and authorized browser
+routes, then a precise user PDF request; a link or abstract never counts as read.
 
     .\.venv\Scripts\python.exe tools\pubmed\fulltext.py fetch --citekey smith2023
     .\.venv\Scripts\python.exe tools\pubmed\fulltext.py register --citekey smith2023 \
@@ -81,6 +81,10 @@ def record_retrieval(entry: dict, result: dict) -> dict:
         "authorization_note": result.get("authorization_note", ""),
         "retrieved_at": _now(),
     }
+    prior = records.get(entry["citekey"], {})
+    record["attempts"] = [*prior.get("attempts", []), *result.get("attempts", [])]
+    for field in ("note", "next_action", "require_pdf"):
+        if field in result: record[field] = result[field]
     if entry.get("cache_file"):
         metadata = eu.project_root() / entry["cache_file"]
         record["metadata_cache"] = entry["cache_file"]
@@ -119,10 +123,12 @@ def try_europepmc(entry: dict) -> dict | None:
     if not pmcid:
         return None
     pmcid = pmcid if pmcid.upper().startswith("PMC") else f"PMC{pmcid}"
-    for kind, url, ext in (
+    formats = (
         ("xml", f"{EPMC}/{pmcid}/fullTextXML", "xml"),
         ("pdf", f"{EPMC}/{pmcid}/pdf", "pdf"),
-    ):
+    )
+    for kind, url, ext in formats:
+        if entry.get("_require_pdf") and kind != "pdf": continue
         try:
             blob = eu.http_get(url)
         except Exception:  # noqa: BLE001
@@ -189,23 +195,43 @@ def try_openalex(entry: dict) -> dict | None:
 ROUTES = (try_europepmc, try_unpaywall, try_openalex)
 
 
-def fetch_one(entry: dict) -> dict:
+def fetch_one(entry: dict, *, require_pdf: bool = False) -> dict:
+    # Registered reader-approved files are reusable across turns. Do not replace
+    # a valid PDF with an XML response or repeat an unchanged successful download.
+    try:
+        data = json.loads((out_dir()/MANIFEST).read_text(encoding="utf-8"))
+        old = next((r for r in data["retrievals"] if r.get("citekey")==entry["citekey"]),None)
+        if old and old.get("access") in {"oa","authorized","external"}:
+            from wfcore.packagefreeze import _safe_path
+            from wfcore.refproof import readable_source_errors
+            local = _safe_path(eu.project_root(),old.get("fulltext",""))[1]
+            if (local.is_file() and old.get("sha256")==_sha256(local) and
+                    (not require_pdf or local.suffix.lower()==".pdf") and not readable_source_errors(eu.project_root(),{**entry,"abstract":""})):
+                return {**old,"attempts":[],"note":"Reused the existing identity-confirmed readable file"}
+    except (OSError, ValueError, KeyError, TypeError, StopIteration):
+        pass
+    attempts=[]; best_link=None
     for fn in ROUTES:
         try:
-            res = fn(entry)
+            res = fn({**entry,"_require_pdf":require_pdf})
         except Exception as exc:  # noqa: BLE001
             res = None
-            print(f"    {fn.__name__} raised {type(exc).__name__}: {exc}")
-        if res:
-            return res
+            attempts.append({"route":fn.__name__,"outcome":"failed","at":_now(),"detail":eu.safe_error(exc)[:400]})
+        else:
+            source=(res or {}).get("fulltext","")
+            local=eu.project_root()/source if source and not str(source).startswith("http") else None
+            if local and local.is_file() and (not require_pdf or local.suffix.lower()==".pdf"):
+                return {**res,"attempts":[*attempts,{"route":fn.__name__,"outcome":"downloaded","at":_now()}],"require_pdf":require_pdf}
+            attempts.append({"route":fn.__name__,"outcome":"link_only" if res else "unavailable","at":_now()})
+            if res: best_link=res
     doi = entry.get("doi")
     return {
-        "route": "none", "access": "paywalled",
-        "fulltext": f"https://doi.org/{doi}" if doi else "",
-        "source_url": f"https://doi.org/{doi}" if doi else "",
-        "note": "no open-access copy found. Use an authorized institutional route or leave "
-                "the full-text requirement unresolved. An abstract or link is not a deep read; "
-                "a no-abstract candidate remains unavailable for formal citation.",
+        "route": "builtin-unresolved", "access": "external-needed",
+        "fulltext": (best_link or {}).get("source_url") or (f"https://doi.org/{doi}" if doi else ""),
+        "source_url": (best_link or {}).get("source_url") or (f"https://doi.org/{doi}" if doi else ""),
+        "attempts":attempts,"require_pdf":require_pdf,
+        "next_action":"Try available scansci-pdf multi-source retrieval, including the user's explicitly selected Sci-Hub route; then authorized publisher/institution/browser access. If the required PDF remains unavailable, ask the user for this exact DOI/title/PDF, without silently replacing a necessary source.",
+        "note":"Built-in routes exhausted; acquisition remains incomplete. A link/abstract is not a deep read. Never label an external copy OA or institution-authorized without evidence.",
     }
 
 
@@ -228,8 +254,11 @@ PMID {pmid} | DOI {doi}
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="fetch open-access full text for deep reading")
-    ap.add_argument("command", nargs="?", choices=("fetch", "register", "confirm"), default="fetch")
+    ap = argparse.ArgumentParser(description="retrieve/register actual full text and unresolved route attempts")
+    ap.add_argument("command", nargs="?", choices=("fetch", "register", "confirm", "attempt"), default="fetch")
+    ap.add_argument("--require-pdf",action="store_true",help="PDF is necessary for actual figure/layout reading; XML/links do not complete this request")
+    ap.add_argument("--outcome",choices=("not_found","failed","login_required","unavailable"),help="actual external tool/browser outcome for attempt")
+    ap.add_argument("--note",help="concrete actual failed retrieval reason; never invent an attempted route")
     ap.add_argument("--confirmed-by", help="actual reader who explicitly confirmed article identity")
     ap.add_argument("--identity-note", help="concrete first-page/title/authors/identifier evidence, >=30 chars")
     ap.add_argument("--citekey", action="append", default=[])
@@ -238,8 +267,8 @@ def main() -> int:
                     help="fetch everything listed in deepread_index.json")
     ap.add_argument("--no-stub", action="store_true", help="do not create the notes stub")
     ap.add_argument("--file", type=Path, help="local PDF/XML/HTML to register")
-    ap.add_argument("--access", choices=("oa", "authorized"),
-                    help="legal access basis for a registered file")
+    ap.add_argument("--access", choices=("oa", "authorized", "external"),
+                    help="actual acquisition category; external does not assert OA/license/institutional rights")
     ap.add_argument("--source-url", help="landing page or authoritative source URL")
     ap.add_argument("--route", default="external", help="acquisition route, e.g. scansci-pdf")
     ap.add_argument("--authorization-note",
@@ -268,6 +297,18 @@ def main() -> int:
     if not keys:
         eu.die("give at least one --citekey (or --all-deepread)")
 
+    if args.command == "attempt":
+        if len(keys)!=1 or not args.outcome or len((args.note or "").strip())<20 or args.route=="external":
+            eu.die("attempt needs one actual citekey, specific --route, --outcome and concrete --note (>=20 characters)")
+        path=out_dir()/MANIFEST
+        data=json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"retrievals":[]}
+        record=next((r for r in data["retrievals"] if r.get("citekey")==keys[0]),None)
+        if not record or keys[0] not in entries: eu.die("Run actual built-in retrieval for the registered entry first")
+        record.setdefault("attempts",[]).append({"route":args.route,"outcome":args.outcome,"at":_now(),"detail":eu.safe_error(args.note)})
+        atomic_json(path,data)
+        print(keys[0]+": actual failed route recorded; no full-text/read/verification status was granted")
+        return 0
+
     if args.command == "confirm":
         if len(keys) != 1 or not (args.confirmed_by or "").strip() or len((args.identity_note or "").strip()) < 30:
             eu.die("confirm requires one citekey and actual --confirmed-by / --identity-note; do not invent user confirmation")
@@ -291,8 +332,8 @@ def main() -> int:
     if args.command == "register":
         if len(keys) != 1 or not args.file or not args.access or not args.source_url:
             eu.die("register requires one --citekey plus --file, --access and --source-url")
-        if args.access == "authorized" and not (args.authorization_note or "").strip():
-            eu.die("--authorization-note is required when --access authorized")
+        if args.access in {"authorized","external"} and not (args.authorization_note or "").strip():
+            eu.die("--authorization-note is required for the actual authorized/external acquisition basis; do not claim a license")
         if not re.match(r"^https?://", args.source_url, re.I):
             eu.die("--source-url must be an http(s) URL")
         key = keys[0]
@@ -355,11 +396,11 @@ def main() -> int:
             failed.append(key)
             continue
         print(f"{key}: {entry.get('title', '')[:70]}")
-        res = fetch_one(entry)
+        res = fetch_one(entry,require_pdf=args.require_pdf)
         record_retrieval(entry, res)
         results[key] = res
         source = res.get("fulltext", "")
-        if res.get("access") not in {"oa", "authorized"} or not source or source.startswith("http") or not (eu.project_root() / source).is_file():
+        if res.get("access") not in {"oa", "authorized", "external"} or not source or source.startswith("http") or not (eu.project_root() / source).is_file():
             failed.append(key)
         print(f"    -> {res['route']} / {res['access']} / {res.get('fulltext', '')}")
         if res.get("note"):

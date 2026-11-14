@@ -33,8 +33,32 @@ def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def user_setting(name: str) -> str | None:
+    """Read persistent Windows user settings even in an already-running desktop app."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            value, _ = winreg.QueryValueEx(key, name)
+        return value.strip() if isinstance(value, str) and value.strip() else None
+    except (OSError, ImportError):
+        return None
+
+
 def api_key() -> str | None:
-    return os.environ.get("NCBI_API_KEY") or os.environ.get("PUBMED_API_KEY") or None
+    return (user_setting("NCBI_API_KEY") or os.environ.get("NCBI_API_KEY") or
+            user_setting("PUBMED_API_KEY") or os.environ.get("PUBMED_API_KEY") or None)
+
+
+def safe_error(value) -> str:
+    """Credentials never belong in URLs printed by exhausted retries or helper CLIs."""
+    text = str(value)
+    text = re.sub(r"(?i)([?&](?:api_key|apikey|key|token|access_token)=)[^&\s)]+", r"\1[redacted]", text)
+    for secret in (api_key(), os.environ.get("NCBI_API_KEY"), os.environ.get("PUBMED_API_KEY")):
+        if secret:
+            text = text.replace(secret, "[redacted]")
+    return text
 
 
 def api_email() -> str | None:
@@ -72,7 +96,7 @@ def http_get(url: str, params: dict | None = None, retries: int = 4, timeout: in
         except (urllib.error.URLError, TimeoutError) as exc:
             last = exc
             time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"GET failed after {retries} attempts: {url} ({last})")
+    raise RuntimeError(safe_error(f"GET failed after {retries} attempts: {url} ({last})"))
 
 
 # ---------------------------------------------------------------------------
@@ -365,5 +389,5 @@ def make_citekey(rec: dict, taken: set[str] | None = None) -> str:
 
 # ---------------------------------------------------------------------------
 def die(msg: str) -> None:
-    print(f"error: {msg}", file=sys.stderr)
+    print("error: " + safe_error(msg), file=sys.stderr)
     raise SystemExit(1)

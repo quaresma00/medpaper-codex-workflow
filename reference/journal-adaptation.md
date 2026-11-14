@@ -29,7 +29,8 @@ do not discard edits or copy the previous journal's presentation into the new at
 
 ## Acquire complete authoritative instructions
 
-Locate the selected journal by title/ISSN with current web search/Codex browser tools. Read
+Locate the selected journal by title/ISSN, then open its official instructions in the native
+Codex browser before expensive adaptation. Read
 its article-type page and relevant linked figure/table/supplement/initial-or-revision rules.
 A generic publisher page does not replace journal-specific exceptions. Fetch complete relevant
 pages, not the whole publisher site:
@@ -38,6 +39,7 @@ pages, not the whole publisher site:
 .\.venv\Scripts\python.exe tools/journal.py fetch --url <actual-official-guide-url>
 .\.venv\Scripts\python.exe tools/journal.py status
 .\.venv\Scripts\python.exe tools/journal.py show --source <actual-id> --find Abstract
+.\.venv\Scripts\python.exe tools/journal.py show --source <actual-id> --links --full
 ```
 
 HTML/PDF acquisition retains original bytes and complete visible/page text. Optional
@@ -72,6 +74,48 @@ the complete relevant guide and register it normally. The pending handoff clears
 that real source is captured, not by setting a completion flag. Do not mark every HTTP 403 as
 a human challenge before observing it. Use the host's current browser skill/API for the UI;
 browser tab identifiers are session-local, not a saved authentication mechanism.
+
+Read the actual linked article-type, artwork, table, supplement, initial/revision and upload
+instructions relevant to this paper. Captured HTML records observed links; `show --links`
+helps locate them but does not certify reading. Register the complete browser text/downloads,
+then bind every applicable requirement in the existing topic rows. Do not mark a topic
+unstated merely because the main page links to its separate instructions. A blocked required
+source stays pending while accessible independent preparation continues; do not invent a cap,
+copy an old journal's value or claim the entire guide was read from a snippet.
+
+## Observe the actual portal and resolve genuine differences
+
+At S20 use the public official portal instructions when available. Before the final handoff,
+check the actual current article type, upload slots, required fields, accepted formats and
+word/figure limits in the live portal when it is accessible. Portal login/CAPTCHA uses the same
+visible-browser human handoff, with `--source-kind portal`. Never guess inaccessible portal
+requirements or assert that local files were uploaded/submitted. A portal-only item stays
+explicitly unverified when access is not available; it does not justify another full rebuild.
+
+Add its genuinely linked official host via `submission_url`/`official_domains`, then register
+only actual visible instruction text, without hidden inputs, author/patient content or session
+URLs/tokens:
+
+```powershell
+.\.venv\Scripts\python.exe tools/journal.py register --source-kind portal --file <actual-visible-text.txt> --url <stable-official-portal-page> --retrieved-at <actual-date> --why "<actual browser observation and article-type scope>"
+```
+
+Portal clauses use the existing `guide_rules` with their actual source ID, quote, locator and
+ordinary automatic/manual output check. Meet both sources where compatible (for example,
+use the stricter of two maximum lengths). For an irreconcilable **required** upload restriction,
+keep both passages and explicitly connect the same field/roles:
+
+```powershell
+.\.venv\Scripts\python.exe tools/journal.py portal-conflict --guide-rule <actual-guide-rule-id> --portal-rule <actual-portal-rule-id> --reason-file <actual-resolution.txt>
+```
+
+This records `superseded_by`/`resolves` and the reason in the existing requirements, then
+requires scoped configuration/output correction and resealing. An allowed option, stale or
+foreign attempt, different file role or compatible looser ceiling cannot override a required
+guide clause. Scientific validity, real author facts, consent and user-controlled declarations
+cannot be changed to satisfy a form. Unclear authority needs one specific clarification, not
+a fabricated interpretation. Existing measurements check the actual current upload files;
+the presence of a source or a successful build alone is not a compliance pass.
 
 ## Bind clauses in the existing requirements JSON
 
@@ -184,6 +228,22 @@ S23-S25 verify current evidence, not a score; independent final review receives 
 Raw-page/footer refreshes with unchanged executable rules do not force new Word builds.
 Use cheap evidence revalidation and true consumers, preserving S19/S24 approval/amendment rules.
 Never restart analysis or replay the stage tail for a journal-only change.
+
+## Hand off a journal- and date-named upload directory
+
+After final builds and checks, run `journal.py deliver`. It copies only manifest-listed
+uploads into `08_submission/submission_packages/<Journal_Name>_<YYYY-MM-DD>/`, using the
+Asia/Shanghai **preparation** date. Another changed package on that date receives `_02`,
+`_03`, etc.; a different journal gets its own context and directory. The tool reports the
+exact active path; no actual submission date is claimed before Submit occurs.
+
+These are read-only upload/reading copies, not a second authoring source. Keep corrections
+in the existing managed source/bundle revision path and regenerate only affected consumers.
+Unchanged files/context reuse the existing directory. Previously exported packages and
+author edits are never overwritten; a changed/missing handoff copy must be inspected and
+reconciled before another export. Show its exact location alongside the current S24 editable
+source/bundle location so users do not mistake the copy for the workflow's editing source.
+No convenience ZIP, preview, lock file, internal checklist or evidence enters this directory.
 
 Primary interfaces checked 2026-11-06: [Trafilatura](https://github.com/adbar/trafilatura),
 [Crawl4AI](https://docs.crawl4ai.com/core/simple-crawling/),

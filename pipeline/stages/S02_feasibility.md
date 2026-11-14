@@ -1,5 +1,10 @@
 # S02 - Feasibility: real literature scan + go/no-go #1
 
+The requested target is a publishable SCIE Original article. If current evidence supports
+NO_GO, only another article type, or no decision-relevant further analysis, tell the user
+immediately with concrete reasons and choices. Do not silently switch article type or keep
+adding analyses/drafting to hide the barrier. Necessary validity work still comes first.
+
 Do not mark an ordinary mining/retrospective study unpublishable merely because it lacks
 public registration or a prefilled reporting checklist. Judge validity, novelty and fit;
 checklist paperwork is deferred until a selected journal explicitly requests it.

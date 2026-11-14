@@ -28,24 +28,23 @@ Office lock files or internal evidence. Do not draft AI-use disclosure text. S24
 author package review; this build creates no approval. Never recapture a failed baseline
 or fabricate successful independent/visual checks. Follow scoped revision rules for changes.
 
-Use full details for builder/finalize/preview commands, Word style and manifest schemas.
+After checks run `journal.py deliver`: show the journal/date-named read-only upload directory
+and the managed editing-source path. Recheck accessible current portal constraints; required
+conflicts need actual same-attempt sources, scoped correction and resealing. No Submit is implied.
 
 ## Full procedure, read once when needed
 `reference/stage_details/S23_package.md` (`tools/wf.py card S23_package --details`).
 On first execution read the applicable detailed procedure; later local corrections reuse
 already-read guidance and go directly to affected owner rules. After compaction use
 `tools/wf.py handoff`, then retrieve only missing context. The actual gates remain unchanged.
-`reference/structural-quality.md` v1.17 explains runtime fixes and preserved boundaries.
 
 ## Outputs
 At handoff list portal-only tasks separately: actual upload slots/article type, coauthor
 approvals, unresolved user-owned compliance items and final Submit. Never mark these done
 merely because local files exist; never draft an AI-use disclosure without the exact request.
 
-- A journal-requested reporting checklist only if explicitly required in the sourced upload
-  list; complete that specific current form from actual integration content, with truthful
-  locations/inapplicability. Otherwise create no reporting checklist. This is separate from
-  the small internal SUBMISSION_CHECKLIST.md used to hand off the actual upload files.
+- A reporting checklist only when explicitly required: complete its actual current form,
+  truthful locations and applicability. Internal SUBMISSION_CHECKLIST.md is handoff evidence.
 - `08_submission/cover_letter.md`
 - `08_submission/evidence/SUBMISSION_CHECKLIST.md`
 - `08_submission/portal_fields.json`

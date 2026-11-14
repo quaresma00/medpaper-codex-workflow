@@ -27,8 +27,12 @@ $env:NCBI_API_KEY = "<your NCBI API key>"
 $env:NCBI_API_EMAIL = "you@example.org"
 ```
 
-`NCBI_API_KEY` is optional. `NCBI_API_EMAIL` is needed for Unpaywall requests. Restart Codex
-after changing persistent environment variables.
+`NCBI_API_KEY` is optional. On Windows, persist it with
+`[Environment]::SetEnvironmentVariable('NCBI_API_KEY','<your key>','User')` outside the
+repository. The bundled PubMed client reads that current-user setting even when the desktop
+app still has an old process environment. No key belongs in a Skill, ZIP, GitHub or study file.
+`NCBI_API_EMAIL` is needed for Unpaywall requests. Other tools may require restarting their
+process to observe a changed environment; this workflow never prints the credential.
 
 ## Codex discovery
 
@@ -96,8 +100,9 @@ the active stage only. Follow `reference/codex-integration.md`:
 
 - scholarly-search or research tools discover candidates; pipeline retrieval and
   verification make them citable;
-- external PDFs must come from open-access or explicitly authorized institutional routes
-  and be registered locally;
+- actual external PDFs use the selected retrieval route (including a user-selected Sci-Hub
+  route), truthful acquisition category and local registration; they are not automatically
+  labeled OA or institutional access. No unrequested credential/network changes;
 - spreadsheet, document, and PDF workflows render and visually inspect artifacts without
   starting a second manuscript workflow;
 - ImageGen may offer a second visual critique of rendered scientific figures, but it must

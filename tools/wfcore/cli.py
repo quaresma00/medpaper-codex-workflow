@@ -345,6 +345,10 @@ def cmd_handoff(args) -> int:
         if handoff.get("status")=="waiting_for_user":
             print("Guide browser handoff pending: "+str(handoff.get("reason",""))+" at "+
                   str(handoff.get("url",""))[:500]+"; capture actual guide after the user completes it")
+        if journal.get("delivery"):
+            from .journalportal import delivery_status
+            delivery=delivery_status(project)
+            print("Current upload copy: "+str(delivery.get("directory"))+"; "+delivery["status"]+"; preparation only, not submitted")
     print("Card: "+str(stage.card_path()))
     detail=paths.repo_root()/"reference/stage_details"/stage.card_path().name
     if detail.is_file(): print("Details (read relevant procedure once): "+str(detail))
@@ -625,7 +629,8 @@ def cmd_doctor(args) -> int:
         rows.append((exe, "ok" if p else "absent", p or f"optional, used for {why}"))
 
     import os
-    key = os.environ.get("NCBI_API_KEY") or os.environ.get("PUBMED_API_KEY")
+    from pubmed.eutils import api_key
+    key = api_key()
     rows.append(("NCBI_API_KEY", "ok" if key else "not set",
                  "10 req/s" if key else "3 req/s without a key; set NCBI_API_KEY to raise it"))
 

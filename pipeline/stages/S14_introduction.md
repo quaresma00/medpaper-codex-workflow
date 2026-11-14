@@ -44,6 +44,10 @@ gap-to-objective argument before writing, then read it without the literature no
   not a fixed quota.
 
 ## Close
+Complete the section-local medical edit before closing: `section_writing.py begin`, then read
+and edit the actual Introduction against its objective and verified literature, then `accept`.
+Do not defer generic language cleanup or claim-evidence repair to the assembled manuscript.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py advance --note "introduction drafted; <n> words, <k> refs; gap sentence: <quote it>"
 ```

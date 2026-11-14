@@ -1,5 +1,14 @@
 # S17 - Select the title and assemble the complete manuscript
 
+Before drafting the Abstract, run `early_review.py check`: the current S12 independent
+Original-article review must be GO. A missing/stale/REVISE/NO_GO report is not permission
+to keep writing. Correct only affected owners and obtain actual independent delta reading.
+After each section draft, including Abstract, use `section_writing.py begin/accept` as in
+`reference/medical-writing.md`. The assembler refuses missing current section acceptance.
+At assembly read continuity, terminology, repetitions and cross-references; do not perform
+a second wholesale rewrite of already polished sections. A local defect returns only its
+true section/source and dependants through the existing revision batch.
+
 Bind numeric Abstract findings under `reference/numeric-claims.md`. The assembler carries
 matching Abstract/Results bindings to full-manuscript mappings without printing them in prose.
 

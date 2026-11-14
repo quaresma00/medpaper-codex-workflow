@@ -1,7 +1,11 @@
 # S07 - Artifact inventory and reader-ready display plan
 
-Before writing or expensive production, read the actual full-text medical comparators and
-seal project-specific coverage/display choices with the existing benchmark. Abstract-only
+Before writing or expensive production, search recent literature (initially the latest24 months)
+and inspect about5–10 close published full texts, including actual figures, tables and captions.
+Record their real dates, display counts/types/purposes and analysis choices in the existing
+benchmark. Sparse-field/older-paper exceptions need actual search evidence and scientific
+reasons; difficulty obtaining a necessary PDF means exhaust real retrieval then ask the author.
+Seal project-specific coverage/display choices with that benchmark. Abstract-only
 comparisons and fixed numerical quotas are insufficient. Use the source-scoped clinical
 labels and reversible physical presentation profile already in artifact_plan.json.
 
@@ -11,6 +15,9 @@ Required scientific reader tasks determine displays. Do not treat "focused", "co
 "nonredundant" as grounds to omit an applicable main selection flow or primary-result view.
 Map actual comparator figure/table pages to adopted/modified/omitted roles in the existing
 benchmark. Prototype with real complete data, without refitting approved results to draw.
+If this study has fewer main figures than the comparator median, explain actual scientific
+differences and reader-task coverage in count_comparison. Cost, convenience and a generic
+claim that2–3 figures are enough do not justify an otherwise thin Original article.
 New statistical graphics default to managed R; record a real exception for Python.
 
 Write substantive legends/captions that decode the actual display without repeating Results.

@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import shutil
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse,parse_qs
 
 from .packagefreeze import _safe_path, _sha256
 from .readiness import atomic_json, load
@@ -135,9 +135,14 @@ def current(project):
 def allowed_url(project, url):
     target = load(project, TARGET)
     parsed = urlparse(url)
-    hosts = {urlparse(str(target.get("guidelines_url", ""))).hostname, *target.get("official_domains", [])}
+    hosts = {urlparse(str(target.get("guidelines_url", ""))).hostname,
+             urlparse(str(target.get("submission_url", ""))).hostname,*target.get("official_domains", [])}
     if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.hostname not in hosts or parsed.username or parsed.password:
         raise ValueError("Use a verified official guideline host; add a genuinely linked publisher/CDN host to target official_domains when needed")
+    if any(re.search(r"token|password|session|cookie|secret|^auth$|^code$|^sid$",key,re.I)
+           for key in parse_qs(parsed.query,keep_blank_values=True)) or re.search(
+               r"(?:^|[&;])(?:access_token|id_token|password|session|auth|code)=",parsed.fragment,re.I):
+        raise ValueError("Use the stable official page URL, never a credential/session-bearing browser URL")
     return url
 
 
@@ -148,13 +153,14 @@ def source_problems(project, context):
         problems.append("Official-guide browser handoff is waiting for the user; obtain the actual guide after verification before sealing/building")
     if not context.get("sources"): return problems+["No actual guideline source captured for this attempt"]
     main = load(project, TARGET).get("guidelines_url")
-    if not any(main in {r.get("url"), r.get("final_url")} for r in context["sources"].values()):
+    if not any(r.get("source_kind","guide")=="guide" and main in {r.get("url"), r.get("final_url")} for r in context["sources"].values()):
         problems.append("The current target guidelines_url has no captured source")
     for key, source in context["sources"].items():
         if not isinstance(source,dict):
             problems.append(f"{key}: invalid captured source record");continue
         try:
             allowed_url(project, source["url"]); allowed_url(project, source.get("final_url", source["url"]))
+            if source.get("source_kind","guide") not in {"guide","portal"}: raise ValueError("unknown guide/portal source kind")
             if source.get("context_id") != context["context_id"]: raise ValueError("belongs to another journal attempt")
             age = (datetime.now(timezone.utc) - datetime.fromisoformat(source["fetched_at"])).total_seconds()/86400
             if not 0 <= age <= 90: raise ValueError("source capture must be current, not future-dated or stale")

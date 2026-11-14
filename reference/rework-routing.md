@@ -18,6 +18,11 @@ review checkpoint and all completed-stage history. Never use `wf loop` for a loc
 
 ## Where repeated feedback belongs
 
+- **S12 handles early method/result/display review before Abstract.** Use the same scoped
+  batch for actual findings, stay at S12 and repair only existing sources/consumers. Do not
+  create the not-yet-written Introduction, Discussion, Abstract or full manuscript to close
+  this batch. After correction, unchanged early review is reused; material changes need
+  independent delta reading. `reference/early-scientific-review.md` owns this handoff.
 - **S19 is the repeated scientific-review loop.** Use it for the assembled manuscript,
   supplementary Methods, results, references, tables, figures, legends and scientific
   interpretation. The user may request as many rounds as needed. Do not advance to journal

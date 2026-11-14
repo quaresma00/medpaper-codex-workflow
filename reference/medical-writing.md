@@ -7,6 +7,78 @@ paper. Read tool/schema documentation only when executing that operation or reso
 do not reload all quality references before each paragraph. Existing source/approval checks
 still run. Examples below teach expression, not study design, factual content or mandatory form.
 
+## Finish the medical edit within each section
+
+After drafting each Methods, supplementary Methods, Results, Introduction, Discussion and
+Abstract Markdown file, edit and read that section **before its stage closes**. Do not defer
+medical language to full-manuscript assembly or S22. This is the section writer's own work,
+not a new reviewer, a detector score or an extra report. First bind the actual draft and only
+the scientific sources used to read it back:
+
+```powershell
+.\.venv\Scripts\python.exe tools/manuscript/section_writing.py begin --section methods --source 01_protocol/protocol_final.md
+```
+
+Read the whole current section and its sources. Replace internal processing vocabulary with
+the actual medical unit, definition and clinical purpose. A physician should understand who
+was studied, how exposure and outcomes were defined, what was compared and what the finding
+means without opening code or a workflow record. Keep genuine technical methods, software
+versions, limitations, null/adverse results and appropriately cautious inference. Remove
+chatbot preambles, promotional claims, artificial contrasts, stock transitions, repeated
+take-home lines and experiment diaries when they add no medical information. Rewrite the
+argument where needed; do not replace a list of banned words with synonyms or invent more
+"human" examples, patients, anecdotes, citations or numerical detail.
+
+Then accept the actual edited file using a small UTF-8 JSON in the existing project/temp
+area via `section_writing.py accept --section methods --review-file <actual-reading.json>`.
+The JSON contains `quote` (an exact current passage), `clinical_reading` (its actual medical
+meaning) and `fact_readback` (the specific population/design/comparison, uncertainty and
+source checks performed). If the existing contextual scanner flags retained wording, its
+`resolutions` maps the reported issue ID to the source-supported medical reason; the section
+`check` command shows current issue IDs and actual locations. Do not enter a generic PASS. The receipt is
+stored in existing build_receipts.json; there is no duplicate pre-edit manuscript or report
+for every section. Check with `section_writing.py check --section methods`.
+
+The wording pass protects reported numbers, P-value operators, citations, display references
+and basic design/negation signals. It cannot prove medical meaning or catch every reversal
+of scope. Read back that meaning, including who each number describes. A changed value or
+actual scientific correction uses the existing source-owned revision rather than resetting
+the wording baseline to pass. An unfinished pass keeps its original baseline on resume;
+`--scientific-reset` is available only within an actual scientific revision affecting it.
+Keep only the necessary scientific `--source` dependencies, so unrelated changes do not
+invalidate every section.
+
+At S17, check **cohesion** across accepted sections: objective-to-method-to-result alignment,
+terminology, abbreviations, duplicate sentences, transitions and consistent certainty. Edit
+only the affected passages/sections and renew their reading. Do not perform a second whole
+paper rewrite. S22 implements the selected journal's actual language/length/style needs in
+its own copy, reusing the accepted scientific prose; it does not repeat a generic polishing
+cycle on all sections.
+
+### External writing principles adapted for medical research
+
+Sources inspected 2026-11-14: [anti-defensive-writing](https://github.com/Adkid-Zephyr/anti-defensive-writing-Skill),
+[Humanizer](https://github.com/blader/humanizer) and
+[Academic Humanizer](https://github.com/AIScientists-Dev/academic-humanizer).
+These are references for this single writing route, not additional orchestrators. The
+following are original medical adaptations rather than copied prompt packs:
+
+- Retain anti-defensive writing's clear question, useful main contribution, source-supported
+  argument and removal of work-log narration. **Reject** hiding unfavourable or null findings,
+  suppressing necessary limitations, selecting endpoints after seeing results or reframing
+  comparisons to manufacture an advantage. A medical article reports the actual study.
+- Retain Humanizer's removal of inflated framing, redundant closing lines, unneeded contrasts
+  and chatbot leftovers, with a complete fact read-back. Do not import casual voice, humour,
+  invented personality, blanket punctuation bans or claims of detector avoidance.
+- Retain Academic Humanizer's evidence-matched verbs, justified hedging and stable technical
+  definitions. Use medical comparators for positive wording; do not copy its computer-science
+  examples, grant-proposal modes or fixed paragraph/word-count rules.
+
+All three source repositories carry MIT license text (the Academic Humanizer GitHub metadata
+currently reports NOASSERTION, so its actual LICENSE was read). No upstream code or substantial
+prompt text is bundled or installed by this adaptation. Popularity does not establish medical
+validity, and no language heuristic proves authorship or an acceptable AI-detector score.
+
 ## Methods
 
 Tell readers how the design answers the question: design/setting and period; participants

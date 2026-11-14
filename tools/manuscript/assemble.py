@@ -87,6 +87,15 @@ def main() -> int:
     args = ap.parse_args()
     project = project_root()
     try:
+        if not args.check:
+            from wfcore.state import State
+            if State(project).exists():
+                from wfcore import earlyreview,sectionwriting
+                problems = earlyreview.verify(project)
+                problems += sectionwriting.problems(project,
+                    ["methods","supplementary_methods","results","introduction","discussion","abstract"],
+                    optional=["supplementary_methods"])
+                if problems: raise ValueError("; ".join(problems))
         expected = assemble(project)
     except ValueError as exc:
         print(f"assemble: {exc}", file=sys.stderr)

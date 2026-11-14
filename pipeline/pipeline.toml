@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.27.0"
+version = "1.28.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -297,6 +297,11 @@ title = "Write Methods"
 card = "stages/S08_methods.md"
 outputs = ["07_manuscript/methods.md", "07_manuscript/supplementary_methods.md"]
 [[stage.gate]]
+check = "section_medical_polished"
+paths = ["methods", "supplementary_methods"]
+optional = ["supplementary_methods"]
+since = "1.28.0"
+[[stage.gate]]
 check = "outputs_exist"
 optional = ["07_manuscript/supplementary_methods.md"]
 [[stage.gate]]
@@ -396,6 +401,10 @@ title = "Write Results from finished tables and figures"
 card = "stages/S09_results.md"
 outputs = ["07_manuscript/results.md", "07_manuscript/claim_bindings.json"]
 [[stage.gate]]
+check = "section_medical_polished"
+paths = ["results"]
+since = "1.28.0"
+[[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
 check = "single_section_written"
@@ -455,6 +464,10 @@ check = "numbers_cross_match"
 [[stage.gate]]
 check = "writing_ready"
 
+[[stage.gate]]
+check = "early_original_article_review"
+since = "1.28.0"
+
 [[stage]]
 id = "S13_reflib"
 title = "Complete the verified reference library by project argument coverage"
@@ -481,6 +494,10 @@ id = "S14_introduction"
 title = "Write Introduction"
 card = "stages/S14_introduction.md"
 outputs = ["07_manuscript/introduction.md"]
+[[stage.gate]]
+check = "section_medical_polished"
+paths = ["introduction"]
+since = "1.28.0"
 [[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
@@ -521,6 +538,10 @@ title = "Write Discussion"
 card = "stages/S16_discussion.md"
 outputs = ["07_manuscript/discussion.md"]
 [[stage.gate]]
+check = "section_medical_polished"
+paths = ["discussion"]
+since = "1.28.0"
+[[stage.gate]]
 check = "outputs_exist"
 [[stage.gate]]
 check = "discussion_ready"
@@ -558,6 +579,14 @@ id = "S17_assemble"
 title = "Automatically select the title and assemble the complete manuscript"
 card = "stages/S17_assemble.md"
 outputs = ["07_manuscript/title.md", "07_manuscript/abstract.md", "07_manuscript/keywords.md", "07_manuscript/full_manuscript.md", "07_manuscript/statements.md", "06_refs/usage.json"]
+[[stage.gate]]
+check = "early_original_article_review"
+since = "1.28.0"
+[[stage.gate]]
+check = "section_medical_polished"
+paths = ["methods", "supplementary_methods", "results", "introduction", "discussion", "abstract"]
+optional = ["supplementary_methods"]
+since = "1.28.0"
 [[stage.gate]]
 check = "discussion_ready"
 path = "07_manuscript/full_manuscript.md"

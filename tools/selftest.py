@@ -2418,7 +2418,11 @@ def main() -> int:
                              ("test_submission_structure_127.py","actual author front matter blinding display placement and descriptive uploads"),
                              ("test_discussion_127.py","display-free Discussion materials outline and source-bound incremental interpretation"),
                              ("test_display_language_127.py","actual figure text and table cells retain medical meaning and source values"),
-                             ("test_browser_handoff_127.py","native-browser human handoff resolves only on genuine guide capture")):
+                             ("test_browser_handoff_127.py","native-browser human handoff resolves only on genuine guide capture"),
+                             ("test_section_writing_128.py","section-first medical editing and protected source-bound facts"),
+                             ("test_early_benchmark_128.py","recent comparable displays and pre-Abstract Original-article scientific review"),
+                             ("test_journal_portal_128.py","observed current portal conflicts and journal/date named upload copies"),
+                             ("test_retrieval_credentials_128.py","persistent PubMed credentials and complete honest full-text fallback routes")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

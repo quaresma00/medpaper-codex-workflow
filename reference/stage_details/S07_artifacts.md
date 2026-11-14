@@ -17,8 +17,10 @@ actually display, and write every legend before anything is drawn. Legends writt
 first keep panels from filling up with explanatory text later.
 
 ## Procedure
-1. **Benchmark.** Retrieve comparable papers - same design, same field, the kind of
-   journal you are targeting - and count what they display. A scholarly search helper may
+1. **Benchmark.** Search newest-first within the latest24 months and read about5–10 close
+   papers with actual figure/table inventories. Sparse-field older/count exceptions need real
+   search evidence and a scientific reason. Use the same design, clinical question and kind of
+   journal you are targeting; inspect what they analyse and display. A scholarly search helper may
    find candidates, but every comparator used in the benchmark must be retrieved through
    the bundled client:
 ```
@@ -31,7 +33,7 @@ first keep panels from filling up with explanatory text later.
    justify your inventory against it. Optimize complete medical communication; fewer items
    are not inherently better and extra items must not be added merely to imitate counts.
    Counts alone are insufficient. Read the actual Methods/Results and at least one table
-   and figure from close, legally accessible medical comparators. In the same benchmark
+   and figure from actual identity-verified registered medical full texts. In the same benchmark
    note record their clinical ordering, labels, denominators, uncertainty and footnote/legend
    conventions, and explain what is suitable for this study. Do not imitate visual decoration
    or assume an abstract proves the full paper's display style. Record unavailable full text.

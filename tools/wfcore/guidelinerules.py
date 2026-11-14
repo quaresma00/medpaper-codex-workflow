@@ -46,6 +46,8 @@ def validate(project, context):
     if req.get("journal_context_id") not in {None,context["context_id"]}: failures.append("Submission requirements belong to another journal attempt")
     if req.get("article_type")!=context["identity"]["article_type"]: failures.append("Requirements article type differs from current target")
     if not isinstance(rows,list) or not rows: return failures+["guide_rules must cover the current official guide topics"]
+    from .journalportal import supersession_problems
+    failures+=supersession_problems(project,context,rows)
     seen=set();topics=set();source_texts={}
     for row in rows:
         if not isinstance(row,dict):
@@ -63,6 +65,10 @@ def validate(project, context):
                 raise ValueError("cite a real passage and section/page in this attempt's captured source")
             if row["status"] in {"unspecified","not_applicable"}:
                 if len(str(row.get("reason","")).strip())<30: raise ValueError("explain actual search scope or study-specific inapplicability")
+                continue
+            if row.get("superseded_by"):
+                # Reciprocal, current, same-field required portal evidence is checked above.
+                # Preserve the genuine guide passage without imposing two conflicting values.
                 continue
             check=row["check"];kind=check.get("type")
             if kind not in METHODS: raise ValueError("choose a supported actual-output check or manual inspection")
@@ -138,7 +144,8 @@ def measure(project, reviews):
     for row in rules(project):
         defects=[];kind=row.get("check",{}).get("type");status=row["status"]
         try:
-            if status in {"unspecified","not_applicable"}: pass
+            if row.get("superseded_by"): pass
+            elif status in {"unspecified","not_applicable"}: pass
             elif kind=="context":
                 if config_value(project,row["check"])!=row["check"]["value"]: defects.append("current context value differs")
             elif kind=="limit":
@@ -198,6 +205,7 @@ def measure(project, reviews):
         except (OSError,ValueError,KeyError,TypeError) as exc: defects.append(str(exc))
         result.append({"rule_id":row["id"],"source_id":row["source_id"],"file":"guide:"+row["id"],
                        "status":"FAIL" if defects and status=="required" else "WARN" if defects else "PASS",
-                       "checks":f"current official guide {row['topic']} ({status}); {kind or 'no explicit constraint'}",
+                       "checks":(f"guide clause superseded by observed required portal rule {row['superseded_by']}" if row.get("superseded_by") else
+                                 f"current official {context['sources'][row['source_id']].get('source_kind','guide')} {row['topic']} ({status}); {kind or 'no explicit constraint'}"),
                        "defects":defects})
     return result

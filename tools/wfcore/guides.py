@@ -17,9 +17,12 @@ from .readiness import atomic_json
 
 class VisibleText(HTMLParser):
     def __init__(self):
-        super().__init__(convert_charrefs=True); self.parts=[]; self.skip=0
+        super().__init__(convert_charrefs=True); self.parts=[]; self.skip=0; self.links=[]
     def handle_starttag(self, tag, attrs):
         if tag in {"script", "style", "noscript", "template"}: self.skip+=1
+        if not self.skip and tag=="a":
+            href=dict(attrs).get("href","")
+            if href and not href.startswith(("#","mailto:","javascript:")): self.links.append(href)
         if not self.skip and tag in {"p", "div", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "br"}: self.parts.append("\n")
     def handle_endtag(self, tag):
         if tag in {"script", "style", "noscript", "template"}: self.skip=max(0,self.skip-1)
@@ -84,7 +87,7 @@ async def browser_download(url):
         return result.html.encode("utf-8"),getattr(result,"redirected_url",None) or url,"text/html"
 
 
-def browser_handoff(project, url, reason, tab_ref=""):
+def browser_handoff(project, url, reason, tab_ref="", source_kind="guide"):
     """Record a real human handoff after a browser shows verification/login.
 
     The driver opens/shows the actual tab using its available browser API. This helper
@@ -92,6 +95,7 @@ def browser_handoff(project, url, reason, tab_ref=""):
     """
     if reason not in {"captcha","login"}:
         raise ValueError("A human browser handoff needs an observed captcha or login blocker")
+    if source_kind not in {"guide","portal"}: raise ValueError("Use guide or portal source kind")
     jc.allowed_url(project,url); context=jc.current(project)
     previous=context.get("browser_handoff",{})
     if previous.get("status")=="waiting_for_user" and previous.get("url")!=url:
@@ -99,7 +103,7 @@ def browser_handoff(project, url, reason, tab_ref=""):
     if not isinstance(tab_ref,str) or len(tab_ref)>200:
         raise ValueError("Use only the actual short browser/tab reference, never a cookie or login payload")
     continuing=previous.get("status")=="waiting_for_user"
-    row={"context_id":context["context_id"],"url":url,"reason":reason,"tab_ref":tab_ref or (previous.get("tab_ref","") if continuing else ""),
+    row={"context_id":context["context_id"],"url":url,"reason":reason,"source_kind":source_kind,"tab_ref":tab_ref or (previous.get("tab_ref","") if continuing else ""),
          "status":"waiting_for_user","requested_at":previous.get("requested_at",jc.now()) if continuing else jc.now(),
          "main_guide":url==jc.load(project,jc.TARGET).get("guidelines_url")}
     context["browser_handoff"]=row
@@ -108,8 +112,11 @@ def browser_handoff(project, url, reason, tab_ref=""):
     return row
 
 
-def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
+def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None, source_kind="guide"):
     context=jc.current(project);jc.allowed_url(project,url)
+    if source_kind not in {"guide","portal"}: raise ValueError("Use guide or portal source kind")
+    if source_kind=="portal" and (file is None or Path(file).suffix.lower() not in {".txt",".md"}):
+        raise ValueError("Portal instructions require an actual visible-text browser export (.txt/.md), without cookies, hidden fields or login payloads")
     if file is not None:
         if len(why.strip())<20: raise ValueError("Describe the actual official/browser/user source; registration is not a claim of an HTTP fetch")
         if not retrieved_at: raise ValueError("Provide the actual --retrieved-at date for a registered source; registration does not prove a new web fetch")
@@ -132,11 +139,15 @@ def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
                 raise ValueError(f"Direct acquisition: {exc}; browser: {fallback}. Use the available native browser; hand over only an observed login/CAPTCHA to the user, then read/register the actual official guide") from fallback
     jc.allowed_url(project,final)
     suffix,text,reader=extract(raw,suffix)
-    key=jc.digest(url)[:16]; root=project/"08_submission/cache/guides"
+    key=jc.digest(url if source_kind=="guide" else "portal:"+url)[:16]; root=project/"08_submission/cache/guides"
     root.mkdir(parents=True,exist_ok=True)
-    source={"id":key,"context_id":context["context_id"],"url":url,"final_url":final,
+    source={"id":key,"context_id":context["context_id"],"url":url,"final_url":final,"source_kind":source_kind,
             "fetched_at":retrieved_at or jc.now(),"registered_at":jc.now(),"mode":kind,"registration_basis":why,
             "raw":f"08_submission/cache/guides/{key}.source{suffix}","text":f"08_submission/cache/guides/{key}.txt"}
+    if suffix==".html":
+        links=VisibleText();links.feed(raw.decode("utf-8",errors="replace"))
+        source["discovered_links"]=sorted({urljoin(final,href).split("#",1)[0] for href in links.links
+                                            if urlparse(urljoin(final,href)).scheme in {"http","https"}})
     # Preserve exact original bytes and complete visible text. Reader text is optional,
     # never the only retained evidence and never a substitute for the complete guide.
     for rel,value in ((source["raw"],raw),(source["text"],text.encode("utf-8"))):
@@ -150,7 +161,7 @@ def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
     context["sources"][key]=source;atomic_json(project/jc.CONTEXT,context)
     target=jc.load(project,jc.TARGET)
     handoff=context.get("browser_handoff",{})
-    if handoff.get("status")=="waiting_for_user" and (
+    if handoff.get("status")=="waiting_for_user" and handoff.get("source_kind","guide")==source_kind and (
             handoff.get("url") in {url,final} or
             (handoff.get("main_guide") is True and url==target.get("guidelines_url") and url!=handoff.get("url"))):
         # A changed main-guide URL may legitimately have a public official alternative.
@@ -158,7 +169,7 @@ def capture(project, url, *, file=None, mode="auto", why="", retrieved_at=None):
         context["browser_handoff"]={**handoff,"status":"source_captured","source_id":key,
                                      "completed_at":jc.now(),"raw_sha256":source["raw_sha256"]}
         atomic_json(project/jc.CONTEXT,context)
-    if url==target.get("guidelines_url"):
+    if source_kind=="guide" and url==target.get("guidelines_url"):
         target["guidelines_fetched_at"]=source["fetched_at"][:10];atomic_json(project/jc.TARGET,target)
     return source
 

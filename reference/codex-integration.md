@@ -37,10 +37,15 @@ trusted by itself; ad-hoc scripts must never write the library, receipt, BibTeX 
 The four reference-integrity gates are not waivable with `wf advance --force`. If NCBI is
 unavailable, S13 stays blocked instead of accepting a local substitute.
 
-For full text, prefer legal open-access routes. A scholarly-PDF skill may use open-access or
-user-authorized institutional access. Never use Sci-Hub or another illicit source. Browser
-login, cookies, or institutional credentials require explicit user authorization and must not
-be copied into logs or project files. Register an acquired local file with:
+For full text, prefer verified public/author-repository and configured authorized routes;
+do not stop at the first failed OA lookup. Use available scansci-pdf sources, including this
+user's explicitly selected Sci-Hub route, with actual source/identity checks. This does not
+authorize installing Tor/proxies, bypassing account authentication or capturing credentials.
+Use the bounded exposed download API rather than auto-setup/smart tools that silently change
+networking. Browser login/cookies need actual consent and never enter project files or logs.
+If all relevant attempts fail, request the specific necessary PDF from the user; a link or
+abstract does not count as deep reading. See S15 for truthful external access categories and
+recording actual failed attempts. Register an acquired local file with:
 
 ```powershell
 .\.venv\Scripts\python.exe tools\pubmed\fulltext.py register `

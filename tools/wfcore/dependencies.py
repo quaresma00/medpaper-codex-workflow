@@ -116,6 +116,11 @@ def closure(project: Path, changed: list[str], *, change_type: str = "scientific
     # These are writing inputs, not a reason to replay data acquisition or analysis.
     link(".wf/discussion_materials.md", "07_manuscript/discussion.md")
     link(".wf/discussion_outline.md", "07_manuscript/discussion.md")
+    early = project/".wf/early_review.json"
+    if early.is_file():
+        for source in json.loads(early.read_text(encoding="utf-8")).get("reviewed_artifacts", {}):
+            link(source, ".wf/early_review.json")
+        link(".wf/early_review.json", "07_manuscript/abstract.md")
     link("07_manuscript/supplementary_methods.md", "07_manuscript/claim_bindings.json")
     for group in ("main_tables", "supp_tables"):
         for entry in plan.get(group, []):

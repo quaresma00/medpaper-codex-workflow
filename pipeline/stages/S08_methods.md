@@ -73,6 +73,10 @@ executed methods. Use the existing notes/acceptance; no extra report is required
 - Past tense, declarative. No "we aimed to comprehensively investigate".
 
 ## Close
+Before closing, finish the section-local medical edit in `reference/medical-writing.md`:
+`section_writing.py begin` before editing, actual read-back, then `accept` for methods and
+any existing supplementary_methods. Do not postpone this work to assembly or journal polish.
+
 ```
 .\.venv\Scripts\python.exe tools\wf.py check
 .\.venv\Scripts\python.exe tools\wf.py advance --note "methods drafted; heading map: <...>; supplementary Methods: <not needed/path and why>; citations used: <n>"

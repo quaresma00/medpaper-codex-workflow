@@ -174,10 +174,10 @@ def readable_source_errors(project: Path, entry: dict, source: dict | None = Non
         records=[row for row in retrievals if row.get("citekey")==entry.get("citekey")]
         if len(records)!=1: return ["no abstract: exactly one registered full-text record is required"]
         record=records[0]
-        if record.get("access") not in {"oa","authorized"}:
+        if record.get("access") not in {"oa","authorized","external"}:
             return ["no abstract: a paywall/link/stub is not readable full-text evidence"]
-        if record.get("access")=="authorized" and not str(record.get("authorization_note","")).strip():
-            return ["no abstract: authorized full text needs its actual access basis"]
+        if record.get("access") in {"authorized","external"} and not str(record.get("authorization_note","")).strip():
+            return ["no abstract: authorized/external full text needs its actual acquisition basis"]
         if str(record.get("pmid",""))!=str(entry.get("pmid","")) or str(record.get("doi","")).strip().casefold()!=str(entry.get("doi","")).strip().casefold():
             return ["no abstract: full-text registration identity differs from library metadata"]
         rel,path=_safe_path(project,record.get("fulltext",""))

@@ -43,7 +43,7 @@ ROUTES = {
 }
 
 ROUND_SCHEMA = 2
-REVIEW_STAGES = {"S19_human_review", "S24_package_human_review", "S25_submission_audit"}
+REVIEW_STAGES = {"S12_reconcile", "S19_human_review", "S24_package_human_review", "S25_submission_audit"}
 
 # Only decisions whose evidence can be changed by the requested kind are invalidated in a
 # batch revision. Owner stages supply rules without resetting the stage tail.

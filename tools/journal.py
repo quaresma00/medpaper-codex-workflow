@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from wfcore import journalcontext as jc, guides, guidelinerules as gr, paths
+from wfcore import journalcontext as jc, guides, guidelinerules as gr, journalportal, paths
 from wfcore.readiness import load
 
 
@@ -23,8 +23,10 @@ def main():
     register=subs.add_parser("register",help="register genuine official download/browser export, retaining its actual provenance")
     register.add_argument("--url",required=True);register.add_argument("--file",required=True,type=Path);register.add_argument("--why",required=True)
     register.add_argument("--retrieved-at",required=True,help="actual retrieval date, not today's registration date")
+    register.add_argument("--source-kind",choices=["guide","portal"],default="guide")
     show=subs.add_parser("show",help="bounded current-source search; complete text remains in the saved file")
     show.add_argument("--source",required=True);show.add_argument("--find",default="");show.add_argument("--full",action="store_true")
+    show.add_argument("--links",action="store_true",help="observed source links; bounded by default, --full lists all")
     csl=subs.add_parser("csl",help="fetch an exact chosen style id and resolve its independent parent")
     csl.add_argument("--id",required=True)
     template=subs.add_parser("template",help="register a genuine official DOCX reference template")
@@ -33,6 +35,11 @@ def main():
     handoff=subs.add_parser("browser-handoff",help="record an observed native-browser login/CAPTCHA; only actual guide capture resolves it")
     handoff.add_argument("--url",required=True);handoff.add_argument("--reason",choices=["captcha","login"],required=True)
     handoff.add_argument("--tab-ref",default="",help="actual tab reference only; no credentials/cookies")
+    handoff.add_argument("--source-kind",choices=["guide","portal"],default="guide")
+    conflict=subs.add_parser("portal-conflict",help="link two actual required clauses; then reconcile configuration and reseal")
+    conflict.add_argument("--guide-rule",required=True);conflict.add_argument("--portal-rule",required=True)
+    conflict.add_argument("--reason-file",required=True,type=Path)
+    subs.add_parser("deliver",help="manifest-only read-only upload copy named for current journal and Shanghai preparation date")
     subs.add_parser("seal",help="bind real guide clauses to the actual current configuration")
     subs.add_parser("status",help="bounded context/source status; never a scientific quality verdict")
     subs.add_parser("check",help="verify current guide/context/configuration, without rebuilding")
@@ -43,14 +50,20 @@ def main():
     try:
         if args.command=="begin": result=jc.begin(project,json.loads(args.target_file.read_text(encoding="utf-8-sig")))
         elif args.command in {"fetch","register"}:
-            result=guides.capture(project,args.url,file=getattr(args,"file",None),mode=getattr(args,"mode","auto"),why=getattr(args,"why",""),retrieved_at=getattr(args,"retrieved_at",None))
+            result=guides.capture(project,args.url,file=getattr(args,"file",None),mode=getattr(args,"mode","auto"),why=getattr(args,"why",""),retrieved_at=getattr(args,"retrieved_at",None),source_kind=getattr(args,"source_kind","guide"))
         elif args.command=="csl": result=guides.fetch_csl(project,args.id)
         elif args.command=="template": result=guides.register_template(project,args.file,args.url,args.why,args.retrieved_at)
-        elif args.command=="browser-handoff": result=guides.browser_handoff(project,args.url,args.reason,args.tab_ref)
+        elif args.command=="browser-handoff": result=guides.browser_handoff(project,args.url,args.reason,args.tab_ref,args.source_kind)
+        elif args.command=="portal-conflict": result=journalportal.resolve(project,args.guide_rule,args.portal_rule,args.reason_file.read_text(encoding="utf-8-sig"))
+        elif args.command=="deliver": result=journalportal.deliver(project)
         elif args.command=="seal": result=jc.seal(project)["seal"]
         elif args.command=="review": result=gr.record_review(project,args.rule,args.file,args.render,args.observation_file.read_text(encoding="utf-8-sig"))
         elif args.command=="show":
             context=jc.current(project);source=context["sources"][args.source]
+            if args.links:
+                links=source.get("discovered_links",[])
+                print(f"Observed links: {len(links)}; full inventory in {project/jc.CONTEXT}")
+                print("\n".join(links if args.full else links[:15]));return 0
             text=(project/source["text"]).read_text(encoding="utf-8")
             lines=text.splitlines();matches=[(i+1,line) for i,line in enumerate(lines) if not args.find or args.find.casefold() in line.casefold()]
             if args.full: print(text)
@@ -61,11 +74,19 @@ def main():
         elif args.command=="status":
             context=jc.current(project)
             result={k:context.get(k) for k in ("identity","context_id","attempt_id","previous_archive")}
-            result.update(sources=[{k:r.get(k) for k in ("id","url","mode","text","fetched_at")} for r in context["sources"].values()],sealed=bool(context.get("seal")),browser_handoff=context.get("browser_handoff"))
+            result.update(sources=[{**{k:r.get(k) for k in ("id","url","mode","text","fetched_at","source_kind")},
+                                    "link_count":len(r.get("discovered_links",[]))} for r in context["sources"].values()],
+                          sealed=bool(context.get("seal")),browser_handoff=context.get("browser_handoff"),delivery=journalportal.delivery_status(project))
         else:
             failures=jc.problems(project)
             print("\n".join(failures) if failures else "Current journal, actual sources and executable configuration agree")
             return 2 if failures else 0
+        if args.command=="deliver":
+            result={**{k:v for k,v in result.items() if k!="files"},"upload_files":len(result.get("files",{}))}
+        elif args.command=="status" and isinstance(result.get("delivery"),dict):
+            row=result["delivery"];result["delivery"]={**{k:v for k,v in row.items() if k!="files"},"upload_files":len(row.get("files",{}))}
+        elif args.command in {"fetch","register"} and "discovered_links" in result:
+            result={**{k:v for k,v in result.items() if k!="discovered_links"},"link_count":len(result["discovered_links"])}
         print(json.dumps(result,ensure_ascii=False,indent=2));return 0
     except (OSError,ValueError,KeyError,TypeError) as exc:
         print(f"Journal context not ready: {exc}",file=sys.stderr);return 2

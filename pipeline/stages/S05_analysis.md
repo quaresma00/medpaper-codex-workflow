@@ -20,6 +20,10 @@ design, and dump every number to disk so writing can never invent one.
 Resolve the primary question and actual validity threats. Before adding an analysis, identify
 what decision or claim it could change. An available model/package is not a reason to run it.
 Complete necessary work; stop adding speculative variants once material questions are resolved.
+Reassess Original-article viability whenever results change the scientific story. If further
+analysis is unlikely to resolve the barrier, show the finding and low-yield assessment now;
+do not wait for manuscript assembly or silently change the goal. S12 independently checks
+this decision against actual methods, results and finished displays before Abstract.
 
 ## Procedure
 1. **Method scan.** Search for how comparable papers analysed this design - the model

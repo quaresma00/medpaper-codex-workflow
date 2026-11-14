@@ -89,6 +89,9 @@ that no longer supports the argument is removed from the selected index with its
 not cited merely to fill the chapter. Preserve actual uncertainty, post-hoc status and sources.
 
 ## Outputs and closure
+Finish the section-local medical edit/read-back from `reference/medical-writing.md` now:
+begin before wording changes, then accept the actual Discussion. Keep necessary limitations,
+uncertainty and unfavourable findings; anti-defensive writing does not permit hiding them.
 
 The only paper section is `07_manuscript/discussion.md`. Writing materials/outline remain
 backstage under `.wf/` and are not submission uploads. Their dependencies use the existing

@@ -7,7 +7,11 @@ selected-journal reporting forms are handled later. Never invent a registration 
 
 ## Purpose
 Test the frozen complete manuscript, supplementary Methods, every table and rendered figure before the user
-edits them. This is an independent scientific/editorial audit, not another writing pass.
+edits them. For new v1.28 studies, the independent S12 scientific review already judged actual
+analysis/results/display adequacy for an Original article. Read its report and reuse unchanged
+science; this later review tests the complete medical argument, citation support, interpretation,
+reader comprehension and presentation. Do not repeat the entire analysis audit or demand new
+analyses without a material changed input/new defect. It is not another writing pass.
 
 ## Procedure
 Start M001 before delegation: `tools/review_round.py start --scope manuscript`.

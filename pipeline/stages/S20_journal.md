@@ -4,9 +4,10 @@ Use `reference/journal-adaptation.md` for this stage and later journal switches.
 user chooses the target, begin its exact journal/article/initial-or-revision context, capture
 complete official sources, map atomic clauses in existing requirements, seal and then
 initialize integration. Old guide/style/configuration must not enter a new attempt.
-Use the native browser when direct retrieval is blocked. If its actual page shows login or
-human verification, keep it visible, record `journal.py browser-handoff`, and let the user
-complete it there. Re-observe and capture the real guide afterward; a user reply is not proof.
+Read the complete official guide and relevant linked rules in the native browser first.
+For observed login/CAPTCHA use a visible `journal.py browser-handoff`, then capture real
+content. Check accessible current portal fields/upload slots too; explicit guide/portal
+conflicts use source-bound `portal-conflict`, never inherited rules or guessed exceptions.
 
 Verify current official author instructions, article type, indexing and realistic fit. Q3/Q4
 are acceptable; do not claim a current JCR quartile from an inaccessible primary source.
@@ -26,7 +27,7 @@ reversible and are not an author-approved journal selection.
 Resolve `submission_layout` before builds: separate images, post-reference tables on separate
 pages and final legends by default. Inline image/caption/table placement and an additional
 nonblinded title-page upload each need their own explicit required guide evidence. See the
-single policy in `reference/journal-adaptation.md`; do not infer placement from permission.
+policy in `reference/journal-adaptation.md`; do not infer placement from permission.
 
 ## Full procedure, read once when needed
 `reference/stage_details/S20_journal.md` (`tools/wf.py card S20_journal --details`).

@@ -1,41 +1,47 @@
-# S12 - Reconcile the rendered artifacts against the text
+# S12 - Reconcile artifacts and review Original-article viability before Abstract
 
-## Purpose
-Results and Methods were written before the tables and figures existed. This stage closes
-that gap. It is the cheapest place to catch a number that drifted, a renumbered panel, or
-a table the prose describes differently from how it was built.
+Tables and figures are already final enough to support Results: S10 tables -> S11 figures ->
+S09 Results. This checkpoint reconciles actual outputs and obtains the early independent
+scientific judgment, before Introduction/Discussion/Abstract and expensive full assembly.
+Use `reference/early-scientific-review.md`; no new workflow stage or review ZIP is created.
 
-## Procedure
-1. Run the gate first; it does the mechanical part:
-```
-.\.venv\Scripts\python.exe tools/wf.py check
-```
-   - `artifact_refs_consistent` with `require_rendered`: every cited item exists on disk,
-     every planned item is cited, nothing cited that was not planned.
-   - `numbers_cross_match`: every number in a sentence that cites `Table N` actually
-     appears in that table.
-2. Do the part code cannot. For each display item, open it and compare against what the
-   prose and the legend claim:
-   - Tables: read the xlsx values against the sentences that cite them.
-   - Figures: load the PNG and check the legend describes what is drawn - panel letters,
-     group order, axis units, what the error bars are, what the asterisks mean.
-3. Fix the source of the discrepancy, not the symptom. If the table is right and the prose
-   is wrong, edit the prose. If the analysis changed, loop back to S05 - do not patch the
-   number in three places.
-4. Write `project/07_manuscript/reconciliation.md`:
-   - one line per display item: `Figure 1 | cited in Results L12 | legend matches | values match`
-   - a `Discrepancies found and how they were resolved` section
-   - a `Checked by looking` section listing which artifacts you actually opened
+## Reconcile the real sources
 
-## Outputs
+1. Read actual Methods, Results, each workbook and real main/supplement figure previews.
+   Verify populations, denominators, groups, effect measures, interval meaning, panel mapping,
+   labels and captions against executed analysis. Mechanical value checks do not prove meaning.
+2. Correct the earliest source. Invoke affected S05/S08/S09/S10/S11 rules in a scoped correction
+   at S12; rebuild only real consumers. Do not use `wf loop`, reset stages, generate future
+   sections early or independently alter several surface numbers. Never delete an otherwise
+   necessary sentence just to hide a mismatch.
+3. Write `07_manuscript/reconciliation.md` with checked display locations and actual
+   discrepancies/corrections. Generation or QC receipts do not replace looking at the files.
+
+## Independent science review before further writing
+
+Run `tools/early_review.py start --executor-id <actual-id>`. Delegate exactly one separate
+read-only subagent using the returned actual files and report destination. It reads protocol/
+Methods, executed code/results, tables, rendered figures and recent full-text comparators;
+neither Abstract nor a complete paper is needed. Do not substitute a simulated self-review.
+
+Attach its complete report with `tools/early_review.py attach --report <actual-report>`.
+It judges `original_article` with GO/REVISE/NO_GO and the marginal value of more analysis.
+Show its practical opinion and exact report path to the author promptly.
+
+- GO permits writing; it means plausible publication, not promised acceptance.
+- REVISE: report exact barriers, fix true sources in scope and obtain actual focused
+  scientific revalidation where material inputs changed.
+- NO_GO or no useful analytical route: tell the author now. Explain whether validity,
+  Original-article scope or publication fit is the barrier, stop unproductive expansion,
+  and wait for a pivot/stop decision. Do not hide this until a full paper is drafted.
+
+Unchanged versions reuse the real review. S18 later reads the complete medical argument and
+expression; it does not repeat this science audit without new evidence.
+
+## Outputs and close
+
 - `07_manuscript/reconciliation.md`
+- `.wf/early_review.json` and the designated independent report (backstage controls)
 
-## Hard rules
-- Do not resolve a mismatch by deleting the sentence that exposed it.
-- If a number changed, every place it appears must change: Results, tables, figures, and
-  later the Abstract. Search for it rather than trusting memory.
-
-## Close
-```
-.\.venv\Scripts\python.exe tools/wf.py advance --note "reconciled <n> display items; <k> discrepancies fixed: <...>"
-```
+Run `tools/wf.py check`; source/provenance failures and a non-GO early verdict stay blocking.
+Advance after actual current findings support GO, without replaying the completed stage tail.

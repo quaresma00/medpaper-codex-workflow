@@ -7,16 +7,24 @@ Keep this evidence backstage, outside manuscript headings and submission uploads
 
 ## Two comparison points, not a fixed paper template
 
-At S07, before Methods, final workbooks or production figures, read multiple distinct close
-published full texts. Choose by topic, design and analysis relevance; explain mismatches and
-access limitations. Examine Methods/Discussion and real display content, not abstracts alone.
+At S07, before Methods, final workbooks or production figures, search the latest 24 months
+and read about **5–10 recent close full texts**. Choose by topic, design and analysis relevance,
+not the easiest PDF or a remembered old paper. If the field is genuinely sparse, broaden the
+search deliberately and explain an article-specific older-paper or count exception with the
+actual search evidence. Do not silently relax this because retrieval is difficult or expensive.
+Explain mismatches and access limitations. Examine Methods/Discussion and real display content,
+not abstracts alone. If necessary figure details or essential comparison PDFs remain unavailable
+after the real retrieval routes, give the author the exact DOI/title and ask for those files;
+do not pretend the article was read, drop its role silently or substitute its abstract.
 Record main/supplement figure/table counts, citation ranges and the roles those citations and
 displays play. Judge whether the examples collectively cover this project's clinical story.
 Do not impose an arbitrary fixed count of project references/displays or imitate decoration.
 
 Use the bundled clients to seed the genuine comparator/method references at S07:
 `build_library.py --add-ids <selected PMIDs>`, then `verify.py`, then `fulltext.py fetch --citekey
-KEY --no-stub` (or legal `register`). S13 completes this same library, not a second one.
+KEY --no-stub` (or actual identity-verified `register`). Reuse the installed retrieval capability
+and preserve its real route/access basis; an externally obtained file is not automatically OA.
+S13 completes this same library, not a second one.
 Do not include every search hit or stop a coverage query because a library count was reached.
 `build_library.py --target` is now only a legacy hint, not a query-stopping rule. Formal citations
 still require the normal raw-PubMed/live verification and claim-support checks.
@@ -36,13 +44,25 @@ language; include one fenced JSON object with `benchmark_version: 1` in that sam
 Use the same schema for the journal comparison. Do not create a second narrative dossier.
 
 - `adequacy_rationale`: how the chosen examples cover this study, and remaining limitations.
+- For new v1.28 plans, `comparator_selection: {version: 1, searched_at, period_start,
+  selection_basis, searches}`. Each search retains its actual `query`, raw ESearch
+  `cache_file`, `sha256` and exact response `translation`. Dates are ISO dates. Begin with
+  the latest 24 months; seal a current search, then reuse it rather than restarting discovery
+  at each writing stage. A justified exception uses `count_exception.reason` and/or
+  `older_article_exceptions: {citekey: scientific_reason}`. A boolean claiming that search
+  was complete proves nothing. Historical pinned plans keep their original requirements.
 - `comparators`: one per distinct read article, with verified `citekey`, registered `fulltext`,
-  `sha256`, `relevance` (`topic`, `design`, `analysis`), and `observations`.
+  `sha256`, actual `published_at`, `relevance` (`topic`, `design`, `analysis`), and `observations`.
 - Observations: `methods_outline`, `discussion_structure`, `reference_roles`, `display_roles`;
   observed integer `main_figures`, `main_tables`, `supp_figures`, `supp_tables`; `citations`
   with separate counts for `introduction`, `methods`, `discussion`, `supplementary`.
   Distinguish unavailable supplements from observed zero; obtain them or choose a usable
   comparator rather than invent counts. Local observation is not automatic exact counting.
+- In v1.28, `observations.display_inventory` names each actual Figure/Table, its `kind`
+  (`main_figure`, `main_table`, `supp_figure`, `supp_table`), `type`, `clinical_role`,
+  `analysis_shown` and concrete caption/page `locator`. The inventory counts must agree
+  with the reported totals and the identifiers must occur in the actual full text. Inspect
+  the actual image too: a caption identifier cannot certify that a chart type was understood.
 - `evidence`: short excerpts and concrete locators, `kind: methods|discussion|display`.
   Quotes must occur in the registered full text; use minimal excerpts (no more than 25 quoted
   words per comparator across this record). These locate reading, not publishable quotations.
@@ -59,6 +79,11 @@ Use the same schema for the journal comparison. Do not create a second narrative
   S13 and passages when the section is written. Cover key prior, contradictory and method
   evidence when applicable, not only easy agreeing papers. A selected key must support the
   actual argument on reading; a citation appearing somewhere else is insufficient.
+  Keep the agreed pool minimum (`library_floor`, normally 45, or the higher explicit project
+  minimum) when completing S13. A lower existing library is unfinished work, not a reason to
+  reduce the configuration. The library size, actual main citations and section citations are
+  different quantities. Counts do not replace role coverage or permit irrelevant padding;
+  an infeasible author requirement is reported for a decision instead of silently weakened.
 - `adaptation.displays`: `inventory_rationale`, `essential_questions`, `omissions`, and for
   v1.22 `role_mapping` as described below. Complete the required medical reader tasks;
   compactness and nonredundancy do not justify removing necessary evidence. Record null results.
@@ -98,6 +123,11 @@ a primary-result figure. Comparisons/robustness may use appropriate supplementar
 unsupported additional analyses are explicitly inapplicable rather than manufactured.
 No fixed total figure/table minimum is introduced. A lower count than comparators requires
 coverage of these roles and actual methodological differences, not "a focused paper is enough".
+For new v1.28 plans below the comparator median main-figure count, also retain
+`adaptation.displays.count_comparison` with the actual `planned_main_figures`, computed
+`comparator_median_main_figures` and a concrete `scientific_reason`. Explain which comparator
+research questions do not apply and where this project's necessary evidence is shown. This
+is a reasoned departure, not a requirement to copy their figure count or manufacture analyses.
 
 For population record `summaries: {categorical, continuous}`: category n (%) with actual
 report/patient/available-case denominators, and clinically relevant mean(SD)/median(IQR) plus
@@ -135,6 +165,12 @@ copied purpose/placement explanations are not. Check the actual panel population
 measure, denominator, error bars and meaning against these claims. Correct misleading
 encodings and missing essential evidence before delivery; no schema can certify those facts.
 
+At S12 use `reference/early-scientific-review.md`: one independent reader evaluates actual
+methods, analyses, results and displays for a realistic SCIE Original article before Abstract
+or full assembly. GO permits writing; REVISE/NO_GO is reported immediately and blocks further
+writing until targeted scientific correction or an author pivot/stop decision. Low-value extra
+analyses are not a default response. This is distinct from the later manuscript reading.
+
 Before S18/user delivery at S17, perform the main executor's content/readability review; after
 selection at S22 perform journal preproduction review; at S23 inspect the actual final uploads
 and complete final acceptance after cleanup/render/baseline. These are not new independent
@@ -167,13 +203,11 @@ Use unchanged evidence and targeted dependency checks; do not reacquire/replay c
 for this editorial work. Report file generation, content acceptance, visual acceptance and
 actual submission as different states. A routine executable error stops dependent capture/build.
 
-## v1.14 execution update
+## Execution and medical reader acceptance
 
 Read `reference/quality-before-writing.md` at this checkpoint. Its sequencing, source-based
 declarations, no free numeric whitelist, soft size budgets and exact current-version confirmation
 supersede older conflicting instructions. Do not create external-review materials by default.
-
-## v1.15 medical-reader acceptance
 
 Read `reference/medical-reader-presentation.md` before display production and acceptance.
 Extend the existing per-display findings with concrete `medical_checks` and set

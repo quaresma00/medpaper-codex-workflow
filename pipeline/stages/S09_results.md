@@ -55,6 +55,10 @@ uncertainty; a successful model run is not the result narrative.
   test for that", either make a scoped owner-stage correction or do not claim it.
 
 ## Close
+Finish the Results medical edit now through the section-writing route: bind the draft before
+editing, read it against its actual analysis/table sources, then accept the current Results.
+Retain null/adverse findings and uncertainty. Assembly later checks cohesion, not another rewrite.
+
 ```
 .\.venv\Scripts\python.exe tools/wf.py check
 .\.venv\Scripts\python.exe tools/wf.py advance --note "results drafted; primary: <estimate, CI, p>; all <n> display items cited"

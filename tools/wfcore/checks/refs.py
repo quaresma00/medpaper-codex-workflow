@@ -518,8 +518,10 @@ def deepread_complete(ctx: Ctx) -> Result:
         if not record:
             problems.append(f"{ck}: no retrieval-manifest record")
         else:
-            if record.get("access") not in {"oa", "authorized"}:
+            if record.get("access") not in {"oa", "authorized", "external"}:
                 problems.append(f"{ck}: access is {record.get('access')!r}, not full-text access")
+            if record.get("access") in {"authorized","external"} and not str(record.get("authorization_note","")).strip():
+                problems.append(f"{ck}: record the actual acquisition basis without inventing OA/licensing rights")
             if record.get("fulltext") != src:
                 problems.append(f"{ck}: deepread index and retrieval manifest disagree on file")
             local = ctx.p(str(src)) if src and not str(src).startswith("http") else None
@@ -544,7 +546,7 @@ def deepread_complete(ctx: Ctx) -> Result:
             False,
             "deepread_complete",
             "; ".join(problems[:8]),
-            ["Fetch or register legal full text with: .\\.venv\\Scripts\\python.exe "
+            ["Fetch/register actual full text; exhaust available selected routes, then request the exact missing PDF: .\\.venv\\Scripts\\python.exe "
              "tools\\pubmed\\fulltext.py fetch --citekey KEY"],
         )
     return Result(True, "deepread_complete", f"{len(sel)} paper(s) fetched and read with notes on disk")

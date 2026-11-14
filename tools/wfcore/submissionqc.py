@@ -13,7 +13,7 @@ CHECKLIST = "08_submission/evidence/SUBMISSION_CHECKLIST.md"
 BEGIN, END = "<!-- medpaper measured begin -->", "<!-- medpaper measured end -->"
 RULE_FILES = [Path(__file__), *(Path(__file__).with_name(name + ".py") for name in
     ("wordtables", "submission", "journalrules", "journalspec", "determinism", "buildproof", "cslpatch", "qualitylimits",
-     "journalcontext", "guides", "guidelinerules", "submissionlayout")),
+     "journalcontext", "guides", "guidelinerules", "submissionlayout", "journalportal")),
     Path(__file__).parents[1]/"manuscript/build_docx.py"]
 
 

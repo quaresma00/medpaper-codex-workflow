@@ -72,8 +72,11 @@ references each own their topic; this policy contains no historical supersession
 
 ## Medical outputs and production
 
-- Benchmark actual close medical full texts before writing or expensive production. Let the
-  scientific question and reader tasks determine references/displays, not universal quotas,
+- Benchmark actual close medical full texts before writing or expensive production. Use the
+  latest 5–10 comparable papers (normally the last 24 months) determine figure/table roles
+  and count ranges. Read actual displays; explain necessary older/fewer-paper exceptions and
+  justify a smaller final inventory scientifically, never by token/time cost.
+  Let the scientific question and reader tasks determine references/displays, not universal quotas,
   cost or a minimum viable set. Never pad references or weaken a target to pass. Applicable
   selection is main Figure 1 with real units/branches; show the population, primary findings
   and necessary comparisons. Resolve heading structure and display purposes before drafting.
@@ -82,6 +85,9 @@ references each own their topic; this policy contains no historical supersession
   missing/nonestimable/unbounded distinctions. Technical flags and language patterns are
   contextual prompts, never automatic substitutions, AI detection or semantic acceptance.
   Keep reproducibility/control records backstage. Use medical-writing.md for positive examples.
+  Each section Markdown is medically edited/read back before its stage closes; record current
+  source-bound acceptance with section_writing.py. At assembly check only cohesion, repetition,
+  terminology and cross-references; repair affected sections, not a second whole-paper rewrite.
 - Tables use clinical hierarchy, appropriate summaries/denominators and three-line formatting;
   baseline P values are not a default. New medical figures default to R; processing may use
   Python. Use the managed R renderer and approved results, preserve R source beside vector PDF,
@@ -114,6 +120,12 @@ references each own their topic; this policy contains no historical supersession
 
 ## Reviews, frozen sources and precise revisions
 
+- At S12, before Abstract and further narrative investment, obtain one actual independent
+  method/result/display review for SCIE Original-article suitability and further-analysis value.
+  Show REVISE/NO_GO or low-yield barriers to the user immediately. Do not pursue speculative
+  analysis or another article type silently. Correct true owners in scope; unchanged scientific
+  review is reused, changed inputs receive focused independent delta reading. S18 later reads
+  the completed manuscript without repeating unchanged statistical validation.
 - S18 gives the complete manuscript, supplement, tables and actual figures to exactly one
   independent read-only subagent. S19/S24 use version-bound genuine review rounds, not review
   ZIPs. Attach the real report before editing, resolve every actionable finding, and report
@@ -126,6 +138,10 @@ references each own their topic; this policy contains no historical supersession
   seal configuration and measure actual uploads. Old guides/styles/approval pointers leave the
   active attempt together. Same-context resume preserves author edits. Refreshing the engine
   never silently migrates pinned gates or rewinds completed history.
+  Read current official guide pages and relevant links in the native browser. Actual portal
+  requirements are separate observed sources; resolve conflicts explicitly for the same current
+  journal/article/stage, never reuse old rules. Use journal.py deliver for the manifest-only,
+  journal-name/Shanghai-preparation-date upload copy; preparation is not an actual submission.
 - At S17/S22/S23 complete the executor's own medical/content/visual acceptance before delivery.
   Read all actual main/supplement materials without backstage context, then verify their meaning
   against sources. Quantity ranges are advisory; source identity/support and explicit journal
