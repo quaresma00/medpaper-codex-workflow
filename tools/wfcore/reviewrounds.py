@@ -24,7 +24,7 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
-def inputs(project: Path, scope: str, *, protocol_context: bool | None = None) -> dict[str, str]:
+def inputs(project: Path, scope: str, *, protocol_context: bool | None = None, early_context: bool | None = None) -> dict[str, str]:
     if scope == "manuscript":
         if protocol_context is None:
             protocol_context = (latest(project, scope) or {}).get("schema_version", 1) >= 5
@@ -32,6 +32,14 @@ def inputs(project: Path, scope: str, *, protocol_context: bool | None = None) -
         for rel in ("06_refs/refs.bib", "06_refs/refs.ris"):
             if (project / rel).is_file():
                 files[rel] = _sha256(project / rel)
+        if early_context is None: early_context=bool((latest(project,scope) or {}).get("early_science_context"))
+        if early_context:
+            from . import earlyreview
+            problems=earlyreview.verify(project)
+            if problems: raise ValueError("Current scientific review context required: "+"; ".join(problems))
+            early=json.loads((project/earlyreview.RECORD).read_text(encoding="utf-8"))
+            for rel in (earlyreview.RECORD,early["report"]["path"]):
+                files[rel]=_sha256(_safe_path(project,rel)[1])
         return dict(sorted(files.items()))
     if scope != "package":
         raise ValueError("unknown review scope")
@@ -76,14 +84,18 @@ def input_drift(project: Path, before: dict, after: dict, containers: dict | Non
     return result
 
 
-def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
+def start(project: Path, scope: str, *, delta: bool | None = None, author_only: bool | None = None) -> dict:
     previous = latest(project, scope)
     from .state import State,version_tuple
     version=str(State(project).load().data.get("pipeline_version","0"))
+    pin=str(State(project).load().data.get("engine_pin","0"))
+    if author_only is None: author_only=scope=="package" and version_tuple(pin)>=(1,29,0)
+    if author_only and scope!="package": raise ValueError("Author-only presentation applies only to the package; manuscript independent review remains required")
     if delta is None: delta=bool(previous)
     if previous and (not previous.get("closed_at") or not previous.get("user_decision")):
         raise ValueError("finish this review round and obtain its user answer before starting another")
-    current = inputs(project, scope, protocol_context=version_tuple(version)>=(1,21,0))
+    early_context=scope=="manuscript" and version_tuple(pin)>=(1,29,0)
+    current = inputs(project, scope, protocol_context=version_tuple(version)>=(1,21,0),early_context=early_context)
     selection = dict(current)
     differences = changed(previous.get("after", {}), current) if previous else list(current)
     mode = "full"
@@ -108,6 +120,10 @@ def start(project: Path, scope: str, *, delta: bool | None = None) -> dict:
               "previous_round": previous["id"] if previous else None,
               "report": None, "closed_at": None, "after": {}, "changes": [], "kept": [],
               "user_decision": None}
+    if author_only:
+        record.update(review_kind="author_package",schema_version=6,mode="author presentation",
+                      presented_artifacts=current,findings=[],reports=[])
+    if early_context: record["early_science_context"]=True
     record["report_destination"]=f".wf/review_inbox/{record['id']}.md"
     if record["schema_version"] >= 5:
         from .reviewguard import snapshot
@@ -146,6 +162,8 @@ def prepare_revalidation(project: Path, scope: str) -> dict:
 
 def attach(project: Path, scope: str, report: Path, *, revalidation: bool = False) -> dict:
     record = latest(project, scope)
+    if record and record.get("review_kind")=="author_package":
+        raise ValueError("This is an author package checkpoint, not an independent report; request an explicit independent round instead")
     if not record or record.get("closed_at") or (record.get("report") and not revalidation):
         raise ValueError("an open round without an attached report is required")
     current = inputs(project, scope)
@@ -205,8 +223,39 @@ def attach(project: Path, scope: str, report: Path, *, revalidation: bool = Fals
     return record
 
 
+def _author_package_checks(project):
+    from .packagecontent import verify_baseline
+    from .submissionqc import verify
+    from .benchmark import verify_acceptance
+    from .journalcontext import guard
+    guard(project)
+    ok,problems,_=verify_baseline(project)
+    problems=([] if ok else problems)+verify(project)+verify_acceptance(project,"journal",final=True)
+    if problems: raise ValueError("Package executor QA remains incomplete: "+"; ".join(problems[:5]))
+
+
+def _close_author_package(project,record,changes,kept,unresolved):
+    if record.get("closed_at") or record.get("report") or kept or unresolved:
+        raise ValueError("Close an open author checkpoint only after objective defects are resolved; do not invent an independent report or waive findings")
+    state=json.loads((project/".wf/state.json").read_text(encoding="utf-8"))
+    if state.get("active_revision_round"): raise ValueError("Complete scoped source corrections and their real checks first")
+    if any(len(row)!=2 or not all(str(x).strip() for x in row) for row in changes):
+        raise ValueError("Each actual changed file needs its concrete correction reason")
+    _author_package_checks(project)
+    current=inputs(project,"package")
+    missing=set(changed(record["before"],current))-{row[0] for row in changes}
+    if missing: raise ValueError("Record each changed/removed upload or context: "+", ".join(sorted(missing)))
+    from .determinism import content_sha256
+    record.update(after=current,closed_at=now(),changes=changes,kept=[],unresolved=0,
+                  container_inputs={rel:content_sha256(project/rel) for rel in current})
+    save(project,record);summary(project,record)
+    return record
+
+
 def close(project: Path, scope: str, changes: list, kept: list, unresolved: int = 0, author_decisions: dict | None = None, resolutions: dict | None = None) -> dict:
     record = latest(project, scope)
+    if record and scope=="package" and record.get("review_kind")=="author_package":
+        return _close_author_package(project,record,changes,kept,unresolved)
     if not record or record.get("closed_at") or not record.get("report"):
         raise ValueError("attach the actual independent report before closing an open round")
     report = record["report"]
@@ -279,6 +328,17 @@ def decide(project: Path, scope: str, answer: str, words: str) -> dict:
 
 def summary(project: Path, record: dict) -> None:
     scope = record["scope"]
+    if record.get("review_kind")=="author_package":
+        lines=[f"# Package author review {record['id']}",""]
+        for heading,body in (
+            ("Package presented","\n".join(f"- `{rel}`" for rel in record["after"])),
+            ("User modifications","\n".join(f"- {rel}: {why}" for rel,why in record["changes"]) or "No source correction required."),
+            ("Revalidation","Current executor medical/content/visual and upload checks passed. Independent final review remains pending at S25."),
+            ("User confirmation",json.dumps(record.get("user_decision"),ensure_ascii=False)),
+            ("Frozen package","Freeze the exact approved uploads; S25 must actually independently review that freeze.")):
+            lines.extend(["## "+heading,"",body,""])
+        (project/SCOPES[scope][3]).write_text("\n".join(lines),encoding="utf-8")
+        return
     headings = ("Materials presented", "Independent verdict", "User-requested revisions", "Revalidation", "Approval to proceed") if scope == "manuscript" else (
         "Package presented", "User modifications", "Revalidation", "User confirmation", "Frozen package")
     lines = [f"# {scope.capitalize()} review {record['id']}", ""]
@@ -299,15 +359,20 @@ def summary(project: Path, record: dict) -> None:
 
 def approved(project: Path, scope: str) -> dict:
     record = latest(project, scope)
-    if not record or not record.get("closed_at") or not record.get("report") or record.get("unresolved"):
+    author=bool(record and scope=="package" and record.get("review_kind")=="author_package")
+    if not record or not record.get("closed_at") or (not author and not record.get("report")) or record.get("unresolved"):
         raise ValueError("no complete independent review round")
+    if author:
+        if record.get("schema_version")!=6 or record.get("report") or record.get("reports") or record.get("findings"):
+            raise ValueError("Author package checkpoint cannot claim an independent report/findings")
+        _author_package_checks(project)
     if (record.get("user_decision") or {}).get("value") != "no_further_review":
         raise ValueError("the user has not explicitly ended this review round")
     if input_drift(project, record["after"], inputs(project, scope), record.get("container_inputs")):
         raise ValueError("approved review inputs/context drifted")
     if json.loads((project / ROOT / f"{record['id']}.json").read_text(encoding="utf-8")) != record:
         raise ValueError("review index and sealed round disagree")
-    for report in record.get("reports", [record["report"]]):
+    for report in record.get("reports", [] if author else [record["report"]]):
         if _sha256(_safe_path(project, report["path"])[1]) != report["sha256"]:
             raise ValueError("review report/history drifted")
     return record

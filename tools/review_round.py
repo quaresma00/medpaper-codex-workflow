@@ -19,6 +19,7 @@ def main() -> int:
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument("--delta",action="store_true",default=None)
     mode.add_argument("--full",action="store_true",help="explicit full reread; later rounds otherwise use actual delta")
+    parser.add_argument("--independent",action="store_true",help="Explicitly request an additional independent package pre-review; final S25 review remains required")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--from-file", type=Path, help="actual saved reviewer Markdown reply; never a host state dump")
     parser.add_argument("--revalidation", action="store_true", help="attach actual post-scientific-fix independent revalidation; retains original report")
@@ -32,6 +33,8 @@ def main() -> int:
     parser.add_argument("--author-decisions",type=Path)
     parser.add_argument("--resolutions",type=Path,help="complete finding-ID disposition map for the existing review report")
     args = parser.parse_args()
+    if args.independent and (args.command!="start" or args.scope!="package"):
+        parser.error("--independent is a package start-only request; closing author QA never creates an independent review")
     project = (args.project or paths.project_dir()).resolve()
     try:
         state = State(project).load()
@@ -41,11 +44,12 @@ def main() -> int:
         if args.scope == "manuscript" and args.command in {"close", "decide"} and state.current != "S19_human_review":
             raise ValueError("S18 only obtains the independent report; corrections/closure/user decision belong to S19")
         if args.command == "start":
-            record = rounds.start(project, args.scope, delta=False if args.full else args.delta)
+            record = rounds.start(project, args.scope, delta=False if args.full else args.delta,
+                                  author_only=False if args.independent else None)
             copies = {}  # independent reviewers read originals; extra reading copies are opt-in
             record["reader_copies"] = copies
             rounds.save(project, record)
-            print(json.dumps({"round": record["id"], "mode": record["mode"], "reader_copies": copies,
+            print(json.dumps({"round": record["id"], "mode": record["mode"], "review_kind":record.get("review_kind","independent"), "reader_copies": copies,
                               "report_destination":record.get("report_destination"),
                               "reviewed_artifacts": record["reviewed_artifacts"],
                               "deleted_since_previous": record["deleted_since_previous"]}, ensure_ascii=False, indent=2))

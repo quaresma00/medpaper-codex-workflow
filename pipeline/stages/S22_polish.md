@@ -1,12 +1,14 @@
-# S22 - Journal-specific, fact-preserving polish
+# S22 - Journal adaptation of accepted medical prose
 
 After wording changes update only affected `08_submission/integration/claim_bindings.json`
 entries under `reference/numeric-claims.md`; never alter frozen scientific facts to match prose.
 
 ## Purpose
-Give the journal-specific integration copy one language pass without changing a number,
-citekey, figure/table reference or scientific claim. The accepted scientific master remains
-unchanged.
+Adapt only the journal-specific integration fields that actually differ: required headings,
+abstract form, spelling, limits, display placement and required statements. Reuse accepted
+section-level medical writing. Do not give every paragraph another language pass. A genuine
+local wording defect is corrected only in its affected paragraph and true consumers, with
+the existing fact-preservation checks. The scientific master remains unchanged.
 
 ## Procedure
 1. Snapshot before editing:

@@ -10,6 +10,12 @@ Distinguish genuinely prospective plans from exploratory or already-inspected-da
 a local protocol does not imply public preregistration.
 
 ## Procedure
+Before locking a design-sensitive choice, reuse the closest actual papers found at S02 and
+read the relevant Methods/full-text passages. Resolve an assumption that could change the
+data unit, cohort, comparison, endpoint or model before expensive analysis. Store the short
+reason and real citation in the existing protocol; no extra review report. S05/S07 reuse
+these same acquired sources and extend only genuinely missing method/display evidence.
+
 1. Fix the actual study design and analysis scope, not a reporting-checklist label.
    Before expensive analysis, check close published design/method precedents for control
    selection, unit/denominator, endpoint definitions and key model assumptions. Record the

@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.28.0"
+version = "1.29.0"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -56,8 +56,8 @@ invariants = [
   "Never upload patient-level, private or credential data to an external skill, plugin or service without explicit authorization.",
   "The S23 package is not final until S24 records the user's explicit request for final review and freezes the exact files, then S25 obtains one independent PASS from reader, editor and journal-compliance perspectives. Any post-confirmation change returns to S24.",
   "A user-requested revision never leaves the workflow. Route it with tools/rework.py to the earliest owning stage, update the source of truth, rebuild only true dependants, and invalidate downstream approvals. Word-only layout edits are allowed at S24 only when the S23 visible-text baseline is unchanged.",
-  "Repeated feedback is handled as a persisted revision round at S19 (scientific manuscript) or S24 (journal package). Interpret the feedback once into atomic items, route the batch to its earliest owner, read and rebuild only affected sources/dependants, preserve unaffected approved evidence, and still run every applicable quality gate. Token or context pressure is never permission to omit an item, shorten the scientific work or skip validation; resume from tools/rework.py status after compaction.",
-  "S19/S24 use version-bound independent read-only subagent review rounds, not review ZIPs. The executor applies safe scoped corrections, reports changed and unadopted findings once, then asks whether another round is needed. Only the exact user statement 我确认这一版, bound to current reviewed files, releases the checkpoint. Optional third-party exports require an explicit request.",
+  "Repeated feedback stays at its persisted S12 (early science), S19 (scientific manuscript) or S24 (journal package) checkpoint. Interpret once, call source owners in place and rebuild only true dependants; preserve unaffected evidence while running every applicable quality check. Token/context pressure never permits omitting necessary work. Resume from tools/rework.py status after compaction.",
+  "S19 closes a genuine independent manuscript round. New S24 checkpoints use actual executor QA plus author review; an extra independent pre-review is explicit opt-in, and S25 remains mandatory on the author-confirmed freeze. No review ZIP. Only the exact user statement 我确认这一版, bound to current files, releases the author checkpoint. Optional third-party exports require an explicit request.",
   "After explicit S19 approval, freeze the journal-independent scientific master. S20-S25 edit only derived integration/package files. Real scientific changes invalidate approval and require scoped correction, a new review round, user confirmation and freeze; never replay unaffected stages.",
   "If you are unsure where you are, run `.\\.venv\\Scripts\\python.exe tools\\wf.py status`. Never guess the current stage.",
 ]
@@ -818,7 +818,7 @@ since = "1.24.0"
 
 [[stage]]
 id = "S22_polish"
-title = "Journal-specific de-AI and academic-English polish, fact-preserving"
+title = "Journal adaptation of accepted medical prose, fact-preserving"
 card = "stages/S22_polish.md"
 outputs = ["08_submission/integration/polish_report.json", "08_submission/integration/polish_log.md"]
 [[stage.gate]]

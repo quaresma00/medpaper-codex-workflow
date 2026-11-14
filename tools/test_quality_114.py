@@ -111,6 +111,10 @@ class QualityTests(unittest.TestCase):
         self.assertNotIn("9.8",_allowlist(ctx))
     def test_review_kept_science_requires_actual_author_adjudication(self):
         from test_review_rounds import ReviewRoundTests
+        # This fixture isolates author adjudication in an existing pre-v1.29 M
+        # round. Current early-review-context enforcement has its own positive
+        # and negative tests in test_review_responsibilities_129.py.
+        self.state.data["engine_pin"]="1.28.0";self.state.save()
         self.data("01_protocol/artifact_plan.json",{"main_figures":[],"main_tables":[]})
         for rel in ("07_manuscript/full_manuscript.md","05_figures/legends.md","04_tables/table_captions.md"): self.text(rel,"Synthetic content only.")
         record=rr.start(self.project,"manuscript")

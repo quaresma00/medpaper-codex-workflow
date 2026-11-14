@@ -29,7 +29,9 @@ later stage argues against the same target instead of a remembered paraphrase.
 }
 ```
 4. Create `project/03_analysis/notes.md` with these four headings and a first pass at each.
-   This file is the ONLY legitimate source for Introduction and Discussion framing later:
+   This file carries the argument outline for later Introduction and Discussion. Verify
+   scientific facts against the protocol/results and actual read literature; notes do not
+   replace those primary sources:
 
 ```markdown
 # Notes

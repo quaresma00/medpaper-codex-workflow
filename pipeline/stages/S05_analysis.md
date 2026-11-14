@@ -37,6 +37,9 @@ this decision against actual methods, results and finished displays before Abstr
 ```
    Write `project/03_analysis/method_scan.md`: for each candidate method, what it is,
    which retrieved papers use it, and whether it fits our data. Cite with `[@key]`.
+   Check the decisive Methods passages before executing a model; metadata or a paper title
+   does not establish suitability. Reuse registered S02/S03 papers and notes. S07 extends
+   their actual figure/table inventory once results are known, not a second literature study.
 2. **Analyse.** Every analysis lives in a script under `project/03_analysis/code/`.
    Scripts must be re-runnable from a clean checkout and must set a seed where relevant.
 3. **Dump results as JSON.** Each script writes to `project/03_analysis/results/*.json`.

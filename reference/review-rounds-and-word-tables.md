@@ -21,7 +21,13 @@ audit's actual `Verdict` must be PASS; a state decision cannot turn REVISE into 
 S18 starts manuscript M001, delegates once and attaches the genuine report before edits.
 S19 applies safe findings at their source, validates true dependants, records corrections
 and unadopted reasons, closes, reports once and asks whether another round is needed.
-S24 does the same for the actual journal package. Only the explicit user no-further-review
+For new v1.29 projects S24 instead uses executor QA plus an author package checkpoint; no
+independent pre-review is mandatory there. The author-only record cannot attach/claim an
+independent report, must pass current medical/visual/measurement/content checks, and cannot
+waive objective defects. S25 independently reads the exact freeze after author confirmation.
+An explicitly requested extra P pre-review uses `start --scope package --independent` and
+the genuine report mechanics below. Existing pinned independent P rounds keep those rules.
+Only the explicit user no-further-review
 answer records approval for the current round; new acceptance requires exactly 我确认这一版.
 No review ZIP is generated or required. Installation/distribution ZIPs are unrelated.
 

@@ -58,6 +58,13 @@ If inputs and actual report are unchanged, `start` reuses the existing record ra
 commissioning another agent. Container timestamp changes alone are not a scientific change;
 proven presentation amendments can use the existing meaning-preserving dependency path.
 
+If an actual reviewer misread an already-present definition/result, use
+`early_review.py start --reconsider --why "<specific disputed reading or clarification>"`
+with the actual executor ID. This explicitly prepares a new independent opinion on the same
+scientific inputs; it does not grant GO. The previous complete report/hash remains protected,
+the new report is separately attached, and ordinary unchanged calls still reuse the old one.
+Changed science uses the normal scoped correction/delta review, not this reconsideration route.
+
 S18 later reads the complete medical argument, prose, citations, limitations and final display
 comprehension. It reuses the early scientific opinion and tests whether writing overstates it.
 Reopen scientific review only for material new evidence or changed scientific inputs. The S19

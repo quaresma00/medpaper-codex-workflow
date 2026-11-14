@@ -103,7 +103,7 @@ document the resulting population/bias. See `reference/data-acquisition-integrit
   component Markdown at S19; do not patch it as a detached final file.
   Run `rework.py check` before marking/closing. Do not reset the stage tail or rely on typed
   validation labels. Read S07's reader contracts and S18's exact input-hash/comprehension rules.
-- S19/S24 follow `reference/review-rounds-and-word-tables.md`: independent read-only subagent
+- S19 and explicitly requested S24 independent pre-reviews follow `reference/review-rounds-and-word-tables.md`: independent read-only subagent
   rounds, safe main-agent scoped corrections, one report of changes/unadopted reasons and
   one another-round question. No review ZIP. Present exact artifact/report paths; wait for
   explicit no-further-review approval bound to the current closed round. Scientific freeze

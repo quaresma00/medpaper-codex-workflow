@@ -115,11 +115,20 @@ class Receipts:
         patterns.extend(context.p(pattern).relative_to(self.project).as_posix()
                         for pattern in list(patterns) if context.p(pattern) != self.project / pattern)
         files = {}
+        # Overlapping source patterns often name the same result/PDF/workbook.
+        # Hash it once inside THIS identity, while keeping all pattern membership.
+        # A later identity always rereads bytes, even if size/mtime were restored.
+        digests = {}
         for pattern in sorted(set(patterns)):
             _safe_path(self.project, pattern)  # Reject traversal before globbing.
             found = [p for p in self.project.glob(pattern) if p.is_file() and not (
                 p.name.startswith("~$") and p.suffix.lower() in {".xlsx",".docx",".pptx"})]
-            files[pattern] = {p.relative_to(self.project).as_posix(): _sha256(p) for p in sorted(found)}
+            files[pattern] = {}
+            for path in sorted(found):
+                rel=path.relative_to(self.project).as_posix()
+                if rel not in digests:
+                    digests[rel]=_sha256(path)
+                files[pattern][rel]=digests[rel]
         payload = {"stage": stage.id, "spec": spec, "files": files, "engine": self.engine,
                    "targets": self.pipeline.targets, "config": self.state.config(),
                    "pipeline_version": self.state.data.get("pipeline_version"),

@@ -967,7 +967,8 @@ def run_codex_integration() -> None:
     record("final package audit waits for explicit user OK and is independent",
            package_human.get("needs_user") is True and
            final_audit.get("needs_user", False) is False and
-           "无需继续审阅" in package_human_card and
+           "我确认这一版" in package_human_card and
+           "author presentation" in package_human_card and "--independent" in package_human_card and
            "tools/package_review.py freeze" in package_human_card and
            "exactly one independent read-only subagent" in final_audit_card and
            "Freeze ID: <freeze_id>" in final_audit_card and
@@ -2422,7 +2423,10 @@ def main() -> int:
                              ("test_section_writing_128.py","section-first medical editing and protected source-bound facts"),
                              ("test_early_benchmark_128.py","recent comparable displays and pre-Abstract Original-article scientific review"),
                              ("test_journal_portal_128.py","observed current portal conflicts and journal/date named upload copies"),
-                             ("test_retrieval_credentials_128.py","persistent PubMed credentials and complete honest full-text fallback routes")):
+                             ("test_retrieval_credentials_128.py","persistent PubMed credentials and complete honest full-text fallback routes"),
+                             ("test_execution_efficiency_129.py","same-checkpoint real live proof reuse and within-identity hash deduplication"),
+                             ("test_review_reconsideration_129.py","explicit independent reconsideration without science drift or report overwrite"),
+                             ("test_review_responsibilities_129.py","author package confirmation remains separate from mandatory independent final audit")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],
                                      capture_output=True,text=True,encoding="utf-8",errors="replace")
             record(label,current.returncode==0,(current.stdout+current.stderr)[-1800:].strip())

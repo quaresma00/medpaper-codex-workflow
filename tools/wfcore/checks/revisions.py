@@ -22,7 +22,8 @@ def review_round_approved(ctx: Ctx) -> Result:
         decision = ctx.state.decision(SCOPES[scope][1]) or {}
         if decision.get("value") != SCOPES[scope][2] or not str(decision.get("rationale", "")).startswith(record["id"] + ":"):
             raise ValueError("user approval is not bound to this review round")
-        return Result(True, "review_round_approved", f"{record['id']}: independent review, scoped fixes and explicit user answer recorded")
+        kind="author package QA/confirmation; independent S25 remains pending" if record.get("review_kind")=="author_package" else "independent review, scoped fixes and explicit user answer"
+        return Result(True, "review_round_approved", f"{record['id']}: {kind} recorded")
     except (OSError, ValueError, TypeError, KeyError) as exc:
         return Result(False, "review_round_approved", str(exc), ["Use tools/review_round.py; do not generate a review ZIP or infer user approval."])
 

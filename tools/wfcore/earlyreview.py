@@ -77,12 +77,28 @@ def _owner(project):
         raise ValueError("Prepare/attach early scientific review at S12 or its scoped owner correction; do not rewind stages")
 
 
-def start(project,executor_id):
+def start(project,executor_id, *, reconsider=False, why=None):
     _owner(project)
     if not isinstance(executor_id,str) or not executor_id.strip(): raise ValueError("Record the actual executor identity before delegating")
+    if type(reconsider) is not bool: raise ValueError("Reconsideration must be an explicit boolean request")
+    if why and not reconsider: raise ValueError("Use --reconsider with --why only for an explicit independent opinion reconsideration")
     current=inputs(project)
     previous=load(project,RECORD) if (project/RECORD).is_file() else None
-    if previous and (previous.get("reviewed_artifacts")==current or (previous.get("report") and not _drift(project,previous,current))):
+    reconsideration=None
+    if reconsider:
+        if not isinstance(why,str) or len(why.strip())<40 or not re.search(r"[A-Za-z\u4e00-\u9fff]",why):
+            raise ValueError("Explicit reconsideration needs a concrete --why (>=40 characters): identify the disputed reading or author/source clarification")
+        if not previous or not previous.get("report"):
+            raise ValueError("Reconsider an attached independent opinion only; resume the pending/first actual review normally")
+        if _drift(project,previous,current):
+            raise ValueError("Scientific inputs changed; use ordinary start for focused scientific revalidation, not same-input reconsideration")
+        old_path=_safe_path(project,previous["report"]["path"])[1]
+        if not old_path.is_file() or _sha256(old_path)!=previous["report"]["sha256"]:
+            raise ValueError("Prior independent report is missing/changed; preserve its actual identity before reconsidering")
+        report_evidence(old_path.read_text(encoding="utf-8"),previous)
+        reconsideration={"reason":why.strip(),"previous_review":previous["id"],"previous_report":dict(previous["report"]),
+                         "basis":"Same scientific inputs; a new actual independent opinion is required, not an executor override"}
+    if not reconsider and previous and (previous.get("reviewed_artifacts")==current or (previous.get("report") and not _drift(project,previous,current))):
         # Both pending handoffs and completed unchanged reviews are resumed, not reissued.
         return previous
     from .reviewguard import snapshot
@@ -96,6 +112,10 @@ def start(project,executor_id):
             "changed_since_previous":[rel for rel in set(current)|set(previous.get("reviewed_artifacts",{}))
                                       if current.get(rel)!=previous["reviewed_artifacts"].get(rel)] if previous else list(current),
             "previous_review":previous.get("id") if previous else None}
+    if reconsideration:
+        if (project/record["report_destination"]).exists():
+            raise ValueError("The next independent report path already exists; preserve/reconcile it rather than overwrite review history")
+        record["reconsideration"]=reconsideration
     from .benchmark import plan_hash,dossier
     record["benchmark_plan_hash"]=plan_hash(dossier(project))
     from .revision import guard_outputs
@@ -163,6 +183,9 @@ def verify(project):
         if drift: return ["Early scientific review is stale only for changed inputs: "+", ".join(drift[:8])+"; use scoped owner fixes and actual independent delta reading, not a full stage replay"]
         path=_safe_path(project,record["report"]["path"])[1]
         if _sha256(path)!=record["report"]["sha256"]: return ["The independent early-review report changed after attachment"]
+        prior=record.get("reconsideration",{}).get("previous_report")
+        if prior and _sha256(_safe_path(project,prior["path"])[1])!=prior["sha256"]:
+            return ["The preserved prior independent report changed; reconsideration cannot rewrite review history"]
         evidence=report_evidence(path.read_text(encoding="utf-8"),record)
         if evidence["verdict"]!="GO":
             return [f"Early independent verdict {evidence['verdict']}; notify the author now with report and exact barriers. Do not draft Abstract or spend on low-yield extra analyses. Correct true sources in scope, or obtain the author's pivot/stop decision"]

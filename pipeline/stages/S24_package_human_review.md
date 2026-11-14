@@ -1,83 +1,53 @@
-# S24 - Package subagent review and scoped correction rounds
+# S24 - Author package review, scoped corrections and exact confirmation
 
-For a changed target/article type/initial-or-revision stage, follow
-`reference/journal-adaptation.md` inside a sealed journal-switch batch. Start a fresh guide
-context, preserve the old attempt, reuse accepted science/author facts and update only true
-submission consumers. Do not carry old configuration or replay completed scientific stages.
-
-## Purpose
-Independently read actual journal uploads, fix safe defects in the workflow, report once,
-then ask whether another round is needed. No review ZIP. User inspection and edits remain
-welcome; never overwrite them by blindly rebuilding.
+S23 already requires executor medical/content/actual-page QA. For new v1.29 projects this
+checkpoint presents those real uploads to the author; it does not commission another
+independent pre-review by default. S25 still independently reads the exact author-confirmed
+freeze. Existing independent P rounds retain their genuine report/closure requirements.
 
 ## Procedure
-If the package was already explicitly approved and the request is presentation-only, use
-the content-aware scoped amendment path; do not start another round or ask again. Verify
-actual content/meaning/guide/format/changed-page evidence and report the delta once. Real
-science or an explicitly requested additional independent reading still follows below.
 
-1. Start with `tools/review_round.py start --scope package` (later rounds use `--delta`).
-   Give one independent read-only subagent actual uploads in `bundle/manifest.json`, actual source documents (extra text copies only when explicitly requested), rendered page images/figures, current official guideline snapshot
-   and typed article-specific requirements. Text copies do not replace visual inspection.
-   Do not transfer patient data/credentials. Missing delegation means independent review pending.
-2. The reviewer reads as a first-time reader and screening editor, then checks files,
-   compliance and consistency. Require precise locations, severity and rule/evidence; the
-   exact printed `reviewed_artifacts` JSON; substantive `Reader comprehension`, `Medical presentation`, `Editorial
-   screening and low-level errors` and `Guideline compliance` sections. Attach before editing:
-```
-.\.venv\Scripts\python.exe tools/review_round.py attach --scope package --report <actual-report.md>
-```
-   Returning from S25 REVISE: reuse genuine findings only when input versions match. Map frozen
-   release files to byte-identical working uploads, retain original evidence and add the exact
-   round hash block. Otherwise obtain a current review, not a stale or invented hash claim.
-3. The main agent fixes safe findings through one scoped `rework.py batch --sealed` at S24.
-   Journal-only changes stay in `08_submission/integration/`. Visible Word text edits must be
-   reconciled to source and legitimately rebuilt; format-only changes may remain when
-   `package_content.py verify` proves unchanged visible content. Scientific corrections need
-   owner rules, renewed S19 round/approval and freeze, then merge only the delta into journal
-   copies, preserving unrelated user edits. Never guess author/ethics/funding facts or insert
-   AI-use disclosures. Unadopted preferences need reasons; objective defects cannot be waived.
-4. Rebuild affected outputs only, finalize, render and visually inspect changed files, then
-   update legitimate baselines/portal fields. Run actual scoped checks and close the source
-   revision. Refresh `tools/submission_qc.py measure`. Do not reacquire raw data or reanalyse
-   the study for an unrelated formatting change.
-5. Run `tools/review_round.py close --scope package`, repeating `--change <file> <why>` for
-   each changed/removed review artifact and `--kept <finding-ID> <reason>` as needed. Use the
-   actual `--unresolved` count; missing required author facts/objective defects block approval.
-6. Report once with exact upload/checklist/preview/report paths, corrections and unadopted
-   reasons. Ask ONLY:
+1. Verify the current journal context and actual upload QA. Run
+   `tools/review_round.py start --scope package`. New projects return `author presentation`;
+   old pinned or already-open independent rounds are not silently converted. Present exact
+   bundle, named upload-copy, preview and checklist locations. The named directory is a
+   read-only upload copy; edits use managed sources/bundle and the scoped revision path.
+2. The author may inspect and modify the package repeatedly. Interpret a feedback batch
+   using `reference/rework-routing.md` and `tools/rework.py batch --sealed`.
+   once, keep S24 and completed history, call affected owner rules in place, and rebuild only
+   actual consumers. Journal wording stays in integration; scientific changes need source
+   correction, renewed scientific review/approval and scoped merge. Word-only layout edits
+   must retain visible text. Never overwrite unrelated author edits or fabricate author facts.
+   Visible Word text edits must be reconciled to integration sources and legitimately rebuilt.
+3. Recheck changed files and actual pages; refresh legitimate baselines, portal fields and
+   measurements. Close the source revision, then `review_round.py close --scope package`,
+   giving `--change <file> <actual reason>` for each changed/removed artifact. Author mode
+   checks current executor medical/visual acceptance, measured uploads and source/text
+   baseline. Unresolved objective defects block; it never generates an independent verdict.
+4. Explain changes and any remaining author-controlled items once. Ask the author to keep
+   editing if needed. If this displayed version needs no further changes and may receive the
+   final independent reading, request exactly `我确认这一版`. Record the actual reply with
+   `review_round.py decide --scope package --answer no_further_review --words "<actual reply>"`.
+   Generic continuation and prior scientific approval do not approve this package.
+5. Freeze and verify the actual uploads with `tools/package_review.py freeze` and `verify`;
+   run the current gates and advance to S25. Successful author confirmation never substitutes
+   for S25's real independent reader/editor/current-guide review of that freeze.
 
-   > 本轮审阅与修改已完成。是否再进行一轮子代理审阅？若无需继续审阅，请回复“我确认这一版”。
+## Optional independent pre-review
 
-   Preserve the answer using `tools/review_round.py decide --scope package --answer
-   another_round|no_further_review --words "<actual words>"`. Only explicit no-further-review
-   binds `submission_package_user_confirmed=OK` to this closed round. Generic “继续” is not
-   approval. Never infer a user decision from successful review or building.
-7. After approval, create/verify the exact upload-only release, then continue to S25:
-```
-.\.venv\Scripts\python.exe tools/package_review.py freeze
-.\.venv\Scripts\python.exe tools/package_review.py verify
-.\.venv\Scripts\python.exe tools/wf.py check
-.\.venv\Scripts\python.exe tools/wf.py advance --note "package round approved; exact uploads frozen for independent final audit"
-```
+Only when explicitly requested, use `review_round.py start --scope package --independent`
+after completing any current author round and recording its actual answer. Follow the
+existing independent P-report, finding-disposition and actual delta-reading mechanics in
+`reference/review-rounds-and-word-tables.md`. Never label executor QA as independent.
+This extra pre-review is optional; S25 remains mandatory after final confirmation.
 
-## Hard boundaries
-This does not replace S25 on the confirmed freeze. The reviewer reports only; the main agent
-corrects outside immutable releases. First/changed-science uploads need approval/freeze;
-proven presentation amendments preserve the existing approval lineage with scoped validation.
-Preserve old
-rounds, releases and legacy archives. Review cannot create clinical facts, citations, private
-data transfer authority or actual journal submission. The portal remains user-controlled.
+For an already approved meaning-preserving presentation correction, use the existing scoped
+amendment/approval lineage. Do not add another full review or confirmation automatically.
+For a journal switch, read `reference/journal-adaptation.md`: begin the new exact context,
+discard old active rules, preserve accepted science and author edits, and adapt true consumers.
 
+## Close
 
-## Structural quality and bounded rework
-
-Read `reference/structural-quality.md`. Use clinical display names and physical-size assumptions
-before production. Percentage claims bind numerator, denominator and source percentage basis.
-Every actionable point in every review section needs a stable ID and disposition, not only
-the must-fix subset. Review neutral actual artifacts; don't prime with the writer's conclusion.
-Use read-only rework preview and actual scoped checks; never infer scientific change from a
-publication label number or silently invalidate author approval. Existing privacy, freezes,
-centralized abbreviations, Word cleanup and final actual-page inspection remain in force.
-
-
+Complete real scoped fixes and current checks, then freeze only the explicitly confirmed
+version. Old rounds and releases remain immutable. Do not submit externally, add AI-use
+disclosure text, or transfer private data without the user's corresponding instruction.

@@ -73,7 +73,7 @@ references each own their topic; this policy contains no historical supersession
 ## Medical outputs and production
 
 - Benchmark actual close medical full texts before writing or expensive production. Use the
-  latest 5–10 comparable papers (normally the last 24 months) determine figure/table roles
+  latest 5–10 comparable papers (normally the last 24 months) to determine figure/table roles
   and count ranges. Read actual displays; explain necessary older/fewer-paper exceptions and
   justify a smaller final inventory scientifically, never by token/time cost.
   Let the scientific question and reader tasks determine references/displays, not universal quotas,
@@ -127,8 +127,11 @@ references each own their topic; this policy contains no historical supersession
   review is reused, changed inputs receive focused independent delta reading. S18 later reads
   the completed manuscript without repeating unchanged statistical validation.
 - S18 gives the complete manuscript, supplement, tables and actual figures to exactly one
-  independent read-only subagent. S19/S24 use version-bound genuine review rounds, not review
-  ZIPs. Attach the real report before editing, resolve every actionable finding, and report
+  independent read-only subagent; supply its current S12 scientific report so it can reuse
+  accepted science. S19 uses the genuine manuscript round. New S24 checkpoints use executor
+  QA and author review; an extra independent pre-review is opt-in, with S25 still mandatory
+  after exact confirmation. No review ZIPs. For independent rounds attach the real report
+  before editing, resolve every actionable finding, and report
   changes/unadopted reasons once with exact paths. Objective scientific defects cannot be
   closed as preference. Ask whether another round is wanted and wait for the actual explicit
   statement 我确认这一版 bound to that version. Silence or “continue” is not approval.
@@ -152,7 +155,7 @@ references each own their topic; this policy contains no historical supersession
   repeatedly audited. Immutable releases contain actual uploads only, not caches/evidence.
 - User revisions remain inside a persisted tools/rework.py batch with verbatim requests and
   acceptance criteria. Collect feedback before sealing; a complete apply-now request may seal.
-  Stay at S19/S24, call affected owner rules in place, update the earliest real source, and
+  Stay at the current S12/S19/S24 checkpoint, call affected owner rules in place, update the earliest real source, and
   rebuild only true dependants. Never reset stages or use wf loop for local revisions. Extend
   newly discovered dependencies within the batch and distinguish inspected unchanged sources.
   Close only after actual scoped checks on final files; reuse only hash/rule/config-matched

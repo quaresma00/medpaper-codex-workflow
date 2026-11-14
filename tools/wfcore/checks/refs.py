@@ -333,7 +333,7 @@ def refs_library(ctx: Ctx) -> Result:
 
 @check("reference_provenance")
 def reference_provenance(ctx: Ctx) -> Result:
-    """Independently re-fetch the library at S13; fail closed if NCBI is unavailable."""
+    """Fresh independent critical checkpoints, with bounded same-checkpoint reuse."""
     max_age = int(ctx.target("reference_verification_age_days_max", 90))
     ok, problems, count = refproof.validate_local_proof(
         ctx.project, max_age_days=max_age)
@@ -350,13 +350,16 @@ def reference_provenance(ctx: Ctx) -> Result:
     try:
         library = ctx.read_json(LIB)
         entries = library.get("entries", [])
-        from ..liverefs import cached_sources, store_sources
-        cached = (None if ctx.stage.id in {"S13_reflib", "S25_submission_audit"} else
+        from ..liverefs import cached_sources, checkpoint_sources, store_sources
+        critical=ctx.stage.id in {"S13_reflib", "S25_submission_audit"}
+        cached = (checkpoint_sources(ctx.project,entries,ctx.stage.id,
+                                    float(ctx.target("live_reference_age_hours_max",24))) if critical else
                   cached_sources(ctx.project, entries,
                                  float(ctx.target("live_reference_age_hours_max", 24))))
         if cached is not None:
             return Result(True, "reference_provenance",
-                          f"{len(entries)} unchanged records match hashed independent live XML within the freshness window")
+                          f"{len(entries)} unchanged records match hashed independent live XML " +
+                          ("from this same checkpoint within 120 seconds; original freshness preserved" if critical else "within the freshness window"))
         pmids = [str(item.get("pmid", "")) for item in entries]
         if not pmids or any(not re.fullmatch(r"\d+", pmid) for pmid in pmids):
             raise ValueError("every entry must have a numeric PMID")
@@ -387,7 +390,7 @@ def reference_provenance(ctx: Ctx) -> Result:
     if live_problems:
         return Result(False, "reference_provenance", "; ".join(live_problems[:8]),
                       ["Rebuild the affected entry from the returned PubMed record; never edit the proof to match."])
-    store_sources(ctx.project, live_records)
+    store_sources(ctx.project, live_records,stage=ctx.stage.id)
     return Result(True, "reference_provenance",
                   f"{len(entries)} record(s) independently re-fetched and matched against live PubMed")
 
