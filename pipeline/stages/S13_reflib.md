@@ -43,7 +43,13 @@ Everything the Introduction and Discussion say about the literature comes from h
    `verified: true` by itself has no authority. The S13 gate independently contacts PubMed
    a second time and recomputes the comparisons. If NCBI cannot be reached, the gate fails
    closed; it must never be replaced with a handwritten boolean, fabricated DOI, copied
-   metadata, or an alternate script. Entries that fail are quarantined, not patched.
+   metadata, or an alternate script. Entries that fail are quarantined, never hand-patched.
+   Read PMCID/fallback DOI only from the primary article's own identifier list, never
+   from its ReferenceList. If an old engine stored cited-paper identifiers, use the
+   managed `build_library.py --refresh-identifiers <existing-PMIDs>` repair described in
+   `reference/codex-integration.md`, then run fresh verification again. Preserve citekeys;
+   other bibliographic changes require reviewed correction. A frozen project needs the
+   existing scoped references revision, not a reset or overwritten scientific freeze.
    S25 also always performs a new independent live check. Intermediate gates may reuse
    hash-bound independent live XML for at most 24 hours only while all identities match.
 4. Export both formats from `library.json` - never hand-edit them:

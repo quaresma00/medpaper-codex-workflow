@@ -283,11 +283,15 @@ def _one_record(art, cache_file: str) -> dict:
         year = m.group(0) if m else ""
 
     doi = ""
-    for el in art.findall(".//ELocationID"):
+    for el in art.findall("MedlineCitation/Article/ELocationID"):
         if el.get("EIdType") == "doi":
             doi = (el.text or "").strip()
     pmcid = ""
-    for el in art.findall(".//ArticleIdList/ArticleId"):
+    # ReferenceList/Reference also has ArticleIdList. Descendant searches here
+    # assign a cited paper's PMCID/DOI to this paper (often the final reference).
+    own_paths = (("BookDocument/ArticleIdList/ArticleId", "PubmedBookData/ArticleIdList/ArticleId")
+                 if art.tag == "PubmedBookArticle" else ("PubmedData/ArticleIdList/ArticleId",))
+    for el in (node for path in own_paths for node in art.findall(path)):
         t = el.get("IdType")
         if t == "doi" and not doi:
             doi = (el.text or "").strip()

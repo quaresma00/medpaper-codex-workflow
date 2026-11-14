@@ -2425,6 +2425,8 @@ def main() -> int:
                              ("test_journal_portal_128.py","observed current portal conflicts and journal/date named upload copies"),
                              ("test_retrieval_credentials_128.py","persistent PubMed credentials and complete honest full-text fallback routes"),
                              ("test_execution_efficiency_129.py","same-checkpoint real live proof reuse and within-identity hash deduplication"),
+                             ("test_pubmed_id_scope_1291.py","primary PubMed identifiers never come from cited references"),
+                             ("test_identifier_repair_1291.py","managed fresh-source identifier repair preserves keys and invalidates stale proof"),
                              ("test_review_reconsideration_129.py","explicit independent reconsideration without science drift or report overwrite"),
                              ("test_review_responsibilities_129.py","author package confirmation remains separate from mandatory independent final audit")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],

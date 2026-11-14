@@ -73,10 +73,14 @@ def _source_record(article) -> dict:
                           _text(article, ".//Journal/JournalIssue/PubDate/MedlineDate"))
         year = match.group(0) if match else ""
     doi, pmcid = "", ""
-    for item in article.findall(".//ELocationID"):
+    for item in article.findall("MedlineCitation/Article/ELocationID"):
         if item.get("EIdType") == "doi":
             doi = (item.text or "").strip()
-    for item in article.findall(".//ArticleIdList/ArticleId"):
+    # Parse independently of the ingestion client, but scope identifiers to
+    # this citation's own nodes. Reference ArticleIdList is never its identity.
+    paths = (("BookDocument/ArticleIdList/ArticleId", "PubmedBookData/ArticleIdList/ArticleId")
+             if article.tag == "PubmedBookArticle" else ("PubmedData/ArticleIdList/ArticleId",))
+    for item in (node for path in paths for node in article.findall(path)):
         if item.get("IdType") == "doi" and not doi:
             doi = (item.text or "").strip()
         if item.get("IdType") == "pmc":

@@ -2,6 +2,16 @@
 
 历史说明用于了解变更；执行以当前 AGENTS.md、阶段卡和程序为准。
 
+## 1.29.2：本篇标识与参考文献标识严格分开
+
+修复 PubMed 抓取端和独立核验端共同使用过宽 XML 后代搜索的问题。PMCID 与备用 DOI 只从本篇直接的 PubmedData/ArticleIdList 提取，ELocationID 只读取本篇 Article；参考文献及嵌套参考文献中的编号不能覆盖或补填本篇编号。本篇无 PMCID 时保留空值，真实本篇不匹配仍拒绝通过。
+
+兼容书籍记录自身的 BookDocument/ArticleIdList 和 PubmedBookData/ArticleIdList，不读取其参考文献编号。吸收全局已存在的本地 1.29.1 临时修复，以新版本号发布，避免同版本号令启动器跳过更新。
+
+新增针对既有条目的受管标识刷新入口，重新获取指定 PMID 的真实来源，在其他文献信息匹配的前提下修正 DOI/PMCID，保留 citekey 和用户说明，再生成导出并使旧核验凭据失效。冻结项目必须走已有修订范围；不手写或强设 verified，不搜索或自动修改用户研究目录。
+
+依据 NLM 的 [PubmedData](https://dtd.nlm.nih.gov/ncbi/pubmed/doc/out/250101/el-PubmedData.html) 与 [ArticleIdList](https://dtd.nlm.nih.gov/ncbi/pubmed/doc/out/250101/el-ArticleIdList.html) 结构：本篇与 Reference 都可包含 ArticleIdList，必须按所属层级区分。核对日期：2026-11-14。
+
 ## 1.29 版：梳理25阶段、明确审阅职责和减少相同证据的重复执行
 
 新增面向人的完整流程说明，以六个工作块解释实际25阶段及各步产物、注意点、停点和精准返修。保留稳定ID和先表、再图、再Results的顺序；设计敏感的方法原文提前读，后续对标复用同一来源。修正仅允许一份notes作为写作来源的旧表述，S22只作期刊必要适配，不再鼓励全篇重润色。

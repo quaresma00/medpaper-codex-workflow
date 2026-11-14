@@ -37,6 +37,39 @@ trusted by itself; ad-hoc scripts must never write the library, receipt, BibTeX 
 The four reference-integrity gates are not waivable with `wf advance --force`. If NCBI is
 unavailable, S13 stays blocked instead of accepting a local substitute.
 
+### Repairing previously mis-extracted identifiers
+
+Only the primary article's `PubmedData/ArticleIdList` supplies PMCID and fallback DOI;
+`ELocationID` is read from its own `MedlineCitation/Article`. Identifiers inside a
+`ReferenceList`, including nested lists, belong to cited papers. An absent primary
+PMCID stays empty. Acquisition and independent verification enforce this separately.
+For a book record, only its direct `BookDocument/ArticleIdList` and
+`PubmedBookData/ArticleIdList` supply identifiers; its cited books are excluded too.
+
+Updating the engine does not rewrite an existing library. If an older engine already
+stored a cited paper's identifier, use the managed refresh for the affected existing
+PMIDs, from the active project's configured workflow environment:
+
+```powershell
+.\.venv\Scripts\python.exe tools\pubmed\build_library.py --refresh-identifiers <PMID1,PMID2>
+if ($LASTEXITCODE -ne 0) { throw "Identifier refresh failed; stop before verification." }
+.\.venv\Scripts\python.exe tools\pubmed\verify.py
+```
+
+The refresh makes a new EFetch request, preserves its XML, checks the exact requested
+PMIDs and source identity, and changes only DOI/PMCID plus their retrieval location/time.
+It preserves citekeys, bibliographic content, user notes and unrelated entries, regenerates
+BibTeX/RIS, and removes stale `verified.json`; it never grants verification itself. A
+non-identifier metadata change or retraction aborts the batch for reviewed correction.
+An ordinary `--add-ids` skips existing PMIDs and therefore cannot perform this repair.
+
+At a review checkpoint, open a scoped references revision owned by `S13_reflib` using
+the existing `rework.py` route before touching a frozen scientific master. Include
+`library.json`, `refs.bib`, `refs.ris`, and `verified.json` in its actual output scope.
+The repair does not rewrite the scientific freeze or retain old approval for changed
+sources; revalidate the affected references and dependants through that revision.
+Never hand-edit identifiers, weaken the identity check, or set `verified` to true.
+
 For full text, prefer verified public/author-repository and configured authorized routes;
 do not stop at the first failed OA lookup. Use available scansci-pdf sources, including this
 user's explicitly selected Sci-Hub route, with actual source/identity checks. This does not
