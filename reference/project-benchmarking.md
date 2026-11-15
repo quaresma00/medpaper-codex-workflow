@@ -68,6 +68,14 @@ Use the same schema for the journal comparison. Do not create a second narrative
   words per comparator across this record). These locate reading, not publishable quotations.
   PDF extraction uses pinned pypdf; scanned/failed extraction needs readable authorized full
   text, never an abstract substituted for an article. Inspect figure images separately.
+- When actual supplementary displays are in a separate publisher file, retain each comparator's
+  `supplementary_sources` with `file`, `sha256`, `article_xml`, `article_xml_sha256` and the exact
+  Europe PMC OA `source_url`. Files belong under `06_refs/fulltext/supplements/<citekey>/`.
+  The own-article JATS XML must match the verified PMID/PMCID/DOI and link that exact filename;
+  the source endpoint must name the same PMCID. Real supplemental captions may use either
+  "Supplementary Figure 1" or "Figure S1". Main displays cannot borrow supplementary captions.
+  Actual attachments and their identities remain in the prewriting lock; missing/changed or
+  foreign-article files fail rather than being replaced with a claimed count.
 - `adaptation.structure`: project-specific `methods`, `discussion`, `main_vs_supplement`,
   `declarations` decisions. Keep validity-critical Methods in main text. Connected Discussion
   paragraphs are the default; headings need actual design/journal justification. Do not invent

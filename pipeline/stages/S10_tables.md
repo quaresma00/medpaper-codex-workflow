@@ -83,6 +83,11 @@ write_table(
 - (plus the xlsx files declared in the artifact plan)
 
 ## Hard rules
+- Apply the same source-bound medical editing used for manuscript prose to actual table
+  titles, headers, row/category labels, textual cells and footnotes before the first build.
+  Read the rendered table again: concise clinical wording, no assistant narration or
+  unexplained code/export labels, and only notes needed to interpret the table. Preserve
+  scientific definitions, summaries, denominator/state distinctions and necessary methods.
 - A table is a reader-facing object, not an analysis dump. No console output or
   paragraph-length cells. Clinically relevant discrimination, calibration, diagnostic
   accuracy or sensitivity results remain when required by the study design; hide engineering

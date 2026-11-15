@@ -94,6 +94,10 @@ references each own their topic; this policy contains no historical supersession
   and inspect actual PNG/PDF. Missing R dependencies need repair, not silent Python fallback.
   Preserve already-approved Python figures; justified Python exceptions use Tavotto, never R.
   Independent A/B tags belong at panel upper-left corners, separate from clinical titles.
+  Figures have no subtitles, including composite/panel subtitles. Keep only concise medical
+  labels and necessary decoding/statistical marks inside the image; explanation belongs in
+  its appropriate legend/Methods/Results location. Apply medical editing to actual figure
+  text and table titles/headers/cells/notes on the first build, then read the real output.
 - Tool success does not replace opening/reading the actual tables and rendered figures/pages.
   Read figure labels and actual table titles/headers/cells/notes as a medical reader; map only
   source-authorized display labels, preserving units, denominators and actual statistics.

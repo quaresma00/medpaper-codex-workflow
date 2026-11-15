@@ -4,6 +4,7 @@ Loaded on demand by S11. New statistical graphics use R under `r-first.md`; the 
 defaults are shared by `tools/figures/r_style.R`, the retained Matplotlib style, and common
 QC. Language-specific Matplotlib examples below apply only to documented Python exceptions,
 not a reason to replace R. The current target journal overrides unsourced defaults.
+Explicit user choices, including no subtitles, are not unsourced defaults.
 
 Two kinds of source are mixed below and kept distinct on purpose:
 **publisher requirements** (binding, verify against your target journal) and
@@ -144,8 +145,8 @@ Rules that follow from this:
   layout pad - not inside the axes, where they collide with titles and y-labels.
 - A panel title spanning the whole panel is `sf.suptitle(...)`, not `ax.set_title(loc="left")`.
   The latter starts after the y-axis decorations and overflows on long titles.
-- A shared legend or caption strip gets its own axes-free SubFigure row, not a
-  `bbox_to_anchor` legend dangling off one panel.
+- A shared key gets its own axes-free SubFigure row, not a `bbox_to_anchor` legend
+  dangling off one panel. Do not turn this row into a subtitle or explanatory prose strip.
 - Bitmap panels (histology, radiographs, schematics) go in their own SubFigure with
   `imshow` + `axis("off")` so their aspect ratio does not drag the neighbours around.
 - To fix a layout problem, change the gridspec ratios, the panel spans, or the
@@ -201,6 +202,23 @@ were reduced to what is mechanically verifiable, and the detectors are original.
 Content was rephrased for compliance with licensing restrictions.
 
 ## 6. Text in panels - the line
+
+**No subtitles**, at overall-figure, composite or panel level. This includes ggplot
+`labs(subtitle=...)`, patchwork annotation subtitles and equivalent manually drawn secondary
+headlines. Keep the descriptive figure title with its separate legend by default; retain
+only short clinical panel names where they identify different outcomes/groups. Independent
+A/B/C tags stay at each panel's upper-left corner. A necessary axis label, facet/group label,
+forest column heading or risk-table label is not a subtitle.
+
+Use the fewest words that preserve medical meaning. Remove explanatory sentences, software
+or workflow narration, generic robustness/takeaway banners and duplicated results from the
+image. First decide whether each phrase is needed to identify the population, group,
+measurement, unit, denominator, uncertainty or symbol. Route only necessary decoding to the
+legend, actual methods to Methods and findings/interpretation to Results/Discussion; do not
+dump removed paragraphs into a longer legend. Dense forest plots, risk tables and selection
+flows may need more labels than a simple plot; no universal word quota or text-area score
+can replace medical/visual reading. Do not shrink fonts or remove scientific essentials to
+make a plot appear sparse.
 
 **In the panel** (structural, needed to read the plot): axis titles and units, tick labels,
 panel letters, group and category labels, legend entries, significance markers, key data

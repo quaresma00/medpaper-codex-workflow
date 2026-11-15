@@ -109,6 +109,7 @@ def audit_svg(path, metadata):
     }
     return {"engine": "R", "schema_version": 1, "min_font_pt": min(fonts) if fonts else None,"max_font_pt":max(fonts) if fonts else None,
             "min_line_pt": min(strokes) if strokes else None, "figure_text": sorted(set(texts)),
+            "text_roles": sequence(metadata.get("text_roles")),
             "text_clipped_at_edge": clipped, "r_text_box_collisions": collisions,
             "measurement_limits": unsupported + ["Text height/overlap are conservative estimates; PDF font fallback, clipping paths, glyph coverage and complex grid layout require visual inspection."],
             "n_axes": len(ranges), "elements": elements, "runtime": metadata}

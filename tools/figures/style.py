@@ -211,6 +211,56 @@ def significance(ax, x1: float, x2: float, y: float, text: str = "*",
     ax.set_ylim(lo, max(hi, y + t + 0.09 * span))
 
 
+def figure_text_roles(fig) -> list[dict]:
+    """Observe known text roles without guessing that every title is a subtitle.
+
+    Matplotlib has no general subtitle API. Explicit ``subtitle`` GIDs and named
+    ``_subtitle`` artists are recognizable; untagged prose still needs medical
+    reading of the actual render. Axis/statistic/panel labels are never deleted.
+    """
+    roles, seen = [], set()
+
+    def add(artist, role, location):
+        if artist is None or not isinstance(artist, matplotlib.text.Text) or not artist.get_visible():
+            return
+        text = (artist.get_text() or "").strip()
+        if not text:
+            return
+        gid = (artist.get_gid() or "").casefold().replace("_", "-")
+        if gid in {"subtitle", "figure-subtitle", "panel-subtitle", "medpaper-subtitle"}:
+            role = "subtitle"
+        # Prefer explicit subtitle identity over its general title/text role.
+        if id(artist) in seen:
+            if role == "subtitle":
+                for row in roles:
+                    if row.get("_artist") == id(artist): row["role"] = role
+            return
+        seen.add(id(artist))
+        roles.append({"role": role, "text": text, "location": location, "_artist": id(artist)})
+
+    def container(item, location):
+        add(getattr(item, "_subtitle", None), "subtitle", location)
+        add(getattr(item, "_suptitle", None), "title", location)
+        for text in getattr(item, "texts", []): add(text, "free_text", location)
+        for i, child in enumerate(getattr(item, "subfigs", [])): container(child, f"{location}/panel{i+1}")
+
+    container(fig, "figure")
+    for i, ax in enumerate(fig.get_axes()):
+        location = f"axes{i+1}"
+        add(getattr(ax, "_subtitle", None), "subtitle", location)
+        for title in (ax.title, getattr(ax, "_left_title", None), getattr(ax, "_right_title", None)):
+            add(title, "title", location)
+        for axis, label in ((ax.xaxis, "x"), (ax.yaxis, "y")):
+            add(axis.label, label, location)
+        for text in ax.texts: add(text, "free_text", location)
+    for text in fig.findobj(match=matplotlib.text.Text):
+        gid = (text.get_gid() or "").casefold().replace("_", "-")
+        if gid in {"subtitle", "figure-subtitle", "panel-subtitle", "medpaper-subtitle"}:
+            add(text, "subtitle", "tagged text artist")
+    for row in roles: row.pop("_artist", None)
+    return roles
+
+
 def save(fig, stem: str | Path, width: str = "single", dpi: int = 600,
          tiff: bool = False, audit: bool = True, archetype: str | None = None) -> dict:
     """Write the PDF master and PNG preview, optionally TIFF, then audit the artists.
@@ -219,6 +269,9 @@ def save(fig, stem: str | Path, width: str = "single", dpi: int = 600,
     `archetype` is recorded in the sidecar so qc.py can check the archetype's mandatory
     elements; if omitted it is read from artifact_plan.json by qc.py instead.
     """
+    roles = figure_text_roles(fig)
+    if any(row["role"] == "subtitle" for row in roles):
+        raise ValueError("Figure subtitles are not allowed. Remove the subtitle in plotting source and place needed explanation in the relevant legend, Methods or Results; retain necessary clinical labels.")
     stem = Path(stem)
     from wfcore.dependencies import guard_build
     from wfcore.revision import guard_outputs
@@ -342,6 +395,7 @@ def audit_figure(fig, stem: str | Path, archetype: str | None = None) -> str:
         "elements": el.detect_all(fig),
         "figure_text": sorted({(t.get_text() or "").strip() for t in real_texts()
                                if (t.get_text() or "").strip()}),
+        "text_roles": figure_text_roles(fig),
     }
     out = stem.parent.parent / "qc" / f"{stem.name}.artist.json"
     out.parent.mkdir(parents=True, exist_ok=True)

@@ -116,6 +116,20 @@ not an automatic synonym. Keep a precise short definition where readers need it.
 
 ## Figures: actual graphical marks must match the claimed statistic
 
+Medical editing applies to display text on the first build, not only to manuscript prose
+or after assembly. Read actual table titles, headers, category/text cells and notes, and
+every visible figure label/annotation/key. Replace assistant narration, templated promotional
+claims and unexplained processing codes with concise source-accurate medical wording; this
+is reader editing, not an AI detector. Keep valid clinical/statistical terms, uncertainty,
+negative results and different missing/nonestimable states.
+
+Figures have no subtitles, including panel/composite subtitles. Use the text policy in
+`figure-standards.md`: keep essential labels and decoding, move explanation to its real
+destination, and inspect actual words at publication size. In the existing `title_and_labels`
+medical check, describe unnecessary-text/subtitle removal and medical readability; do not
+create another report, quota or review round. Numerical/provenance checks and one example
+label cannot accept the rest of a text-heavy figure by themselves.
+
 Inspect words inside the actual image as well as its legend: axes, group keys, facet/panel
 titles, annotations, numerical-column headers and flow boxes. Decode the clinical population,
 comparison, outcome, scale and counting unit without access to a script or an analysis report.

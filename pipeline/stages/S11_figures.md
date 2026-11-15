@@ -15,6 +15,9 @@ medical finding without code or analysis notes. Apply the existing clinical disp
 dictionary to genuine internal codes, preserve necessary method names and state distinctions,
 and record one actual wording/location with its clinical reading in the existing acceptance.
 The current bound SVG helps locate text; a diagnostic PASS is not medical understanding.
+No figure, composite or panel subtitles. Before the first render, edit the actual label
+sources into concise medical wording; keep explanatory paragraphs and interpretation out
+of the image. Use `figure-standards.md`'s text policy, including the necessary-label exceptions.
 
 ## Procedure
 Choose the design-appropriate recipe using `reference/r-first.md`'s medical figure routes.
@@ -50,6 +53,10 @@ forest with explicit measure/null/scale; it formats existing estimates without r
    panel alignment, colour/greyscale readability, margins and resolution. For complex
    layouts also open the vector PDF. Use one <=1280px, <=500KB preview per tool round.
    Warnings must be resolved or substantively addressed in the existing review.
+   In the existing `title_and_labels` observation, cover absence of subtitles and unnecessary
+   explanation, plus medical readability of all visible wording. A single quoted label
+   does not certify the remaining text. A detected subtitle must be fixed, not retained
+   with a style justification; untagged hand-drawn subtitles still need visual detection.
 6. Correct only the affected producing script/config, rerender that figure and rerun its
    QC. Do not redo cleaning/models or unchanged figures for a visual-only correction.
    A substantive statistical correction follows the existing scientific revision route.

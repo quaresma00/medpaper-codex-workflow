@@ -56,6 +56,60 @@ def text_of(path: Path) -> str:
 def _norm(text): return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def _supplementary_texts(project, row, entry):
+    """Read only hash-bound supplements linked by this article's own JATS metadata."""
+    import xml.etree.ElementTree as ET
+    from zipfile import ZipFile
+    texts = []
+    for source in row.get("supplementary_sources", []):
+        rel, path = _safe_path(project, source.get("file", ""))
+        xml_rel, xml = _safe_path(project, source.get("article_xml", ""))
+        if (not rel.startswith("06_refs/fulltext/supplements/" + row["citekey"] + "/")
+                or path.suffix.lower() not in {".docx", ".pdf"}
+                or not path.is_file() or str(source.get("sha256", "")).upper() != _sha256(path)
+                or not xml_rel.startswith("06_refs/fulltext/") or xml.suffix.lower() != ".xml"
+                or not xml.is_file() or str(source.get("article_xml_sha256", "")).upper() != _sha256(xml)):
+            raise ValueError("Supplementary source/own-article XML is absent, changed or outside its declared article directory")
+        article = ET.fromstring(xml.read_text(encoding="utf-8"))
+        ids = {a.get("pub-id-type"): (a.text or "").strip()
+               for a in article.findall("./front/article-meta/article-id")}
+        if (ids.get("pmid") != str(entry.get("pmid", ""))
+                or ids.get("pmcid") != entry.get("pmcid")
+                or ids.get("doi", "").casefold() != str(entry.get("doi", "")).casefold()):
+            raise ValueError("Supplementary XML own PMID/PMCID/DOI does not match the verified article")
+        href = "{http://www.w3.org/1999/xlink}href"
+        linked = {Path(a.get(href, "")).name
+                  for parent in article.findall(".//supplementary-material") for a in parent.iter()
+                  if a.get(href)}
+        expected_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/" + str(entry["pmcid"]) + "/supplementaryFiles"
+        if path.name not in linked or source.get("source_url") != expected_url:
+            raise ValueError("Supplement is not linked by this article's own metadata and its exact public OA source")
+        if path.suffix.lower() == ".docx":
+            with ZipFile(path) as archive:
+                document = ET.fromstring(archive.read("word/document.xml"))
+            ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+            text = "\n".join("".join(t.text or "" for t in p.iter(ns + "t"))
+                             for p in document.iter(ns + "p"))
+        else:
+            text = text_of(path)
+        if not text.strip(): raise ValueError("Supplement is not text-readable; inspect/resolve the actual source")
+        texts.append(_norm(text))
+    return texts
+
+
+def _display_present(actual, supplements, display):
+    match = re.fullmatch(r"(?i)(?:figure|fig\.?|table)\s+(S?\d+)", str(display.get("id", "")))
+    if not match: return False
+    kind = r"(?:figure|fig\.?)" if str(display.get("kind", "")).endswith("figure") else "table"
+    if re.search(r"\b" + kind + r"\s*" + re.escape(match[1]) + r"\b", actual, re.I): return True
+    if not str(display.get("kind", "")).startswith("supp_") or not match[1].upper().startswith("S"):
+        return False
+    number = re.escape(match[1][1:])
+    # Publishers use both 'Supplementary Figure 1' and 'Figure S1'.
+    caption = r"\b(?:(?:supplementary|supplemental)\s+" + kind + r"s?\s+S?" + number + r"\b|" + kind + r"\s+S" + number + r"\b)"
+    return any(re.search(caption, text, re.I) for text in supplements)
+
+
 def protected_plan(doc):
     """Fix prewriting rationale/ranges; later evidence mappings may be completed without a reset."""
     adaptation = doc.get("adaptation", {})
@@ -69,6 +123,7 @@ def protected_plan(doc):
     if "library_floor" in references: result["references"]["library_floor"] = references["library_floor"]
     for original, fixed in zip(doc.get("comparators", []), result["comparators"]):
         if "published_at" in original: fixed["published_at"] = original["published_at"]
+        if "supplementary_sources" in original: fixed["supplementary_sources"] = original["supplementary_sources"]
     return result
 
 
@@ -214,11 +269,13 @@ def verify_benchmark(project: Path, layer="science", *, require_lock=True) -> li
         if not {"methods", "discussion", "display"}.issubset({e.get("kind") for e in excerpts}):
             problems.append(f"{key}: methods/discussion/display full-text locators needed")
         actual = _norm(text_of(path))
+        try:
+            supplements = _supplementary_texts(project, row, entry)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            problems.append(f"{key}: {exc}"); supplements = []
         if layer=="science" and recent_benchmark_required(project,doc):
             for display in observations.get("display_inventory",[]):
-                match=re.fullmatch(r"(?i)(?:figure|fig\.?|table)\s+(S?\d+)",str(display.get("id","")))
-                kind="(?:figure|fig\\.?)" if str(display.get("kind","")).endswith("figure") else "table"
-                if not match or not re.search(r"\b"+kind+r"\s*"+re.escape(match[1])+r"\b",actual,re.I):
+                if not _display_present(actual, supplements, display):
                     problems.append(f"{key}: actual comparator display {display.get('id')} is absent from the registered full text; read its real caption/figure instead of inventing an inventory")
         for evidence in excerpts:
             if not evidence.get("locator") or not substantive(evidence.get("quote")) or _norm(evidence["quote"]) not in actual:

@@ -2,7 +2,7 @@
 name: medpaper-codex-pipeline
 description: Run the gated medical-research, manuscript and submission pipeline in this repository, including repeated user revisions. Not for unrelated finished-paper review or non-medical writing.
 metadata:
-  version: "1.29.2"
+  version: "1.29.4"
   entrypoint: ".\\.venv\\Scripts\\python.exe tools\\wf.py status"
 ---
 
@@ -23,4 +23,5 @@ Retain full-data acquisition, genuine PubMed/result provenance, actual visual QA
 review; never fabricate evidence or bypass integrity gates. Scientific approval is exactly
 我确认这一版 for current files. R remains the new-medical-figure default. Public registration
 and reporting forms remain design/journal-specific. AI disclosures require the user's request.
+No figure subtitles. Medical editing includes actual figure labels and table cells/notes.
 Keep private data local and preserve scientific freezes and unrelated author edits.

@@ -221,6 +221,14 @@ def _qc_figure(entry: dict, tgt: dict, arch_reg: dict | None = None, project: Pa
     sidecar = project / "05_figures" / "qc" / f"{Path(png_rel).stem}.artist.json"
     if sidecar.exists():
         art = json.loads(sidecar.read_text(encoding="utf-8"))
+        if "text_roles" in art:
+            roles = art["text_roles"]
+            malformed = not isinstance(roles, list) or any(not isinstance(row, dict) for row in roles)
+            subtitles = [] if malformed else [row for row in roles if row.get("role") == "subtitle" and str(row.get("text", "")).strip()]
+            add("no_figure_subtitle", not malformed and not subtitles,
+                "Malformed observed text roles" if malformed else
+                "Recognized subtitle text must be removed from plotting source: " + str(subtitles[:3]) if subtitles else
+                "No recognized subtitle slot; untagged text still requires actual medical/visual review")
         if art.get("engine") == "R":
             from wfcore.packagefreeze import _sha256, _safe_path
             problems = []

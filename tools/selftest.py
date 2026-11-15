@@ -2427,6 +2427,8 @@ def main() -> int:
                              ("test_execution_efficiency_129.py","same-checkpoint real live proof reuse and within-identity hash deduplication"),
                              ("test_pubmed_id_scope_1291.py","primary PubMed identifiers never come from cited references"),
                              ("test_identifier_repair_1291.py","managed fresh-source identifier repair preserves keys and invalidates stale proof"),
+                             ("test_benchmark_supplements.py","own-article linked supplementary displays remain source-bound"),
+                             ("test_figure_text_policy_1294.py","production subtitles fail while necessary medical figure labels remain intact"),
                              ("test_review_reconsideration_129.py","explicit independent reconsideration without science drift or report overwrite"),
                              ("test_review_responsibilities_129.py","author package confirmation remains separate from mandatory independent final audit")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],

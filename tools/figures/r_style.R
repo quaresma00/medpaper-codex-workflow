@@ -124,12 +124,57 @@ medpaper_layers <- function(plot) {
   }
   ranges <- lapply(built$layout$panel_params, function(x) list(x = x$x.range, y = x$y.range))
   list(layers = summary, bar_baseline_zero = medpaper_bar_zero(built, geom_names), x_label = label("x"), y_label = label("y"),
+       text_roles = list(title = label("title"), subtitle = label("subtitle"), caption = label("caption"),
+                         layer_labels = unique(unlist(lapply(built$data, function(d) if ("label" %in% names(d)) as.character(d$label) else character())))),
        legend = has_legend, ranges = ranges)
+}
+
+# Observe semantic text slots, including nested patchwork components and named grid
+# subtitle grobs. Untagged free text still needs actual medical/visual reading.
+medpaper_text_roles <- function(plot) {
+  roles <- list()
+  add <- function(role, value, location) {
+    if (is.null(value) || inherits(value, "waiver")) return(invisible(NULL))
+    text <- paste(as.character(value), collapse=" ")
+    if (nzchar(trimws(text))) roles[[length(roles)+1L]] <<- list(role=role, text=text, location=location)
+  }
+  labels <- function(grob) {
+    if (inherits(grob, "zeroGrob")) return(character())
+    out <- if (inherits(grob, "text")) as.character(grob$label) else character()
+    if (length(grob$grobs)) out <- c(out, unlist(lapply(grob$grobs, labels)))
+    if (length(grob$children)) out <- c(out, unlist(lapply(grob$children, labels)))
+    out
+  }
+  visit <- function(item, location) {
+    if (inherits(item, "ggplot")) {
+      for (name in c("title", "subtitle", "caption", "x", "y")) add(name, item$labels[[name]], location)
+      if (inherits(item, "patchwork")) {
+        for (name in c("title", "subtitle", "caption")) add(name, item$patches$annotation[[name]], paste0(location,"/annotation"))
+        for (i in seq_along(item$patches$plots)) visit(item$patches$plots[[i]], paste0(location,"/panel",i))
+      }
+    } else if (inherits(item, c("grob", "gTree", "gtable"))) {
+      if (grepl("(^|[._-])subtitle([._-]|$)", if (is.null(item$name)) "" else item$name)) add("subtitle", labels(item), location)
+      if (inherits(item, "gtable")) for (i in seq_along(item$grobs)) {
+        name <- item$layout$name[i]
+        if (grepl("^subtitle($|-)",name)) add("subtitle",labels(item$grobs[[i]]),paste0(location,"/",name))
+        visit(item$grobs[[i]],paste0(location,"/",name))
+      }
+      if (length(item$children)) for (i in seq_along(item$children)) visit(item$children[[i]],paste0(location,"/child",i))
+    }
+  }
+  visit(plot,"plot")
+  roles
 }
 
 medpaper_save <- function(plot, stem, width = "single", height_mm = 75, dpi = 600,
                          panels = list(plot), tiff = FALSE) {
   medpaper_require(c("ggplot2", "jsonlite", "ragg", "svglite", "systemfonts"))
+  text_roles <- medpaper_text_roles(plot)
+  subtitles <- Filter(function(x) identical(x$role,"subtitle"),text_roles)
+  # Check the actual composition as well as explicitly declared components. Do
+  # not erase text silently: move explanatory prose to the external figure legend.
+  for (panel in panels) subtitles <- c(subtitles,Filter(function(x) identical(x$role,"subtitle"),medpaper_text_roles(panel)))
+  if (length(subtitles)) stop("Figure subtitles are not allowed. Remove the subtitle in plotting source; place needed explanation in the relevant legend, Methods or Results while retaining necessary clinical labels.")
   apply_labels <- function(item) {
     if (inherits(item, "ggplot")) for (name in c("title", "subtitle", "caption", "x", "y")) if (is.character(item$labels[[name]])) item$labels[[name]] <- medpaper_label(item$labels[[name]])
     policy <- jsonlite::fromJSON(Sys.getenv("MEDPAPER_LABEL_POLICY", "{}"))
@@ -137,6 +182,7 @@ medpaper_save <- function(plot, stem, width = "single", height_mm = 75, dpi = 60
     item
   }
   plot <- apply_labels(plot); panels <- lapply(panels, apply_labels)
+  text_roles <- medpaper_text_roles(plot)
   output <- Sys.getenv("MEDPAPER_RENDER_STEM")
   if (!nzchar(output)) stop("Use tools/figures/render_r.py; a managed staging directory is required.")
   if (basename(stem) != basename(output)) stop("Figure script stem differs from the requested plan entry.")
@@ -159,6 +205,7 @@ medpaper_save <- function(plot, stem, width = "single", height_mm = 75, dpi = 60
   on.exit(if (grDevices::dev.cur() == svg_device) grDevices::dev.off(), add = TRUE)
   metadata <- list(schema_version = 1L, engine = "R", width_class = width,
                    size_mm = c(unname(widths[width]), height_mm), dpi = dpi,
+                   text_roles = text_roles,
                    panels = Filter(Negate(is.null), lapply(panels, medpaper_layers)),
                    r_version = R.version.string,
                    packages = setNames(lapply(c("ggplot2", "jsonlite", "ragg", "svglite", "systemfonts"),
