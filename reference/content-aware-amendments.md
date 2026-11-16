@@ -1,5 +1,29 @@
 # Content-aware revisions and selected-journal production
 
+## Author-edited Word return
+
+Use `tools/manuscript/author_revision.py inspect --managed <bundle-DOCX> --author <author-DOCX>`
+inside the active project's environment. Relative paths are project-relative; the author's
+file may have a different filename. Default inspection is read-only with bounded text/cell,
+media/relationship and section/layout differences; optional `--report` writes only an
+explicitly requested new JSON file. No automatic Word-to-Markdown conversion can preserve
+all citation/source identities, so changed content must be reconciled at its real sources.
+
+For `LAYOUT_CANDIDATE`, open/seal the existing S24 layout revision and use `adopt-layout`
+with `--managed-sha256` and `--author-sha256` from the current inspection. Only the exact
+manifest-listed mutable bundle file with genuine current build inputs is eligible. The
+tool keeps exact author bytes and a necessary provenance snapshot, records the real import
+tool, and preserves the author's original. It does not update baselines, approval, freezes
+or review status. Run actual journal/style/blinding and changed-page QA before normal
+revision validation/closure. Normal pagination-field caches share the builder's semantics;
+scientific numbers, references, field values and negation are not pagination exceptions.
+
+Text edits, moved legends/reference content, changed table cells/merges or embedded media
+return `SOURCE_RECONCILIATION_REQUIRED`. Resolve source changes and real science/meaning
+questions in the existing batch, rebuild actual dependants, then import only a matching
+layout. Do not overwrite the author file, an immutable release or scientific master to
+force acceptance. Imported does not mean reviewed, approved or submitted.
+
 For v1.24 guide acquisition and journal/article/submission-stage transfers, use
 `reference/journal-adaptation.md`. The active context binds the actual official sources,
 configuration and final-file checks; legacy `init --replace` alone cannot switch journals.

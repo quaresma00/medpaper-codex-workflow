@@ -164,6 +164,12 @@ references each own their topic; this policy contains no historical supersession
   newly discovered dependencies within the batch and distinguish inspected unchanged sources.
   Close only after actual scoped checks on final files; reuse only hash/rule/config-matched
   evidence and genuine unchanged optional author adjudications. New evidence/errors stay open.
+  Use `rework.py preflight` for the bounded read-only impact/current-evidence view and
+  `finish --completion <JSON>` to run needed checks, explicitly resolve items and close in
+  fail-fast order. Actual medical/visual judgments remain executor work, never generated PASS.
+  Fresh equivalent reference proof is renewable evidence; changed identity/content is not.
+  Author-edited DOCX uses `manuscript/author_revision.py inspect` before any import;
+  only proven source-equivalent layout can be adopted, then actual journal/page QA remains.
 - Proven meaning-preserving presentation amendments preserve approval lineage without another
   confirmation/audit. Equal digits alone do not prove equal science. A real scientific correction
   needs affected owner work, renewed S19 review, explicit approval and freeze, then scoped S24
@@ -178,3 +184,5 @@ references each own their topic; this policy contains no historical supersession
 Ask one concise question only when a missing choice, source or authorization materially
 changes the science, target, private-data handling or external action. Otherwise finish the
 authorized unblocked work. Distinguish generated, content-accepted, visually-accepted and submitted.
+Read the actual completion/revision/audit status before handoff. Keep study-specific names,
+definitions, paths and scientific choices in the project; do not add them to global defaults.

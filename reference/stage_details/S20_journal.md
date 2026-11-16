@@ -1,5 +1,10 @@
 # S20 - Select the most realistic current SCIE journal
 
+Before detailed guide extraction or expensive formatting, screen actual official candidate
+eligibility: accepted article type, uninvited-submission availability and any mandatory study
+design/data conditions. Resolve a true hard mismatch before production. Accepting a design
+does not promise editorial review or acceptance; keep realistic journal expectations.
+
 Keep article-specific rules in submission_requirements.json. `word_count.limit` and
 `abstract_limit` are nullable; do not scrape caps with a broad regex across guide prose.
 Optional `limits` rows for `main`, `abstract`, `references` have `status` (required, allowed,
@@ -36,6 +41,10 @@ from a `journal-switch`, which still preserves the same accepted science.
    realistic acceptance reasoning, APC and turnaround when currently verifiable, and the
    main rejection risk. Rank by acceptance probability and study fit. Q3/Q4 and low-impact
    journals are fully acceptable and should outrank prestige targets with poor odds.
+   At S20 put the substantive retain/combine/move rationale in the sealed target profile's
+   `journal_adaptation_reason` while the initial integration copy remains pristine. When
+   applying the adaptation at S21/S22, copy that rationale to the actual journal plan;
+   later checks require the plan's own rationale. Display limits and science freezes remain.
 4. Present the shortlist and wait for the user's choice. Do not default to the highest
    impact factor.
 5. Write the actual next target to a task-local JSON, with ISSN, article_type,

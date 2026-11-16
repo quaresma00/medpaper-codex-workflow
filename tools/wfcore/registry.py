@@ -109,6 +109,31 @@ def load(config_overrides: dict | None = None) -> Pipeline:
     if not stages:
         raise SystemExit("pipeline.toml declares no stages")
 
+    # Exact project-owned outputs are declarations, never shared study-specific
+    # glob exceptions or a waiver of their owning stage/scientific checks.
+    support = (config_overrides or {}).get("support_outputs", [])
+    if not isinstance(support, list):
+        raise ValueError("Project support_outputs must be an array of file/owning_stage/purpose records")
+    from pathlib import PurePosixPath
+    existing = {name for stage in stages for name in stage.outputs}
+    owners = {stage.id:stage for stage in stages}
+    roots = {"00_input","01_protocol","02_data","03_analysis","04_tables","05_figures","06_refs","07_manuscript","08_submission"}
+    for row in support:
+        if not isinstance(row,dict) or not isinstance(row.get("file"),str):
+            raise ValueError("Each project support output needs an exact relative file")
+        name = row["file"]
+        part = PurePosixPath(name)
+        if (part.is_absolute() or ".." in part.parts or not part.parts or part.parts[0] not in roots
+                or any(char in name for char in "\\:*?[]") or part.as_posix()!=name or len(part.parts)<2):
+            raise ValueError(f"Unsafe project support output: {name}")
+        if name in existing:
+            raise ValueError(f"Duplicate or reassigned existing output: {name}")
+        owner = row.get("owning_stage")
+        if owner not in owners or not isinstance(row.get("purpose"),str) or len(row["purpose"].strip())<20:
+            raise ValueError(f"{name}: supply its real owning_stage and concrete purpose")
+        owners[owner].outputs.append(name)
+        existing.add(name)
+
     targets = dict(data.get("targets", {}))
     if config_overrides:
         targets.update(config_overrides.get("targets", {}))

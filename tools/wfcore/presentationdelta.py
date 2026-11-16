@@ -74,8 +74,14 @@ def classify(project: Path, revision: dict) -> dict:
     current = current_files(project)
     changed = sorted(rel for rel in set(baseline) | set(current) if baseline.get(rel) != current.get(rel))
     reasons, uncertain = [], []
+    from .evidence import reference_evidence, reference_renewal_problems
+    reasons.extend(reference_renewal_problems(project, baseline, current))
     from .determinism import content_sha256
     for rel in changed:
+        if reference_evidence(rel):
+            # Only validated same-source retrieval/verification events are renewable.
+            # Library, exports, registered full text and source claims stay protected.
+            continue
         if rel.startswith(PROTECTED) or rel in {"01_protocol/protocol_v1.md", "01_protocol/protocol_final.md", "01_protocol/analysis_contract.json", "01_protocol/study_facts.json"}:
             reasons.append(f"{rel}: scientific input/analysis/reference identity changed"); continue
         old = before.get(rel); path = project / rel

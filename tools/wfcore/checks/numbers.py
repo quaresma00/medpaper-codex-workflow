@@ -175,6 +175,51 @@ def _offenders(text: str, floats, strings, allowed, p_values=None) -> list[tuple
     return bad
 
 
+def _prose_offenders(ctx, rel, text, floats, strings, allowed):
+    """Carry typed Methods constants only through the exact composed source block.
+
+    A Methods allowance must never become a Results/Abstract number exemption.
+    Changed, duplicate or missing source blocks fail closed rather than borrowing it.
+    """
+    if not rel.endswith("full_manuscript.md"):
+        return _offenders(text, floats, strings, allowed)
+    source = ctx.p("07_manuscript/methods.md")
+    block = source.read_text(encoding="utf-8").strip() if source.is_file() else ""
+    if not block or text.count(block) != 1:
+        # Only unchanged accepted paragraphs in one journal Methods section.
+        if rel.startswith("08_submission/integration/") and block:
+            matches = list(re.finditer(r"(?m)^# Methods\s*$", text))
+            if len(matches) == 1:
+                lo = matches[0].end()
+                end = re.search(r"(?m)^# [^#]", text[lo:])
+                hi = lo + end.start() if end else len(text)
+                constants = _allowlist(ctx)
+                paragraphs = [part.strip() for part in re.split(r"\n\s*\n", block)
+                              if part.strip() and not part.lstrip().startswith("#")]
+                spans = []
+                for part in paragraphs:
+                    if text.count(part) == 1:
+                        at = text.find(part, lo, hi)
+                        if at >= 0: spans.append((at, at+len(part)))
+                if spans:
+                    offenders=[]; pos=0
+                    for lo, hi in sorted(spans):
+                        for start, stop, allowed_values in ((pos,lo,set()),(lo,hi,constants)):
+                            offenders.extend((line+text[:start].count("\n"), token)
+                                for line,token in _offenders(text[start:stop],floats,strings,allowed_values))
+                        pos=hi
+                    offenders.extend((line+text[:pos].count("\n"),token)
+                        for line,token in _offenders(text[pos:],floats,strings,set()))
+                    return offenders
+        return _offenders(text, floats, strings, set())
+    start = text.index(block); end = start + len(block)
+    pieces = ((text[:start], set(), 0),
+              (text[start:end], _allowlist(ctx), text[:start].count("\n")),
+              (text[end:], set(), text[:end].count("\n")))
+    return [(line + offset, token) for part, constants, offset in pieces
+            for line, token in _offenders(part, floats, strings, constants)]
+
+
 # ---------------------------------------------------------------------------
 # checks
 # ---------------------------------------------------------------------------
@@ -234,7 +279,7 @@ def numbers_have_provenance(ctx: Ctx) -> Result:
     masked, external_problems = mask(ctx.project,rel,ctx.read(rel))
     if external_problems:
         return Result(False,"numbers_have_provenance","; ".join(external_problems[:8]))
-    bad = _offenders(admin_scrub(masked, ctx.project, rel), floats, strings, allowed)
+    bad = _prose_offenders(ctx, rel, admin_scrub(masked, ctx.project, rel), floats, strings, allowed)
     if bad:
         shown = "; ".join(f"line {ln}: {tok}" for ln, tok in bad[:10])
         return Result(

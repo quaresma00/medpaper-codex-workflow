@@ -1,5 +1,18 @@
 # Quality-preserving execution
 
+Use bounded field/error queries and cap the combined output of parallel reads; do not
+concatenate several long manuals and reread them after truncation. Reuse loaded guidance
+and the verified environment. Stages are not default turn boundaries: continue unblocked
+work and pause only for a material missing decision, source or authorization.
+
+Managed process records now include UTC start/end, monotonic elapsed seconds, stage and
+revision ID in their existing JSON. Unavailable model token/cost usage is null, not an
+estimate. Concurrent process-duration totals are not wall-clock duration. Do not create a
+new telemetry dossier or claim quantified savings without real platform measurements.
+Use `rework.py preflight` and explicit `finish` from `rework-routing.md` to reduce manual
+closure steps while keeping actual checks and inspections. Full builds remain bounded;
+repeat only affected artifact/page checks after the initial complete review.
+
 For already approved versions, `content-aware-amendments.md` supersedes generic reconfirmation
 instructions below for proven presentation changes only. Keep actual scoped checks and
 visual inspection; do not commission another unchanged independent review or rewind S19.

@@ -199,6 +199,32 @@ def allowlist() -> dict[str, str]:
     return out
 
 
+def style_exception_key(item: dict) -> str:
+    """A literal current diagnostic, not a regex or a blanket rule exemption."""
+    return ('style|' + str(item.get('file','')) + '|' + str(item.get('kind',''))
+            + '|' + str(item.get('detail',''))).lower()
+
+
+def apply_style_exceptions(items: list[dict], allow: dict[str,str]) -> list[dict]:
+    """Retain a medically read linguistic ambiguity as an explained advisory.
+
+    Numeric/statistical defects are never eligible. File, kind and complete
+    diagnostic must match; current source/linter/exception hashes remain bound
+    by the ordinary report validator. This cannot alter the fact-preservation pass.
+    """
+    eligible={'abbrev_redefined','abbrev_undefined','abbrev_used_before_defined',
+              'spelling_variant_mixed','sentence_starts_with_numeral'}
+    result=[]
+    for item in items:
+        reason=allow.get(style_exception_key(item),'')
+        if (item.get('severity')=='blocking' and item.get('kind') in eligible
+                and isinstance(reason,str) and len(reason.strip())>=30):
+            item={**item,'severity':'advisory','original_severity':'blocking',
+                  'contextual_exception':reason.strip()}
+        result.append(item)
+    return result
+
+
 def sections(only: str | None = None) -> list[tuple[str, str]]:
     proj = project_root()
     if only:
@@ -629,6 +655,7 @@ def cmd_lint(args) -> int:
     style += lint_spelling(docs)
     if not args.file:
         style += lint_abbreviations(docs)
+    style = apply_style_exceptions(style, allow)
 
     tier_a = [x for x in ai if x["tier"] == "A"]
     tier_b = [x for x in ai if x["tier"] == "B"]

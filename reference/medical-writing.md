@@ -1,6 +1,10 @@
 # Medical writing at the point of drafting
 
 Read this short guide once at S08/S09/S14/S16/S17 and reuse the relevant section.
+At actual read-back, resolve vague referents into the real eligible unit/population,
+selection criterion and comparison where needed. A sentence must be medically intelligible
+without an analysis script. Do not globally replace ordinary terms or invent patients,
+clinical implications or methodological detail merely to make wording sound more medical.
 Start from the actual close-paper observations, approved study definitions, accepted tables
 and figures, and the source facts for the paragraph. Operational records stay outside the
 paper. Read tool/schema documentation only when executing that operation or resolving a defect;

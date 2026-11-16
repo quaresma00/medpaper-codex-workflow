@@ -14,6 +14,28 @@ RECEIPTS = ".wf/build_receipts.json"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
+def is_page_counter(instruction):
+    return bool(re.match(r"\s*(PAGE|NUMPAGES|SECTIONPAGES)\b",instruction or "",re.I))
+
+
+def paragraph_text(paragraph):
+    """Word text with only known pagination-field values excluded."""
+    text,fields=[],[]
+    def visit(node):
+        if node.tag==W+"fldSimple" and is_page_counter(node.get(W+"instr","")):
+            return
+        if node.tag==W+"fldChar":
+            flag=node.get(W+"fldCharType")
+            if flag=="begin": fields.append({"instruction":"","page":False})
+            elif flag=="separate" and fields: fields[-1]["page"]=is_page_counter(fields[-1]["instruction"])
+            elif flag=="end" and fields: fields.pop()
+        elif node.tag==W+"instrText" and fields: fields[-1]["instruction"]+=node.text or ""
+        elif node.tag==W+"t" and not any(f["page"] for f in fields): text.append(node.text or "")
+        for child in node: visit(child)
+    visit(paragraph)
+    return "".join(text)
+
+
 def content_parts(path: Path) -> list[str]:
     """Content, not ZIP bytes: includes text and embedded media; ignores layout whitespace."""
     import hashlib
@@ -28,25 +50,7 @@ def content_parts(path: Path) -> list[str]:
             if not re.fullmatch(r"word/(document|footnotes|endnotes|header\d+|footer\d+)\.xml", name):
                 continue
             root = ET.fromstring(archive.read(name))
-            for parent in root.iter():
-                for node in list(parent):
-                    if node.tag == W+"fldSimple" and re.match(r"\s*(PAGE|NUMPAGES|SECTIONPAGES)\b",node.get(W+"instr",""),re.I):
-                        parent.remove(node)
-            paragraphs=[]
-            for p in root.iter(W+"p"):
-                text=[];fields=[]
-                for node in p.iter():
-                    if node.tag==W+"fldChar":
-                        flag=node.get(W+"fldCharType")
-                        if flag=="begin": fields.append({"instruction":"","page":False})
-                        elif flag=="separate" and fields:
-                            fields[-1]["page"]=bool(re.match(r"\s*(PAGE|NUMPAGES|SECTIONPAGES)\b",fields[-1]["instruction"],re.I))
-                        elif flag=="end" and fields: fields.pop()
-                    elif node.tag==W+"instrText" and fields:
-                        fields[-1]["instruction"]+=node.text or ""
-                    elif node.tag==W+"t" and not any(f["page"] for f in fields):
-                        text.append(node.text or "")
-                paragraphs.append("".join(text))
+            paragraphs=[paragraph_text(p) for p in root.iter(W+"p")]
             text=" ".join(paragraphs)
             text = re.sub(r"\s+", " ", text.replace("\u00a0", " ")).strip()
             if text:

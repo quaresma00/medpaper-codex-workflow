@@ -425,7 +425,7 @@ def docx_text(path: Path) -> str:
 
 
 def _canon_figure_id(value: str) -> str:
-    return re.sub(r"\s+", " ", value.strip().rstrip(".")).casefold()
+    return re.sub(r"^fig\.\s+", "figure ", re.sub(r"\s+", " ", value.strip().rstrip(".")).casefold())
 
 
 def _legend_problems(root, expected: list[str], cap: int, heading="Figure legends") -> list[str]:
@@ -444,7 +444,7 @@ def _legend_problems(root, expected: list[str], cap: int, heading="Figure legend
     headings: list[tuple[int, str, str]] = []
     for i in range(start, len(paragraphs)):
         value, style_id = paragraphs[i]
-        match = re.match(r"^(Figure\s+S?\d+)\.?\s*(.*)$", value, re.I)
+        match = re.match(r"^((?:Figure|Fig\.)\s+S?\d+)\.?\s*(.*)$", value, re.I)
         if match and style_id == "SectionHeading":
             headings.append((i, match.group(1), match.group(2)))
     blocks: dict[str, tuple[int, int]] = {}
@@ -482,6 +482,9 @@ def _legend_problems(root, expected: list[str], cap: int, heading="Figure legend
 def audit_docx(path: Path, style: dict, kind: str = "",
                planned_figures: list[str] | None = None,
                legend_cap: int | None = None) -> list[str]:
+    if kind in {"manuscript","figure_legends"} and planned_figures is None:
+        planned_figures=planned_figure_ids(scope=style.get("figure_legend_scope","all"))
+
     problems: list[str] = []
     if not path.is_file():
         return [f"missing DOCX: {path}"]
@@ -819,7 +822,7 @@ def finalize(args) -> int:
         normalize_docx(candidate,style,args.kind)
         if content_digest(candidate) != before:
             raise ValueError("Final cleanup changed visible content; prior Word preserved")
-        problems=audit_docx(candidate,style,args.kind,planned_figure_ids() if args.kind=="manuscript" else None,figure_legend_cap())
+        problems=audit_docx(candidate,style,args.kind,planned_figure_ids(scope=style.get("figure_legend_scope","all")) if args.kind=="manuscript" else None,figure_legend_cap())
         if problems:
             raise ValueError("Final cleanup QA failed: "+"; ".join(problems))
         candidate.replace(args.output)
@@ -856,12 +859,23 @@ def audit_manifest(args) -> int:
             problems += audit_docx(path, style, role, wanted, legend_cap)
     from wfcore.submissionlayout import required_roles,manifest_problems
     problems+=manifest_problems(project_root(),manifest)
-    for role in required_roles(project_root()):
-        if not any(p.suffix.lower() == ".docx" for p in roles.get(role, [])):
+    requirements_path=project_root()/"08_submission/submission_requirements.json"
+    requirements=json.loads(requirements_path.read_text(encoding="utf-8")) if requirements_path.is_file() else {}
+    required=required_roles(project_root())
+    for role in required:
+        accepted=requirements.get("upload_formats",{}).get(role)
+        if accepted:
+            if not any(p.is_file() and p.suffix.lower().lstrip(".") in accepted for p in roles.get(role,[])):
+                problems.append(f"manifest lacks an actual required-format item for role '{role}'")
+        elif role in TEXT_ROLES and not any(p.suffix.lower()==".docx" for p in roles.get(role,[])):
             problems.append(f"manifest lacks a DOCX item for role '{role}'")
     if (project_root() / "08_submission/integration/supplementary_methods.md").exists():
-        if not any(p.suffix.lower() == ".docx" for p in roles.get("supplementary", [])):
-            problems.append("supplementary_methods.md exists but no supplementary DOCX is listed")
+        word=any(p.suffix.lower()==".docx" for p in roles.get("supplementary",[]))
+        pdf=("supplementary_methods" in required
+             and requirements.get("upload_formats",{}).get("supplementary_methods")==["pdf"]
+             and any(p.is_file() and p.suffix.lower()==".pdf" for p in roles.get("supplementary_methods",[])))
+        if not (word or pdf):
+            problems.append("supplementary_methods.md exists but no required supplementary DOCX/PDF is listed")
     if problems:
         print("submission DOCX audit failed:\n  " + "\n  ".join(sorted(set(problems))))
         return 2

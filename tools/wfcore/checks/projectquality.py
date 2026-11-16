@@ -135,7 +135,13 @@ def journal_display_fit(ctx):
         counts={k:len(plan.get(k,[])) for k in ("main_figures","main_tables","supp_figures","supp_tables")}
         counts["main_display_items"]=counts["main_figures"]+counts["main_tables"]
         problems=compare(counts,display_limits(ctx.project))
-        if len(str(plan.get("journal_adaptation_reason","")))<30: problems.append("At journal choice, justify actual retain/combine/move decisions before adapting text; keep scientific inventory unchanged")
+        reason=plan.get("journal_adaptation_reason","")
+        # S20 keeps the first derived scientific copy pristine. Its presentation
+        # decision therefore belongs in the already sealed target profile until
+        # S21/S22 actually apply that decision to the journal-specific plan.
+        if not reason and ctx.stage.id=="S20_journal":
+            reason=load(ctx.project,"08_submission/target_journal.json").get("journal_adaptation_reason","")
+        if not isinstance(reason,str) or len(reason.strip())<30: problems.append("At journal choice, justify actual retain/combine/move decisions before adapting text; keep scientific inventory unchanged")
     except (OSError,ValueError,TypeError) as exc: problems=[str(exc)]
     return Result(not problems,"journal_display_fit","; ".join(problems) or "Journal display inventory checked before production")
 

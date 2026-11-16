@@ -153,7 +153,13 @@ def apply_docx(doc, target: dict, role: str) -> None:
         name = paragraph.style.name if paragraph.style else ""
         admin = any(n.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name","").startswith("medpaper_admin_")
                     for n in paragraph._p.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bookmarkStart"))
-        if re.match(r"Heading [1-9]$", name) and paragraph.text in heads: paragraph.text = heads[paragraph.text]
+        if re.match(r"Heading 1$", name) and paragraph.text in heads: paragraph.text = heads[paragraph.text]
+        if target.get("figure_caption_label")=="Fig." and re.match(r"Heading [1-9]$|^SectionHeading$",name):
+            caption=re.match(r"^(?:Figure|Fig\.)\s+(S?\d+)\.?\s*(.*)$",paragraph.text)
+            if caption:
+                paragraph.text="Fig. "+caption[1]+" "+caption[2].rstrip(".")
+                for run in paragraph.runs:run.bold=True
+
         if paragraph.text.strip().casefold().startswith("keywords:"):
             terms = [term.strip() for term in re.split(r"[,;]", paragraph.text.split(":", 1)[1]) if term.strip()]
             for key, passes in (("min", lambda count, limit: count >= limit), ("max", lambda count, limit: count <= limit)):

@@ -140,7 +140,7 @@ def no_orphans(ctx: Ctx) -> Result:
             "no_orphans",
             f"{len(orphans)} undeclared file(s): " + ", ".join(orphans[:10]),
             [
-                "Either delete them, or declare them in pipeline.toml (stage outputs / [freeform].globs).",
+                "Preserve user files. Declare necessary project-specific files in .wf/config.toml support_outputs with exact file, owning_stage and purpose; do not add study names to the shared engine.",
                 "Run `.venv/Scripts/python.exe tools/wf.py clean` to review.",
             ],
             severity=ctx.spec.get("severity", "fail"),

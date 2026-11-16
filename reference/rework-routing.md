@@ -1,5 +1,61 @@
 # Scoped user revisions (v1.7)
 
+## Current local-revision fast path
+
+Study-specific support filenames do not belong in the shared pipeline. When an existing
+generic namespace does not fit, declare exact required outputs in the PROJECT's existing
+`.wf/config.toml`, for example:
+
+```toml
+[[support_outputs]]
+file = "01_protocol/custom_source_audit.json"
+owning_stage = "S07_artifacts"
+purpose = "Source definition audit required by this study's actual analysis."
+```
+
+Use the real owner and purpose. Paths are exact, project-relative and unique; wildcards,
+escaping paths and reassignment of existing outputs fail. The owning stage must still
+produce/check its declared files, future-stage rules still apply, and scientific source,
+scope and freeze protections remain. This accounts for a local file; it is not acceptance
+of its scientific contents. Do not add these example files when the study does not need them.
+
+Keep the existing batch and review checkpoint. After sealing, run
+`tools/rework.py preflight` for a read-only, bounded view of actual changes, scope barriers,
+pending items and current/reusable validation. It does not build files or claim acceptance.
+Fix the real owner, build only its actual consumers, and complete the necessary medical,
+source and changed-page checks. Use `depend` for newly discovered consumers; do not rewrite
+the author's feedback or reset stages.
+
+The final closure can use one explicit executor completion JSON, normally in `project/temp/`:
+
+```json
+{
+  "summary": "<actual round completion, at least 40 characters>",
+  "items": [{
+    "id": "<existing pending item ID>",
+    "summary": "<what was actually corrected, at least 30 characters>",
+    "validated_by": ["<actual completed check and medical/visual reading>"],
+    "files": ["<optional additional affected project-relative output>"]
+  }]
+}
+```
+
+Include every pending item once. Omit `files` if its declared affected sources suffice;
+use actual paths, never the angle-bracket example. `finish --completion <JSON>` first
+preflights, runs only required scoped checks or reuses their current valid receipt, then
+calls the existing mark and close operations in fail-fast order. It distinguishes changed,
+checked-but-unchanged and deleted files from real bytes. It never manufactures a user
+approval, actual render, visual inspection, clinical-meaning assessment or independent review.
+Use `--meaning-review <JSON>` only for an actual comparison required by the existing route.
+If a check or closure fails, the round remains unresolved; report the exact next action.
+
+Equivalent new PubMed verification events can renew evidence without changing science.
+Existing XML alteration/deletion, identity/content differences and invalid provenance do
+not qualify. Do not delete evidence, reset a baseline or alter verification flags to close.
+Before delivering, read `wf status --json`: completed stages, active revision, recorded
+confirmation and final audit are separate states. A usable file can be delivered while
+explicitly reporting the remaining round/audit work; preparation is not actual submission.
+
 v1.13 post-freeze rule: read `content-aware-amendments.md`. Proven presentation-only
 corrections retain approval, run scoped checks and report once; no new S19 review,
 subagent round or confirmation. Initial/real scientific review still follows below.

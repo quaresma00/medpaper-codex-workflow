@@ -34,7 +34,12 @@ def main():
         from wfcore.state import State
         guard_build(project);rel=sw.section_path(args.section)
         state=State(project).load();owner=sw.SECTIONS[Path(rel).stem]
-        if state.current!=owner and not permits(project,owner): raise ValueError("Use the active section stage or its actual scoped revision")
+        # Assembly owns the source-section cohesion/read-back required by S17.
+        # A frozen master still requires the normal scoped revision path.
+        assembly_edit = (state.current == "S17_assemble" and
+                         not (project/"07_manuscript/scientific_master_freeze.json").exists())
+        if state.current!=owner and not assembly_edit and not permits(project,owner):
+            raise ValueError("Use the active section stage or its actual scoped revision")
         guard_outputs(project,[project/rel])
         if args.command=="begin": result=sw.begin(project,args.section,args.source,scientific_reset=args.scientific_reset)
         else:

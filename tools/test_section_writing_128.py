@@ -157,4 +157,25 @@ class SectionWritingTests(unittest.TestCase):
         self.assertIn("active section stage",bad.stderr)
 
 
+    def test_assembly_renews_actual_section_readback_and_preserves_freeze_boundary(self):
+        self.begin();self.accept()
+        self.state.data["current"]="S17_assemble";self.state.save()
+        command=[sys.executable,str(ROOT/"tools/manuscript/section_writing.py"),"begin","--source","01_protocol/protocol_final.md","--section","methods","--project",str(self.project)]
+        renewed=subprocess.run(command,capture_output=True,text=True,encoding="utf-8",timeout=30)
+        self.assertEqual(renewed.returncode,0,renewed.stderr)
+        self.accept()
+        self.text("07_manuscript/scientific_master_freeze.json","{}")
+        frozen=subprocess.run(command,capture_output=True,text=True,encoding="utf-8",timeout=30)
+        self.assertNotEqual(frozen.returncode,0)
+        self.assertIn("active section stage",frozen.stderr)
+
+    def test_report_only_preserves_library_bytes_and_mtime(self):
+        from pubmed import build_library
+        library=self.text("06_refs/library.json",json.dumps({"entries":[],"updated_at":"2026-01-01T00:00:00Z"}))
+        before=(library.read_bytes(),library.stat().st_mtime_ns)
+        with patch.object(sys,"argv",["build_library.py","--report"]),patch.object(build_library.eu,"project_root",return_value=self.project),patch.object(build_library.eu,"refs_dir",return_value=library.parent):
+            self.assertEqual(build_library.main(),0)
+        self.assertEqual(before,(library.read_bytes(),library.stat().st_mtime_ns))
+
+
 if __name__=="__main__":unittest.main(verbosity=2)

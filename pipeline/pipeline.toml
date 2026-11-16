@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.29.4"
+version = "1.29.14"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -1084,6 +1084,18 @@ final = true
 # ------------------------------------------------------------------------------
 [freeform]
 globs = [
+  "06_refs/views/*.json",
+  "01_protocol/*_dictionary.csv",
+  "01_protocol/dictionary_rules.json",
+  "01_protocol/build_benchmark.py",
+  "01_protocol/source_codebooks/**",
+  "03_analysis/results/*.csv",
+  "04_tables/code/**",
+  "07_manuscript/build_*.py",
+  "07_manuscript/code/**",
+  "07_manuscript/supplementary_*.csv",
+  "08_submission/submission_packages/**",
+
   "00_input/*",
   "02_data/raw/**",
   "02_data/acquisition/**",

@@ -259,7 +259,7 @@ def _canonical_section_counts(text: str) -> dict[str, int]:
     """Count journal-limited sections without counting title, keywords, refs or legends."""
     matches = list(re.finditer(r"(?m)^#\s+([^#\n].*)$", text))
     out: dict[str, int] = {}
-    wanted = {"abstract", "introduction", "methods", "results", "discussion"}
+    wanted = {"abstract", "introduction", "methods", "results", "discussion", "conclusion"}
     for i, match in enumerate(matches):
         name = match.group(1).strip().casefold()
         if name not in wanted:

@@ -16,7 +16,7 @@ MANIFEST = "08_submission/bundle/manifest.json"
 AUTHOR_FACTS = "00_input/author_info.json"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 SECTIONS = ("Abstract", "Keywords", "Introduction", "Methods", "Results", "Discussion",
-            "Conclusion", "Declarations and Statements", "References", "Tables", "Figure legends")
+            "Conclusion", "Declarations and Statements", "References", "Tables", "Figure legends", "Key Points")
 ALIASES = {"materials and methods": "Methods", "patients and methods": "Methods",
            "statistical methods": "Methods", "conclusions": "Conclusion",
            "declarations": "Declarations and Statements", "statements": "Declarations and Statements",

@@ -1,5 +1,22 @@
 # Source-aligned incremental validation
 
+## Reference inputs selected by the actual producer
+
+If a producer consumes only a few verified records/fields, it may use
+`tools/pubmed/reference_view.py export --citekeys <keys> --fields title,abstract --output 06_refs/views/<name>.json`.
+Choose only the fields actually read; article identities are mandatory. The view is a
+deterministic input projection of independently verified source XML, not another reference
+library or permission to cite. `check --input <view>` is read-only and rejects stale
+selected values/identities or invalid current proof. Selection/field changes require an
+explicit `--replace` and the actual revision scope.
+
+Unrelated verified-library growth and retrieval timestamps do not rewrite a byte-identical
+view or its modification time. Declare this real view as the producer input instead of
+the entire library only when that reflects actual use. Actual consumed full text, XML,
+numeric passages and result inputs still belong in the real dependency/source-claim path;
+a view never claims they were read. Changed selected content rebuilds its true consumers.
+Global library integrity remains checked normally.
+
 For post-freeze revisions, also read `content-aware-amendments.md`: a real presentation
 delta preserves scientific approval and exact historical releases, without repeated author
 confirmation. Actual clinical meaning, content checks and changed-page visual QA remain.

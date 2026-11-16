@@ -431,6 +431,10 @@ def main() -> int:
         print("   " + ", ".join(sorted(missing)))
         print("   Add them with --add-ids <pmid>, or fix the citation. Never leave a dangling key.")
 
+    if args.report and not (queries or args.add_ids or args.drop or args.export):
+        report(lib)
+        return 0
+
     save_library(lib)
     if args.export or queries or args.add_ids or args.drop:
         export(lib)

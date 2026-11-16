@@ -156,6 +156,9 @@ def scope_problems(project: Path, revision: dict, files: dict | None = None) -> 
             return before.get("08_submission/" + tail) == now.get(rel)
         return False
     problems = [f"unplanned change: {rel}" for rel in sorted(changed - allowed) if not maintenance(rel)]
+    if revision.get("presentation_candidate"):
+        from .evidence import reference_renewal_problems
+        problems.extend(reference_renewal_problems(project, before, now))
     narrative_guard = revision.get("discussion_notes_guard")
     if narrative_guard:
         from .discussion import notes_outside_discussion_hash
@@ -404,6 +407,12 @@ def validate(project: Path, pipeline, state, revision: dict, *, check_identities
     drift = {r for r in set(files) | set(after) if not renewable(r) and files.get(r) != after.get(r)}
     if drift:
         results.append(Result(False, "validation_source_drift", ", ".join(sorted(drift))))
+    if revision.get("presentation_candidate"):
+        from .evidence import reference_evidence, reference_renewal_problems
+        if any(reference_evidence(r) and files.get(r) != after.get(r) for r in set(files) | set(after)):
+            problems = reference_renewal_problems(project, revision.get("baseline", {}), after)
+            results.append(Result(not problems, "reference_evidence_unchanged",
+                                  "; ".join(problems[:8]) or "new retrieval events preserve verified source identity/content"))
     return results, input_signature(project, revision, after), after
 
 
@@ -459,7 +468,13 @@ def refresh_evidence(project: Path, pipeline, state, revision: dict) -> None:
     """On close, changed evidence reruns its actual gates, not every manuscript check."""
     from . import checks
     from .checks import Ctx
-    current = {r: h for r, h in snapshot(project).items() if renewable(r)}
+    all_current = snapshot(project)
+    current = {r: h for r, h in all_current.items() if renewable(r)}
+    if revision.get("presentation_candidate"):
+        from .evidence import reference_renewal_problems
+        problems = reference_renewal_problems(project, revision.get("baseline", {}), all_current)
+        if problems:
+            raise ValueError("renewed evidence is invalid: " + "; ".join(problems[:8]))
     if current == revision.get("validation", {}).get("renewable_evidence"):
         return
     checks.load_all()
@@ -509,6 +524,11 @@ def refresh_evidence(project: Path, pipeline, state, revision: dict) -> None:
         key = descriptor(stage, spec)
         if key in identities and identities[key] != receipts.identity(stage, spec):
             failures.append(f"{spec['check']}: evidence changed during refresh; rerun scoped checks")
+    after = snapshot(project)
+    if revision.get("presentation_candidate"):
+        from .evidence import reference_evidence, reference_renewal_problems
+        if any(reference_evidence(r) and all_current.get(r) != after.get(r) for r in set(all_current) | set(after)):
+            failures.extend(reference_renewal_problems(project, revision.get("baseline", {}), after))
     if failures:
         raise ValueError("renewed evidence is invalid: " + "; ".join(failures[:8]))
     # Preserve the original checked_at: evidence renewal must not extend proof freshness.

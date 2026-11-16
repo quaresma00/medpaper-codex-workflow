@@ -49,7 +49,7 @@ def _figure_ids(ctx: Ctx) -> list[str] | None:
 
 
 def _canon_figure_id(value: str) -> str:
-    return re.sub(r"\s+", " ", value.strip().rstrip(".")).casefold()
+    return re.sub(r"^fig\.\s+", "figure ", re.sub(r"\s+", " ", value.strip().rstrip(".")).casefold())
 
 
 def _markdown_legend_problems(text: str, expected: list[str], cap: int) -> list[str]:
@@ -305,7 +305,7 @@ def _docx_legend_problems(root, expected: list[str], cap: int, heading="Figure l
     headings = []
     for i in range(start, len(paragraphs)):
         text, style_id = paragraphs[i]
-        match = re.match(r"^(Figure\s+S?\d+)\.?\s*(.*)$", text, re.I)
+        match = re.match(r"^((?:Figure|Fig\.)\s+S?\d+)\.?\s*(.*)$", text, re.I)
         if match and style_id == "SectionHeading":
             headings.append((i, match.group(1), match.group(2)))
     blocks: dict[str, tuple[int, int]] = {}
@@ -508,7 +508,10 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
         if role in TEXT_ROLES and path.suffix.casefold() != ".docx":
             problems.append(f"{role}: narrative upload must be DOCX, got {path.name}")
         if path.suffix.casefold() == ".docx":
-            problems.extend(_audit_docx(path, style, role, planned,
+            scope=item.get("legend_scope",style.get("figure_legend_scope","all"))
+            if scope not in {"all","main","supp"}: problems.append("Invalid actual legend scope")
+            wanted=planned if scope=="all" else [i for i in (planned or []) if bool(re.search(r"\bS\d+",i))==(scope=="supp")]
+            problems.extend(_audit_docx(path, style, role, wanted,
                                         check_limit(ctx)))
             from ..journalspec import docx_problems
             problems.extend(docx_problems(path,style["journal_profile"],ctx.project,role))
@@ -524,7 +527,13 @@ def docx_bundle_ready(ctx: Ctx) -> Result:
             problems.append(f"no DOCX for required role '{role}'")
     if ctx.p(supplementary_rel).exists():
         if not any(p.suffix.casefold() == ".docx" for p in roles.get("supplementary", [])):
-            problems.append("supplementary Methods exists but no supplementary DOCX is packaged")
+            # An explicit current-journal PDF prose role overrides the default
+            # supplementary Word upload; its actual PDF and source stay bound.
+            pdfs=roles.get("supplementary_methods",[])
+            formats=requirements.get("upload_formats",{}).get("supplementary_methods",[])
+            if not ("supplementary_methods" in required and formats==["pdf"] and pdfs
+                    and all(p.is_file() and p.suffix.lower()==".pdf" for p in pdfs)):
+                problems.append("supplementary Methods exists but no required supplementary DOCX/PDF is packaged")
     if problems:
         return Result(False, "docx_bundle_ready", "; ".join(sorted(set(problems))[:10]),
                       ["Rebuild affected Word files with tools/manuscript/build_docx.py."])

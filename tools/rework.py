@@ -500,6 +500,31 @@ def _cmd_close(args, state: State) -> int:
     return 0
 
 
+def _cmd_finish(args, project, pipe, state):
+    """Fail-fast orchestration of existing checks, explicit resolutions and close."""
+    if not args.completion:
+        raise ValueError("finish needs --completion JSON with explicit items, resolutions and actual inspections")
+    from wfcore.revisionservice import completion_marks, preflight
+    payload = json.loads(args.completion.read_text(encoding="utf-8"))
+    path, record = _load_round(state)
+    marks = completion_marks(project, record, payload)
+    report = preflight(project, state, record)
+    if report["blockers"]:
+        raise ValueError("Revision preflight blocked: " + "; ".join(report["blockers"]))
+    if args.meaning_review:
+        record["meaning_review"] = json.loads(args.meaning_review.read_text(encoding="utf-8"))
+        _write_round(path, record)
+    if report["validation_current"] and not args.meaning_review:
+        print("Reusing current source/rule/config-bound scoped validation; no full check replay")
+    else:
+        result = scoped.check_round(project, pipe, state, path, record)
+        if result: return result
+    for mark in marks:
+        result = _cmd_mark(mark, project, state)
+        if result: return result
+    return _cmd_close(argparse.Namespace(summary=payload["summary"]), state)
+
+
 def resolve_route(kind: str, current: str, pipe) -> str:
     if kind == "manuscript-copyedit":
         current_index = pipe.stage(current).index
@@ -520,7 +545,8 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "preview", "classify", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "preview", "preflight", "finish", "classify", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("--completion", type=Path, help="explicit executor per-item completion JSON for fail-fast finish")
     parser.add_argument("--confirm-scientific-route",action="store_true",help="actual author authorization to renew scientific approval; never inferred from a numbered label")
     parser.add_argument("--input", help="known affected input for a discovered dependency")
     parser.add_argument("--output", help="newly discovered project-relative consumer")
@@ -547,6 +573,15 @@ def main() -> int:
     try:
         pipe = registry.load()
         state = State(project, pipe.layout.get("state_dir", ".wf")).load()
+        pipe = registry.load(state.config())
+        if args.command == "preflight":
+            from wfcore.revisionservice import preflight
+            _, record = _load_round(state)
+            report = preflight(project, state, record, full=args.full)
+            print(json.dumps(report, ensure_ascii=False))
+            return 2 if report["blockers"] else 0
+        if args.command == "finish":
+            return _cmd_finish(args, project, pipe, state)
         if args.command=="preview":
             if not args.plan: raise ValueError("preview needs the proposed --plan; it never writes or invalidates state")
             plan=_read_batch_plan(args.plan.resolve(),kinds,state.current,pipe)

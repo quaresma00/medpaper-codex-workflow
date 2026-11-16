@@ -165,6 +165,16 @@ def cmd_init(args) -> int:
     return 0
 
 
+def _completion_status(pipe, st, proj):
+    """Recorded workflow state only; file existence and PASS are different facts."""
+    return {"completed_stages":sum(st.is_done(s.id) for s in pipe.stages), "total_stages":len(pipe.stages),
+            "active_revision":st.data.get("active_revision_round"),
+            "upload_manifest_present":(proj/"08_submission/bundle/manifest.json").is_file(),
+            "author_confirmation_recorded":(st.decision("submission_package_user_confirmed") or {}).get("value"),
+            "final_audit_stage":st.stage_info("S25_submission_audit").get("status", "pending"),
+            "submission":"Preparation; actual submission requires a separate real submission record"}
+
+
 def cmd_status(args) -> int:
     pipe, st, proj = _load()
     stage = pipe.stage(st.current)
@@ -181,11 +191,14 @@ def cmd_status(args) -> int:
             "current": stage.id, "title": stage.title,
             "missing_outputs": missing, "active_feedback": active,
             "feedback_status": revision.get("status"),
-            "affected_files": revision.get("rebuild_files", []),
+            "affected_files": revision.get("rebuild_files", [])[:20],
+            "affected_count":len(revision.get("rebuild_files", [])),
+            "affected_files_omitted":max(0,len(revision.get("rebuild_files", []))-20),
+            "completion":_completion_status(pipe,st,proj),
             "last_check": cached if cached.get("stage") == stage.id else None,
             "next": ("Collect feedback; seal only after the user's apply/end instruction."
                      if revision.get("status") == "collecting" else
-                     "Read rework.py status and the listed owner cards; edit only the scoped closure, then rework.py check/mark/close. Do not advance or loop."
+                     "Read rework.py preflight and owner rules; correct only actual dependants; finish with explicit per-item resolutions and real inspections."
                      if revision.get("schema_version") == 2 and active else
                      f"Read tools/wf.py card {stage.id}; complete outputs; run check then advance."),
         }
@@ -545,7 +558,7 @@ def cmd_clean(args) -> int:
     if orphans:
         print("\nundeclared files are NOT auto-deleted. Either:")
         print("  - move them into the right folder, or")
-        print("  - declare them in pipeline.toml (stage outputs / [freeform].globs), or")
+        print("  - declare necessary project-specific support_outputs in .wf/config.toml (exact file, owning_stage, purpose), or")
         print("  - delete them yourself if they were scratch")
     if not args.apply:
         print("\n(dry run; pass --apply to delete the scratch files)")
