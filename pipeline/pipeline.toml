@@ -14,7 +14,7 @@
 
 [meta]
 name = "medpaper"
-version = "1.29.14"
+version = "1.29.15"
 schema = 1
 description = "Medical/clinical research pipeline: idea -> feasibility -> data -> analysis -> artifacts -> manuscript -> submission package."
 
@@ -262,6 +262,7 @@ since = "1.22.0"
 check = "json_keys"
 path = "01_protocol/artifact_plan.json"
 keys = ["main_figures", "main_tables", "supp_figures", "supp_tables", "supp_files"]
+empty_lists_allowed = ["supp_figures", "supp_tables", "supp_files"]
 [[stage.gate]]
 check = "artifact_plan_sane"
 path = "01_protocol/artifact_plan.json"

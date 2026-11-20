@@ -48,7 +48,7 @@ def enabled(project):
     return bool(state.is_file() and json.loads(state.read_text(encoding="utf-8")).get("journal_context_required"))
 
 
-def begin(project: Path, target: dict) -> dict:
+def begin(project: Path, target: dict, *, revision_item=None) -> dict:
     """Archive task-managed journal files before installing a freshly chosen target.
 
     Never change scientific sources, raw data, unrelated submission notes, releases or
@@ -58,13 +58,24 @@ def begin(project: Path, target: dict) -> dict:
     from .scientificfreeze import verify
     ok, problems, freeze = verify(project)
     if not ok: raise ValueError("Scientific master must verify before journal adaptation: " + "; ".join(problems))
-    from .revision import active
-    revision = active(project)
-    if revision and (revision.get("status") != "active" or not any(i["kind"] in {"journal", "journal-switch"} for i in revision.get("items", []))):
-        raise ValueError("Use a sealed journal-switch revision before replacing an active journal context")
+    from . import revision as scoped
+    from .state import State
+    revision = scoped.active(project)
     old = load(project, CONTEXT) if (project/CONTEXT).is_file() else None
     if old and old.get("identity") == ident:
         return current(project)  # Idempotent resume preserves author edits and actual guide captures.
+    switch = None
+    if revision:
+        from .journalrevision import select_switch
+        if revision.get("schema_version") != 2 or revision.get("status") != "active":
+            raise ValueError("Use a sealed journal-switch revision before replacing an active journal context")
+        switch = select_switch(revision, old.get("context_id") if old else None, revision_item)
+        before = scoped.snapshot(project)
+        problems = scoped.scope_problems(project, revision, before, check_journal_items=False)
+        if problems:
+            raise ValueError("Resolve out-of-scope changes before transfer: " + "; ".join(problems[:8]))
+    elif revision_item:
+        raise ValueError("--revision-item requires an active sealed journal-switch revision")
     previous = old or (load(project, TARGET) if (project / TARGET).is_file() else {})
     attempt = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     root = project / "08_submission"
@@ -92,7 +103,9 @@ def begin(project: Path, target: dict) -> dict:
             all_rows = json.loads(receipts.read_text(encoding="utf-8"))
             journal = {k: v for k, v in all_rows.items() if k.startswith("08_submission/")}
             if journal:
-                atomic_json(project / ".wf/journal_attempts" / attempt / "build_receipts.json", journal)
+                receipt_archive = project / ".wf/journal_attempts" / attempt / "build_receipts.json"
+                writes[receipt_archive] = None
+                atomic_json(receipt_archive, journal)
                 atomic_json(receipts, {k: v for k, v in all_rows.items() if k not in journal})
         root.mkdir(parents=True, exist_ok=True)
         payload = {"schema_version": 1, "attempt_id": attempt, "identity": ident,
@@ -102,6 +115,31 @@ def begin(project: Path, target: dict) -> dict:
         for path in (project/TARGET,project/CONTEXT): writes[path]=None
         atomic_json(project / TARGET, {**target, **ident})
         atomic_json(project / CONTEXT, payload)
+        if switch:
+            from .journalrevision import managed_path
+            round_path = _safe_path(project, f".wf/revisions/{revision['round_id']}.json")[1]
+            writes[round_path] = round_path.read_bytes()
+            archived_files = {f"{payload['previous_archive']}/{rel.removeprefix('08_submission/')}": fingerprint
+                              for rel, fingerprint in before.items() if managed_path(rel)} if selected else {}
+            transition = {"from_context_id": old.get("context_id") if old else None,
+                          "to_context_id": payload["context_id"], "archive": payload["previous_archive"],
+                          "item_id": switch["id"], "at": now()}
+            switch["journal_context_id"] = payload["context_id"]
+            switch["journal_transfer"] = transition
+            revision.setdefault("journal_transfers", []).append(transition)
+            revision.setdefault("journal_archive_files", {}).update(archived_files)
+            revision.pop("validation", None)
+            from . import registry
+            scoped.plan_scope(project, registry.load(State(project).load().config()), revision)
+            atomic_json(round_path, revision)
+        if State(project).exists():
+            state = State(project).load()
+            writes[state.file] = state.file.read_bytes()
+            state.clear_decisions_for(["S20_journal", "S22_polish", "S23_package", "S24_package_human_review", "S25_submission_audit"])
+            state.data["journal_context_required"] = True
+            state.data["active_journal_context_id"] = payload["context_id"]
+            state.event("journal_context_started", f"{previous.get('journal', '')} -> {ident['journal']}; context={payload['context_id']}; completed stages and science preserved")
+            state.save()
     except Exception:
         # Roll back moves if setup fails; never remove source/user files.
         for path,raw in writes.items():
@@ -111,14 +149,6 @@ def begin(project: Path, target: dict) -> dict:
             if dest.exists() and not src.exists():
                 src.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(dest), str(src))
         raise
-    from .state import State
-    if State(project).exists():
-        state = State(project).load()
-        state.clear_decisions_for(["S20_journal", "S22_polish", "S23_package", "S24_package_human_review", "S25_submission_audit"])
-        state.data["journal_context_required"]=True
-        state.data["active_journal_context_id"]=payload["context_id"]
-        state.event("journal_context_started", f"{previous.get('journal', '')} -> {ident['journal']}; context={payload['context_id']}; completed stages and science preserved")
-        state.save()
     return payload
 
 

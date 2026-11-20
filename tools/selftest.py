@@ -2440,6 +2440,10 @@ def main() -> int:
                              ("test_author_revision_12914.py","author Word inspection and guarded layout import preserve true provenance"),
                              ("test_reference_view_12914.py","selected verified source inputs survive unrelated library growth without rewriting"),
                              ("test_project_support_outputs_12914.py","exact project-local support outputs retain owner gates without shared study-specific globs"),
+                             ("test_preflight_performance_12915.py","bounded project traversal and single-snapshot revision preflight"),
+                             ("test_journal_revision_lifecycle_12915.py","explicit old-journal supersession preserves scientific blockers and archive history"),
+                             ("test_author_delivery_12915.py","editable author delivery and separate auxiliary format inventory"),
+                             ("test_preproduction_12915.py","early corrections and optional empty supplement lists"),
                              ("test_review_reconsideration_129.py","explicit independent reconsideration without science drift or report overwrite"),
                              ("test_review_responsibilities_129.py","author package confirmation remains separate from mandatory independent final audit")):
             current = subprocess.run([sys.executable,str(ROOT/"tools"/script)],

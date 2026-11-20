@@ -18,6 +18,7 @@ def main():
     subs=parser.add_subparsers(dest="command",required=True)
     begin=subs.add_parser("begin",help="new confirmed target; preserve old attempt and accepted science")
     begin.add_argument("--target-file",required=True,type=Path)
+    begin.add_argument("--revision-item",help="exact pending journal switch item if several are eligible")
     fetch=subs.add_parser("fetch",help="capture current official page/PDF; auto browser fallback when available")
     fetch.add_argument("--url",required=True);fetch.add_argument("--mode",choices=["auto","http","browser"],default="auto")
     register=subs.add_parser("register",help="register genuine official download/browser export, retaining its actual provenance")
@@ -39,7 +40,13 @@ def main():
     conflict=subs.add_parser("portal-conflict",help="link two actual required clauses; then reconcile configuration and reseal")
     conflict.add_argument("--guide-rule",required=True);conflict.add_argument("--portal-rule",required=True)
     conflict.add_argument("--reason-file",required=True,type=Path)
-    subs.add_parser("deliver",help="manifest-only read-only upload copy named for current journal and Shanghai preparation date")
+    deliver=subs.add_parser("deliver",help="prepare a journal/date-named author working copy of current manifest uploads")
+    deliver.add_argument("--mode",choices=["editable","read-only"],default="editable",help="filesystem mode of the author copy; frozen releases are separate")
+    attach=subs.add_parser("attach-format",help="add one auxiliary format to the author copy without changing upload roles")
+    attach.add_argument("--upload",required=True,help="exact project-relative linked upload path in the current manifest")
+    attach.add_argument("--file",required=True,type=Path,help="actual alternate file, absolute or relative to the project root")
+    inventory=subs.add_parser("delivery-files",help="discover current upload roles, author-copy paths and recorded sources")
+    inventory.add_argument("--upload",help="limit to this exact manifest path and inspect its Office edit settings")
     subs.add_parser("seal",help="bind real guide clauses to the actual current configuration")
     subs.add_parser("status",help="bounded context/source status; never a scientific quality verdict")
     subs.add_parser("check",help="verify current guide/context/configuration, without rebuilding")
@@ -48,14 +55,16 @@ def main():
     review.add_argument("--render",required=True);review.add_argument("--observation-file",required=True,type=Path)
     args=parser.parse_args();project=args.project.resolve() if args.project else Path(os.environ.get("MEDPAPER_PROJECT") or paths.project_dir()).resolve()
     try:
-        if args.command=="begin": result=jc.begin(project,json.loads(args.target_file.read_text(encoding="utf-8-sig")))
+        if args.command=="begin": result=jc.begin(project,json.loads(args.target_file.read_text(encoding="utf-8-sig")),revision_item=args.revision_item)
         elif args.command in {"fetch","register"}:
             result=guides.capture(project,args.url,file=getattr(args,"file",None),mode=getattr(args,"mode","auto"),why=getattr(args,"why",""),retrieved_at=getattr(args,"retrieved_at",None),source_kind=getattr(args,"source_kind","guide"))
         elif args.command=="csl": result=guides.fetch_csl(project,args.id)
         elif args.command=="template": result=guides.register_template(project,args.file,args.url,args.why,args.retrieved_at)
         elif args.command=="browser-handoff": result=guides.browser_handoff(project,args.url,args.reason,args.tab_ref,args.source_kind)
         elif args.command=="portal-conflict": result=journalportal.resolve(project,args.guide_rule,args.portal_rule,args.reason_file.read_text(encoding="utf-8-sig"))
-        elif args.command=="deliver": result=journalportal.deliver(project)
+        elif args.command=="deliver": result=journalportal.deliver(project,args.mode)
+        elif args.command=="attach-format": result=journalportal.attach_format(project,args.upload,project/args.file)
+        elif args.command=="delivery-files": result=journalportal.delivery_files(project,args.upload)
         elif args.command=="seal": result=jc.seal(project)["seal"]
         elif args.command=="review": result=gr.record_review(project,args.rule,args.file,args.render,args.observation_file.read_text(encoding="utf-8-sig"))
         elif args.command=="show":
@@ -82,14 +91,19 @@ def main():
             print("\n".join(failures) if failures else "Current journal, actual sources and executable configuration agree")
             return 2 if failures else 0
         if args.command=="deliver":
-            result={**{k:v for k,v in result.items() if k!="files"},"upload_files":len(result.get("files",{}))}
+            result=_delivery_summary(result)
         elif args.command=="status" and isinstance(result.get("delivery"),dict):
-            row=result["delivery"];result["delivery"]={**{k:v for k,v in row.items() if k!="files"},"upload_files":len(row.get("files",{}))}
+            result["delivery"]=_delivery_summary(result["delivery"])
         elif args.command in {"fetch","register"} and "discovered_links" in result:
             result={**{k:v for k,v in result.items() if k!="discovered_links"},"link_count":len(result["discovered_links"])}
         print(json.dumps(result,ensure_ascii=False,indent=2));return 0
     except (OSError,ValueError,KeyError,TypeError) as exc:
         print(f"Journal context not ready: {exc}",file=sys.stderr);return 2
+
+
+def _delivery_summary(row):
+    return {**{key:value for key,value in row.items() if key not in {"files","auxiliary"}},
+            "upload_files":len(row.get("files",{})),"auxiliary_files":len(row.get("auxiliary",{}))}
 
 
 if __name__=="__main__": raise SystemExit(main())

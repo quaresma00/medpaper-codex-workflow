@@ -161,7 +161,7 @@ class JournalPortalTests(unittest.TestCase):
         self.assertEqual({p.name for p in directory.iterdir()},{"manuscript.docx","Figure1.tif"})
         self.assertEqual(row["preparation_timezone"],"Asia/Shanghai")
         self.assertNotIn("submitted_at",row)
-        self.assertTrue(all(not p.stat().st_mode&stat.S_IWUSR for p in directory.iterdir()))
+        self.assertTrue(all(p.stat().st_mode&stat.S_IWUSR for p in directory.iterdir()))
         self.assertEqual(portal.deliver(self.project)["directory"],row["directory"])
 
     def test_bundle_change_creates_collision_safe_new_directory_preserving_old(self):

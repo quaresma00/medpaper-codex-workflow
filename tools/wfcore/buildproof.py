@@ -69,9 +69,30 @@ def load(project: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
 
 
+def persistent_inputs(project: Path, sources) -> None:
+    """A recorded producer must survive cleanup of project scratch."""
+    scratch = project.resolve() / "temp"
+    for source in sources:
+        path = Path(source)
+        if path.absolute().is_relative_to(scratch) or path.resolve().is_relative_to(scratch.resolve()):
+            raise ValueError(f"Build input is in project scratch: {source}. Regenerate it from current sources into a managed input location before building.")
+
+
+def replacement_baseline(project: Path, output: Path) -> str | None:
+    """Check recorded author output before a managed regeneration can replace it."""
+    rel = output.resolve().relative_to(project.resolve()).as_posix()
+    before = _sha256(output) if output.is_file() else None
+    prior = load(project).get(rel)
+    if before is not None and prior and before != str(prior.get("sha256", "")).upper():
+        raise ValueError(f"{rel}: changed outside its recorded build. Preserve author edits and reconcile the actual source before replacing it.")
+    return before
+
+
 def record(project: Path, output: Path, sources: list[Path], *, entrypoints=None, tool=None, parameters=None) -> dict:
     project = project.resolve()
     rel, output = _safe_path(project, output.resolve().relative_to(project).as_posix())
+    if rel.startswith("08_submission/"):
+        persistent_inputs(project, [p for p in sources if p is not None])
     inputs = {str(p.resolve()): _sha256(p) for p in sources if p is not None}
     direct = [p.resolve().relative_to(project).as_posix() for p in entrypoints or []]
     row = {"sha256": _sha256(output), "content_sha256": content_digest(output), "sources": inputs,

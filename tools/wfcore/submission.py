@@ -115,6 +115,12 @@ def build_portal(project: Path) -> dict:
         raise ValueError("administrative facts are incomplete; collect them together at S21")
     inputs = {rel: _sha256(manuscript), REQUIREMENTS: _sha256(project / REQUIREMENTS),
               AUTHOR_FACTS: _sha256(project / AUTHOR_FACTS), MANIFEST: _sha256(project / MANIFEST)}
+    count_basis = {
+        "file": rel, "sha256": inputs[rel], "backend": "medpaper_docx_unicode_v1",
+        "scope": {"main": list(include), "abstract": ["Abstract"], "all_visible": "Word document body text"},
+        "heading_policy": "Section headings excluded from section totals; structured abstract labels included. All-visible includes headings.",
+        "use": "Local guideline check and portal preparation. Native Word or portal counts may use different tokenization or scope.",
+    }
     payload = {
         "schema_version": 1, "source_hashes": inputs,
         "title": title, "abstract": sections["Abstract"],
@@ -122,7 +128,8 @@ def build_portal(project: Path) -> dict:
         "article_type": requirements.get("article_type"),
         "word_counts": {"method": "final DOCX visible-text Unicode words; hyphenated words count as one; main section headings excluded; structured abstract subheading text included",
                         "main": main_words, "abstract": abstract_words, "all_visible": word_count(full_text),
-                        "sections": counts, "included_sections": include, "rule_source": rule["source"]},
+                        "sections": counts, "included_sections": include, "rule_source": rule["source"],
+                        "basis": count_basis},
         "administrative_facts": {key: facts[key] for key in required_admin},
         "uploads": [{"role": item["role"], "file": item["file"]} for item in manifest["items"]
                     if item.get("upload", True)],
@@ -137,6 +144,10 @@ def build_portal(project: Path) -> dict:
 def verify_portal(project: Path) -> list[str]:
     try:
         saved, current = load(project, PORTAL), build_portal(project)
+        # Existing receipts remain valid when their source-bound values and rule
+        # definition still match. New writes include the explicit backend/scope.
+        if "basis" not in saved.get("word_counts", {}):
+            current["word_counts"].pop("basis", None)
         if saved != current:
             return ["portal fields/counts are stale; rerun tools/manuscript/submission_fields.py"]
     except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:

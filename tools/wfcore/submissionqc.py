@@ -58,6 +58,7 @@ def measure(project: Path) -> dict:
                         defects.append(f"section {index + 1}: numbering restarts")
         rows.append({"file": rel, "sha256": _sha256(path), "status": "FAIL" if defects else "PASS",
                      "checks": "DOCX structure/typography/native tables/page fields" if path.suffix.lower() == ".docx" else "manifest existence and identity only",
+                     "coverage": "automatic_document_checks" if path.suffix.lower() == ".docx" else "file_identity_only",
                      "defects": defects})
     portal_defects = verify_portal(project)
     rows.append({"file": "08_submission/portal_fields.json", "status": "FAIL" if portal_defects else "PASS",
@@ -87,7 +88,12 @@ def measure(project: Path) -> dict:
                     rows.append({"file":rel,"status":"FAIL","checks":"current journal build identity","defects":["DOCX has no matching current-context build receipt"]})
     engine = {str(path.resolve()): _sha256(path) for path in RULE_FILES}
     signature = hashlib.sha256(json.dumps({"sources": sources, "engine": engine}, sort_keys=True).encode()).hexdigest()
-    return {"schema_version": 1, "input_signature": signature, "sources": sources, "engine": engine, "rows": rows,
+    coverage = {"automatic_rows_passed":sum(row["status"] == "PASS" for row in rows),
+                "identity_only_uploads":[row["file"] for row in rows if row.get("coverage") == "file_identity_only"],
+                "visual_review":"Separate review of actual rendered files",
+                "author_confirmation":"Separate version-bound decision",
+                "final_independent_audit":"Separate S25 decision", "external_submission":"Outside automatic measurements"}
+    return {"schema_version": 1, "input_signature": signature, "sources": sources, "engine": engine, "rows": rows, "coverage":coverage,
             "guide_rule_reviews":reviews,"guide_reviews_signature":jc.digest(reviews),
             "ok": all(row["status"] != "FAIL" for row in rows),
             "visual_acceptance": "Not certified by these measurements; actual final rendered pages must be inspected."}
@@ -105,6 +111,10 @@ def write(project: Path) -> dict:
         _, right = rest.split(END, 1)
         previous = left.rstrip() + "\n\n" + right.lstrip()
     lines = [BEGIN, "## Measured final-file checks", "", payload["visual_acceptance"], ""]
+    identity_only = payload["coverage"]["identity_only_uploads"]
+    if identity_only:
+        lines.extend(["Identity-only uploads: " + ", ".join(f"`{file}`" for file in identity_only) + ".",
+                      "Their actual content and rendering require separate evidence.", ""])
     for row in payload["rows"]:
         lines.append(f"- {row['status']} `{row['file']}`: {row['checks']}")
         lines.extend(f"  - {defect}" for defect in row["defects"])

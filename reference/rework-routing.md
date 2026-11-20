@@ -22,6 +22,10 @@ of its scientific contents. Do not add these example files when the study does n
 Keep the existing batch and review checkpoint. After sealing, run
 `tools/rework.py preflight` for a read-only, bounded view of actual changes, scope barriers,
 pending items and current/reusable validation. It does not build files or claim acceptance.
+Preflight prunes scratch, old release copies and filesystem links before descending and reuses
+one snapshot. Progress goes to stderr, so stdout remains machine-readable JSON. If an old round
+included junction descendants, inspect `linked_baseline_paths` before reconciling the old scope.
+Keep protected source drift visible and do not reset a baseline simply because a path disappeared.
 Fix the real owner, build only its actual consumers, and complete the necessary medical,
 source and changed-page checks. Use `depend` for newly discovered consumers; do not rewrite
 the author's feedback or reset stages.
@@ -55,6 +59,13 @@ not qualify. Do not delete evidence, reset a baseline or alter verification flag
 Before delivering, read `wf status --json`: completed stages, active revision, recorded
 confirmation and final audit are separate states. A usable file can be delivered while
 explicitly reporting the remaining round/audit work; preparation is not actual submission.
+
+When transferring journals, attach administrative work to the actual target attempt. Use
+`journal.py begin --revision-item <item>` if several pending switch items need disambiguation.
+Use `rework.py supersede-journal --item <old-id> --successor <current-id> --why <reason>` to
+retire an obsolete journal-only item with archival evidence. Legacy entries without a recorded
+attempt require explicit, supported archive attribution. The old status remains in history.
+Resolve any outstanding scientific or shared author-source issues through their real owners.
 
 v1.13 post-freeze rule: read `content-aware-amendments.md`. Proven presentation-only
 corrections retain approval, run scoped checks and report once; no new S19 review,

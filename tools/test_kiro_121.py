@@ -153,6 +153,39 @@ class MigrationTests(unittest.TestCase):
         self.data(buildproof.RECEIPTS,receipts)
         with self.assertRaises(ValueError): rebuild.plan(self.project)
 
+    def test_selected_letter_rebuild_uses_current_input_and_leaves_edited_word_alone(self):
+        from manuscript.build_docx import main
+        from wfcore.submission import docx_sections
+        src,letter=self.managed("letter");_,paper=self.managed("paper");self.manifest(letter,paper)
+        edited=Document(paper);edited.add_paragraph("Author's separate edit");edited.save(paper)
+        untouched=paper.read_bytes()
+        src.write_text("# Cover letter\n\nThis is today's source wording.",encoding="utf-8")
+        selected=[letter.relative_to(self.project).as_posix()]
+        jobs=rebuild.plan(self.project,only=selected)
+        self.assertEqual([row['output'] for row in jobs],selected)
+        with patch.dict(os.environ,{"MEDPAPER_PROJECT":str(self.project)}),patch("sys.argv",jobs[0]["command"][1:]),contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main(),0)
+        self.assertIn("source wording",docx_sections(letter)[2])
+        self.assertEqual(paper.read_bytes(),untouched)
+
+    def test_transient_source_or_concurrent_author_edit_cannot_replace_managed_word(self):
+        from manuscript import build_docx
+        source,output=self.managed();self.manifest(output)
+        scratch=self.text("temp/previous/letter.md","A stale saved copy")
+        current=output.read_bytes()
+        with self.assertRaisesRegex(ValueError,"project scratch"):
+            buildproof.record(self.project,output,[scratch],entrypoints=[scratch])
+        source.write_text("# Updated letter\n\nCurrent source.",encoding="utf-8")
+        command=rebuild.plan(self.project)[0]["command"]
+        real=build_docx.run_pandoc
+        def editing(*args,**kwargs):
+            real(*args,**kwargs)
+            author=Document(output);author.add_paragraph("Author edit during conversion");author.save(output)
+        with patch.dict(os.environ,{"MEDPAPER_PROJECT":str(self.project)}),patch("sys.argv",command[1:]),patch.object(build_docx,"run_pandoc",side_effect=editing),contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(build_docx.main(),2)
+        self.assertNotEqual(output.read_bytes(),current)
+        self.assertEqual(Document(output).paragraphs[-1].text,"Author edit during conversion")
+
     def test_page_derived_limits_are_advisory_and_explicit_caps_stay_hard(self):
         row={"status":"required","value":100,"source":"Official guide states a page budget","basis":"page_derived","derivation":"Estimated from the guide's page budget, not an explicit word limit."}
         self.data("08_submission/submission_requirements.json",{"article_type":"Original Article","word_count":{"source":"Official author guide","limit":None},"limits":{"main":row}})
@@ -191,6 +224,10 @@ class MigrationTests(unittest.TestCase):
             ("authors","affiliations","corresponding","funding","conflicts","ethics_approval","data_availability")})
         portal=build_portal(self.project)
         self.assertEqual(len(portal["uploads"]),1)
+        counts=portal["word_counts"]
+        self.assertEqual((counts["main"],counts["abstract"]),(3,3))
+        self.assertEqual(counts["basis"]["scope"]["main"],["Introduction"])
+        self.assertEqual(counts["basis"]["sha256"],_sha256(out))
 
     def test_manifest_docx_audit_ignores_nonupload_internal_text(self):
         from manuscript.build_docx import audit_manifest

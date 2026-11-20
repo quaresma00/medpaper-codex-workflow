@@ -28,7 +28,7 @@ Office lock files or internal evidence. Do not draft AI-use disclosure text. S24
 author package review; this build creates no approval. Never recapture a failed baseline
 or fabricate successful independent/visual checks. Follow scoped revision rules for changes.
 
-After checks run `journal.py deliver`: show the journal/date-named read-only upload directory
+Run `journal.py deliver` for the journal/date-named editable author working copy
 and the managed editing-source path. Recheck accessible current portal constraints; required
 conflicts need actual same-attempt sources, scoped correction and resealing. No Submit is implied.
 

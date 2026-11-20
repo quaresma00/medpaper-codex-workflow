@@ -147,8 +147,9 @@ references each own their topic; this policy contains no historical supersession
   never silently migrates pinned gates or rewinds completed history.
   Read current official guide pages and relevant links in the native browser. Actual portal
   requirements are separate observed sources; resolve conflicts explicitly for the same current
-  journal/article/stage, never reuse old rules. Use journal.py deliver for the manifest-only,
-  journal-name/Shanghai-preparation-date upload copy; preparation is not an actual submission.
+  journal/article/stage, never reuse old rules. Use journal.py deliver for the editable
+  journal-name/Shanghai-preparation-date author working copy. Working attachment formats have
+  a separate inventory. Return author changes through the managed source/layout revision.
 - At S17/S22/S23 complete the executor's own medical/content/visual acceptance before delivery.
   Read all actual main/supplement materials without backstage context, then verify their meaning
   against sources. Quantity ranges are advisory; source identity/support and explicit journal

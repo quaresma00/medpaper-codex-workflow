@@ -700,9 +700,11 @@ def build(args) -> int:
     from wfcore.revision import guard_outputs, record_build
     guard_build(project_root())
     from wfcore.journalcontext import guard as guard_journal, build_identity
+    from wfcore.buildproof import persistent_inputs, replacement_baseline
     guard_journal(project_root())
     journal_build=build_identity(project_root())
     guard_outputs(project_root(), [args.output])
+    output_before = replacement_baseline(project_root(), args.output)
     style = load_style(args.style_config)
     if style.get("all_text_black") is not True or style.get("external_hyperlinks") is not False:
         print("style config must require black text and prohibit external hyperlinks", file=sys.stderr)
@@ -744,6 +746,7 @@ def build(args) -> int:
         if not reference_doc.is_file() or reference_doc.suffix.lower()!=".docx": raise ValueError("Use the actual current official DOCX reference template")
         Document(reference_doc)  # Parse the actual template before touching the output.
         actual_inputs.append(reference_doc)
+    persistent_inputs(project_root(), [*actual_inputs, *([tables_path] if tables_path else [])])
     before = {p:_sha256(p) for p in actual_inputs}
     try:
         source_problems = _source_problems(args.kind, args.input)
@@ -783,6 +786,8 @@ def build(args) -> int:
                 raise ValueError("DOCX input changed during build; previous output preserved")
             if journal_build!=build_identity(project_root()):
                 raise ValueError("Target journal/configuration changed during Word build; previous output preserved")
+            if replacement_baseline(project_root(), args.output) != output_before:
+                raise ValueError("Author output changed during Word build; previous output preserved")
             candidate.replace(args.output)
     except Exception as exc:  # noqa: BLE001
         print(f"DOCX build failed: {exc}", file=sys.stderr)
@@ -814,8 +819,10 @@ def finalize(args) -> int:
     """Clean task-owned Word after layout repair; never recapture changed text."""
     from wfcore.revision import guard_outputs
     from wfcore.buildproof import content_digest
+    from wfcore.packagefreeze import _sha256
     project = project_root();guard_outputs(project,[args.output])
     before = content_digest(args.output)
+    source_bytes = _sha256(args.output)
     style = load_style(args.style_config)
     with tempfile.TemporaryDirectory(prefix="medpaper-finalize-",dir=args.output.parent) as folder:
         candidate=Path(folder)/args.output.name;shutil.copy2(args.output,candidate)
@@ -825,6 +832,8 @@ def finalize(args) -> int:
         problems=audit_docx(candidate,style,args.kind,planned_figure_ids(scope=style.get("figure_legend_scope","all")) if args.kind=="manuscript" else None,figure_legend_cap())
         if problems:
             raise ValueError("Final cleanup QA failed: "+"; ".join(problems))
+        if _sha256(args.output) != source_bytes:
+            raise ValueError("Word was edited during final cleanup; current author file preserved")
         candidate.replace(args.output)
     print("Word cleanup complete; render this final file, then bind baseline/portal and user approval")
     return 0
@@ -910,7 +919,11 @@ def main() -> int:
     p.add_argument("--style-config", type=Path, required=True)
     p.set_defaults(fn=audit_manifest)
     args = ap.parse_args()
-    return args.fn(args)
+    try:
+        return args.fn(args)
+    except (OSError,ValueError,KeyError) as exc:
+        print(f"DOCX {args.command} stopped: {exc}",file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

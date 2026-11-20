@@ -220,12 +220,14 @@ class JournalContextTests(unittest.TestCase):
         self.build_letter();from wfcore import revision
         state=State(self.project).load();state.data['current']='S24_package_human_review'
         row={"schema_version":2,"round_id":"R001","status":"active","review_stage":"S24_package_human_review",
-             "baseline":revision.snapshot(self.project),"items":[{"kind":"journal-switch","owning_stage":"S20_journal",
+             "baseline":revision.snapshot(self.project),"items":[{"id":"R001-01","status":"pending","kind":"journal-switch","owning_stage":"S20_journal",
              "change_type":"administrative","affected_sources":[jc.TARGET]}]}
         revision.plan_scope(self.project,registry.load(),row)
         self.data('.wf/revisions/R001.json',row);state.data['active_revision_round']='R001';state.save()
         self.begin({**self.target,"journal":"Synthetic B","issn":"8765-4321"})
+        row=revision.active(self.project)
         self.assertEqual(revision.scope_problems(self.project,row),[])
+        self.assertEqual(row["items"][0]["journal_context_id"],jc.current(self.project)["context_id"])
         self.assertNotIn('S05_analysis',row['validation_stages']);self.assertNotIn('S04_data',row['validation_stages'])
     def test_direct_legacy_replace_cannot_carry_old_guidelines_to_new_journal(self):
         self.ready();journalworkspace.initialise(self.project)

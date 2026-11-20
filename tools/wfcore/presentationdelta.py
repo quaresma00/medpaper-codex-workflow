@@ -67,15 +67,19 @@ def snapshot(project: Path, files: dict) -> dict:
     return output
 
 
-def classify(project: Path, revision: dict) -> dict:
+def classify(project: Path, revision: dict, *, current=None, reference_problems=None) -> dict:
     before = revision.get("presentation_baseline", {})
-    baseline = revision.get("baseline", {})
-    from .revision import snapshot as current_files
-    current = current_files(project)
+    from .revision import project_baseline
+    baseline = project_baseline(revision)
+    if current is None:
+        from .revision import snapshot as current_files
+        current = current_files(project)
     changed = sorted(rel for rel in set(baseline) | set(current) if baseline.get(rel) != current.get(rel))
     reasons, uncertain = [], []
     from .evidence import reference_evidence, reference_renewal_problems
-    reasons.extend(reference_renewal_problems(project, baseline, current))
+    if reference_problems is None:
+        reference_problems = reference_renewal_problems(project, baseline, current)
+    reasons.extend(reference_problems)
     from .determinism import content_sha256
     for rel in changed:
         if reference_evidence(rel):
@@ -89,7 +93,7 @@ def classify(project: Path, revision: dict) -> dict:
             if rel.startswith(("04_tables/", "05_figures/out/", "07_manuscript/")):
                 reasons.append(f"{rel}: newly added scientific source needs owner review")
             continue
-        if not path.is_file():
+        if rel not in current:
             reasons.append(f"{rel}: removal requires explicit inventory/migration proof"); continue
         if old["container"] == content_sha256(path): continue
         if "text" not in old:
@@ -116,7 +120,8 @@ def classify(project: Path, revision: dict) -> dict:
         else: uncertain.append(rel)
     review = revision.get("meaning_review", {})
     if uncertain and not reasons:
-        hashes = {rel: _sha256(project / rel) for rel in uncertain}
+        hashes = {rel: current[rel] if not current[rel].startswith("stat:") else _sha256(project / rel)
+                  for rel in uncertain}
         sections = ("population_comparison", "endpoints_time_units", "direction_negation_uncertainty", "methods_claims", "rendered_displays")
         if (review.get("files") == hashes and review.get("baseline") == {rel: before[rel]["sha256"] for rel in uncertain}
                 and review.get("verdict") == "UNCHANGED_SCIENCE"

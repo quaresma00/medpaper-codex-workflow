@@ -10,8 +10,8 @@ freeze. Existing independent P rounds retain their genuine report/closure requir
 1. Verify the current journal context and actual upload QA. Run
    `tools/review_round.py start --scope package`. New projects return `author presentation`;
    old pinned or already-open independent rounds are not silently converted. Present exact
-   bundle, named upload-copy, preview and checklist locations. The named directory is a
-   read-only upload copy; edits use managed sources/bundle and the scoped revision path.
+   bundle, named editable author working copy, preview and checklist locations. Take author
+   Word edits through `author_revision.py inspect` and the scoped source or layout route.
 2. The author may inspect and modify the package repeatedly. Interpret a feedback batch
    using `reference/rework-routing.md` and `tools/rework.py batch --sealed`.
    once, keep S24 and completed history, call affected owner rules in place, and rebuild only

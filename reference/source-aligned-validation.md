@@ -1,5 +1,20 @@
 # Source-aligned incremental validation
 
+For an existing package, `wf rebuild --only <exact-manifest-upload-path> --dry-run`
+shows the recorded build and affected dependency order. Drop `--dry-run` when its actual
+inputs are ready. Keep build entrypoints and indispensable intermediates in durable managed
+locations. `project/temp/` is for disposable work, including third-party conversion sidecars.
+The selected builder checks changed outputs before promotion and preserves independent working
+files. Reconcile author edits from the actual Word through the source/layout route before
+replacing it. A selected rebuild defers package-wide baselines and measurement transitions.
+Inspect the actual changed pages and refresh the affected acceptance evidence before closing.
+
+The final `portal_fields.json` binds local section counts to the exact Word hash, tokenizer
+and included sections. Store native Word or observed portal counts under their own method and
+scope when needed. A manifest-identity row in the measurement report confirms the recorded file
+identity. Content equivalence, final rendering, author approval and independent audit retain
+their separate evidence.
+
 ## Reference inputs selected by the actual producer
 
 If a producer consumes only a few verified records/fields, it may use

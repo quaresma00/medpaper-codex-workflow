@@ -44,6 +44,7 @@ ROUTES = {
 
 ROUND_SCHEMA = 2
 REVIEW_STAGES = {"S12_reconcile", "S19_human_review", "S24_package_human_review", "S25_submission_audit"}
+PREPRODUCTION_CORRECTION_STAGES = {"S07_artifacts", "S08_methods", "S10_tables", "S11_figures"}
 
 # Only decisions whose evidence can be changed by the requested kind are invalidated in a
 # batch revision. Owner stages supply rules without resetting the stage tail.
@@ -259,8 +260,10 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
             raise ValueError("finish the existing legacy round before opening a scoped revision")
         review_stage = revision["review_stage"]
     else:
-        if state.current not in REVIEW_STAGES:
-            raise ValueError("a new revision round can start only while the user is reviewing at S19 or S24")
+        early_correction = (state.current in PREPRODUCTION_CORRECTION_STAGES
+                            and not (project / "07_manuscript/scientific_master_freeze.json").exists())
+        if state.current not in REVIEW_STAGES and not early_correction:
+            raise ValueError("Start a scoped correction at an allowed production or review checkpoint")
         review_stage = state.current
         round_id = _next_round_id(state)
         round_path = _round_path(state, round_id)
@@ -280,22 +283,33 @@ def _cmd_batch(args, project: Path, pipe, state: State, kinds: list[str]) -> int
                 if (project / "01_protocol/artifact_plan.json").is_file() else {},
         }
     plan = _read_batch_plan(args.plan.resolve(), kinds, review_stage, pipe)
+    from wfcore.journalrevision import context_for_items, scoped_item
+    context = context_for_items(project) if any(scoped_item(item) for item in plan["items"]) else {}
+    context_id = context.get("context_id")
     if "presentation_baseline" not in revision and (project / "07_manuscript/scientific_master_freeze.json").is_file():
         from wfcore.presentationdelta import snapshot
         revision["presentation_baseline"] = snapshot(project, revision["baseline"])
-    if any(update.get("feedback_sha256") == plan["feedback_sha256"] for update in revision["feedback_updates"]):
+    if any(update.get("feedback_sha256") == plan["feedback_sha256"] and update.get("journal_context_id") == context_id
+           for update in revision["feedback_updates"]):
         print("identical feedback already recorded; no duplicate items or rebuild")
         if args.sealed and revision.get("status") == "collecting":
             return _seal_round(state, pipe, args.why or plan["feedback_verbatim"],getattr(args,"confirm_scientific_route",False))
         return 0
     revision["status"] = "collecting"
-    first_new = len(revision["items"]) + 1
+    used_ids = {item["id"] for item in revision["items"]}
+    used_ids.update(row["item"]["id"] for row in revision.get("retired_journal_items", []))
+    used_ids.update(item["id"] for item in revision.get("deferred_package_items", []))
+    first_new = max((int(identifier.rsplit("-", 1)[-1]) for identifier in used_ids), default=0) + 1
     for offset, item in enumerate(plan["items"]):
         item["id"] = f"{revision['round_id']}-{first_new + offset:02d}"
+        if context_id and scoped_item(item):
+            item["journal_context_id"] = context_id
+            item["journal_build_id_at_intake"] = context.get("seal", {}).get("build_id")
         revision["items"].append(item)
     revision["feedback_updates"].append({
         "at": _now(), "feedback_verbatim": plan["feedback_verbatim"],
         "feedback_sha256": plan["feedback_sha256"], "interpretation": plan["interpretation"],
+        "journal_context_id": context_id,
     })
     revision["earliest_stage"] = min(
         (item["owning_stage"] for item in revision["items"]),
@@ -380,12 +394,24 @@ def _cmd_status(state: State, full: bool = False) -> int:
     print(f"{revision['round_id']}  status={revision['status']}  return={revision['review_stage']}")
     print(f"earliest owner: {revision['earliest_stage']}; current stage: {state.current}")
     print(f"full builds: {revision.get('full_builds', 0)}; affected closure: {len(revision.get('rebuild_files', []))} files")
-    for rel in revision.get("rebuild_files", []):
+    affected = revision.get("rebuild_files", [])
+    for rel in affected if full else affected[:20]:
         print(f"    affected/recheck (not automatic rewrite): {rel}")
+    if not full and len(affected) > 20:
+        print(f"    {len(affected) - 20} additional candidates; use status --full")
     print(f"check only: {', '.join(revision.get('validation_stages', []))}")
     print(f"reuse/protect: {len(revision.get('reuse_files', []))} unchanged files")
     items = revision["items"] if full else [i for i in revision["items"] if i.get("status") != "done"]
     print(f"completed items omitted: {len(revision['items']) - len(items)}; use status --full for history")
+    from wfcore.journalrevision import obsolete_items
+    obsolete = set(obsolete_items(state.dir.parent, revision))
+    if obsolete:
+        print("Obsolete journal work awaiting explicit settlement: " + ", ".join(sorted(obsolete)))
+    history = revision.get("retired_journal_items", [])
+    print(f"Retired journal items: {len(history)}; see status --full for links and reasons")
+    if full:
+        for row in history:
+            print(f"  [{row['disposition']}] {row['item']['id']} -> {row['successor_id']}; {row['archive']}; {row['reason']}")
     for item in items:
         print(f"  [{item['status']}] {item['id']} {item['kind']} -> {item['owning_stage']}")
         print(f"      {item['request']}")
@@ -406,6 +432,9 @@ def _cmd_mark(args, project: Path, state: State) -> int:
     item = next((entry for entry in revision["items"] if entry["id"] == args.item), None)
     if item is None:
         raise ValueError(f"unknown item {args.item}")
+    from wfcore.journalrevision import obsolete_items
+    if args.item in obsolete_items(project, revision):
+        raise ValueError("This item belongs to a previous journal; record its actual disposition with supersede-journal")
     if len(args.summary.strip()) < 30:
         raise ValueError("mark summary must state what changed in at least 30 characters")
     checked_files = []
@@ -454,7 +483,7 @@ def _cmd_mark(args, project: Path, state: State) -> int:
     })
     revision["updated_at"] = _now()
     _write_round(path, revision)
-    print(f"marked {args.item} done; {len(changed)} changed file(s), {len(args.validated_by)} validation(s)")
+    print(f"recorded implementation of {args.item}; {len(changed)} changed file(s), {len(args.validated_by)} reported inspection(s); round closure is separate")
     return 0
 
 
@@ -462,6 +491,10 @@ def _cmd_close(args, state: State) -> int:
     path, revision = _load_round(state)
     if revision.get("status") == "collecting":
         raise ValueError("cannot close while collecting feedback; seal and implement the batch first")
+    from wfcore.journalrevision import context_for_items, obsolete_items
+    obsolete = obsolete_items(state.dir.parent, revision)
+    if obsolete:
+        raise ValueError("Settle obsolete journal items before closing: " + ", ".join(obsolete))
     pending = [item["id"] for item in revision["items"] if item.get("status") != "done"]
     if pending:
         raise ValueError("cannot close; pending items: " + ", ".join(pending))
@@ -487,6 +520,10 @@ def _cmd_close(args, state: State) -> int:
         if checked.get("input_signature") != scoped.input_signature(state.dir.parent, revision):
             raise ValueError("source changed while refreshing evidence; rerun scoped checks")
     revision.update({"status": "complete", "completed_at": _now(), "completion_summary": args.summary.strip()})
+    if state.current in {"S24_package_human_review", "S25_submission_audit"}:
+        context_id = context_for_items(state.dir.parent).get("context_id")
+        if context_id:
+            revision["closed_journal_context_id"] = context_id
     _write_round(path, revision)
     state.data.pop("active_revision_round", None)
     state.save()
@@ -525,6 +562,21 @@ def _cmd_finish(args, project, pipe, state):
     return _cmd_close(argparse.Namespace(summary=payload["summary"]), state)
 
 
+def _cmd_supersede_journal(args, project, pipe, state):
+    if not args.item or not args.successor or not args.why:
+        raise ValueError("supersede-journal requires --item, --successor and --why")
+    from wfcore.journalrevision import retire_item
+    path, record = _load_round(state)
+    retire_item(project, record, args.item, args.successor, args.why, args.archive)
+    record["earliest_stage"] = min((item["owning_stage"] for item in record["items"]),
+                                   key=lambda stage_id: pipe.stage(stage_id).index)
+    record["updated_at"] = _now()
+    scoped.plan_scope(project, pipe, record)
+    _write_round(path, record)
+    print(f"Settled {args.item} as journal history with successor {args.successor}; current checks remain required")
+    return 0
+
+
 def resolve_route(kind: str, current: str, pipe) -> str:
     if kind == "manuscript-copyedit":
         current_index = pipe.stage(current).index
@@ -545,7 +597,9 @@ def main() -> int:
     kinds = sorted([*ROUTES, "manuscript-copyedit", "word-format-only"])
     parser = argparse.ArgumentParser(
         description="plan, route and persist user-requested medpaper revision rounds")
-    parser.add_argument("command", choices=["plan", "preview", "preflight", "finish", "classify", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check"])
+    parser.add_argument("command", choices=["plan", "preview", "preflight", "finish", "classify", "start", "batch", "seal", "build", "status", "refresh", "depend", "mark", "close", "check", "supersede-journal"])
+    parser.add_argument("--successor", help="current journal item replacing the obsolete request")
+    parser.add_argument("--archive", help="exact journal archive to attribute a legacy unbound administrative item")
     parser.add_argument("--completion", type=Path, help="explicit executor per-item completion JSON for fail-fast finish")
     parser.add_argument("--confirm-scientific-route",action="store_true",help="actual author authorization to renew scientific approval; never inferred from a numbered label")
     parser.add_argument("--input", help="known affected input for a discovered dependency")
@@ -582,6 +636,8 @@ def main() -> int:
             return 2 if report["blockers"] else 0
         if args.command == "finish":
             return _cmd_finish(args, project, pipe, state)
+        if args.command == "supersede-journal":
+            return _cmd_supersede_journal(args, project, pipe, state)
         if args.command=="preview":
             if not args.plan: raise ValueError("preview needs the proposed --plan; it never writes or invalidates state")
             plan=_read_batch_plan(args.plan.resolve(),kinds,state.current,pipe)

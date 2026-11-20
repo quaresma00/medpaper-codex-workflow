@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,38 +36,90 @@ def active(project: Path) -> dict | None:
     return json.loads((state.parent / "revisions" / f"{round_id}.json").read_text(encoding="utf-8")) if round_id else None
 
 
-def snapshot(project: Path) -> dict[str, str]:
+_AUTHOR_DELIVERY = "08_submission/submission_packages"
+_SNAPSHOT_EXCLUDED = {"temp", "08_submission/releases", "07_manuscript/review_packages", _AUTHOR_DELIVERY}
+_TRACKED_WORKFLOW_WRITING = {".wf/discussion_materials.md", ".wf/discussion_outline.md"}
+
+
+def project_baseline(record):
+    """Legacy snapshots may contain editable handoff copies tracked by delivery-status."""
+    return {rel: identity for rel, identity in record.get("baseline", {}).items()
+            if not rel.startswith(_AUTHOR_DELIVERY + "/")}
+
+
+def _snapshot_excluded(rel, name):
+    if name in {"__pycache__", ".gitkeep"} or rel in _SNAPSHOT_EXCLUDED:
+        return True
+    if not rel.startswith(".wf/"):
+        return False
+    return not (rel in _TRACKED_WORKFLOW_WRITING or (
+        rel.startswith((".wf/executor_acceptance_", ".wf/benchmark_")) and rel.endswith(".json")
+    ))
+
+
+def _regular_files(root, *, skip, include_file=None, skipped_links=None):
+    """Walk local data without entering excluded directories or following mount links."""
+    pending = [(root, "")]
+    while pending:
+        directory, prefix = pending.pop()
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                rel = f"{prefix}/{entry.name}" if prefix else entry.name
+                if skip(rel, entry.name):
+                    continue
+                metadata = entry.stat(follow_symlinks=False)
+                attributes = getattr(metadata, "st_file_attributes", 0)
+                is_directory = stat.S_ISDIR(metadata.st_mode)
+                if stat.S_ISLNK(metadata.st_mode) or (
+                    is_directory and attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                ):
+                    # In particular, a Windows junction may report itself as a directory.
+                    # External scientific inputs continue to use their own declared receipts.
+                    if skipped_links is not None:
+                        skipped_links.add(rel)
+                    continue
+                if is_directory:
+                    pending.append((entry.path, rel))
+                elif stat.S_ISREG(metadata.st_mode) and (include_file is None or include_file(rel)):
+                    yield Path(entry.path), rel, metadata
+
+
+def _file_identity(path, rel, metadata):
+    if rel.startswith("02_data/raw/") or "/cache/" in rel or "/fulltext/" in rel:
+        return f"stat:{metadata.st_size}:{metadata.st_mtime_ns}"
+    return _sha256(path)
+
+
+def snapshot(project: Path, *, progress=None, skipped_links=None) -> dict[str, str]:
     """Bind deliverables, sources and small evidence; large raw/cache trees use file stats.
 
     This detects accidental scope drift, not malicious same-privilege timestamp forgery.
     Acquisition/reference integrity gates still independently validate their real receipts.
     """
     result = {}
-    for path in sorted(project.rglob("*")):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(project).as_posix()
-        tracked_acceptance = rel.startswith((".wf/executor_acceptance_", ".wf/benchmark_")) and rel.endswith(".json")
-        tracked_writing = rel in {".wf/discussion_materials.md", ".wf/discussion_outline.md"}
-        if ((rel.startswith(".wf/") and not (tracked_acceptance or tracked_writing)) or rel.startswith(("temp/", "08_submission/releases/", "07_manuscript/review_packages/"))
-                or "__pycache__" in path.parts or path.name == ".gitkeep"):
-            continue
-        if rel.startswith("02_data/raw/") or "/cache/" in rel or "/fulltext/" in rel:
-            st = path.stat()
-            result[rel] = f"stat:{st.st_size}:{st.st_mtime_ns}"
-        else:
-            result[rel] = _sha256(path)
+    for path, rel, metadata in _regular_files(project, skip=_snapshot_excluded, skipped_links=skipped_links):
+        if progress is not None:
+            progress(rel.split("/", 1)[0] if "/" in rel else "project root", len(result))
+        result[rel] = _file_identity(path, rel, metadata)
     return result
 
 
-def input_signature(project: Path, revision: dict, files: dict | None = None) -> str:
+def input_signature(project: Path, revision: dict, files: dict | None = None, *, progress=None) -> str:
     from . import paths
     from .state import State
     state = State(project).load()
-    engine = {p.relative_to(paths.repo_root()).as_posix(): _sha256(p)
-              for folder in ("tools", "pipeline", "reference") for p in (paths.repo_root() / folder).rglob("*")
-              if p.is_file() and p.suffix.lower() in {".py", ".r", ".toml", ".md"}}
-    files = snapshot(project) if files is None else files
+    root = paths.repo_root()
+    engine = {}
+    for folder in ("tools", "pipeline", "reference"):
+        directory = root / folder
+        if not directory.is_dir():
+            continue
+        for path, rel, _ in _regular_files(directory, skip=lambda rel, name: name == "__pycache__",
+                                            include_file=lambda rel: Path(rel).suffix.lower() in {".py", ".r", ".toml", ".md"}):
+            if progress is not None:
+                progress(f"engine {folder}", len(engine))
+            engine[f"{folder}/{rel}"] = _sha256(path)
+    files = snapshot(project, progress=progress) if files is None else files
     # Project-local join files already participate in snapshot. Follow only actually
     # consumed external references using cheap stat identity, not full source rereads.
     join_external_inputs = {}
@@ -85,26 +139,31 @@ def input_signature(project: Path, revision: dict, files: dict | None = None) ->
                     if not isinstance(item, dict) or not isinstance(item.get("path"), str):
                         raise ValueError("complex_join data reference is missing")
                     ref = item["path"]
-                    if ref.startswith("data:"):
+                    if ref.startswith("data:") and ref not in join_external_inputs:
                         source = input_path(project, ref)  # Missing/unauthorized references fail.
                         if not source.is_file():
                             raise ValueError(f"complex_join data reference is not a file: {ref}")
                         stat = source.stat()
                         join_external_inputs[ref] = {"resolved_path": str(source), "bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns}
     from .buildproof import load as build_receipts
+    allowed = set(revision.get("allowed_files", []))
+    resolved_project = project.resolve()
+    source_identities = {}
     observed={}
     for output,receipt in build_receipts(project).items():
-        if output not in revision.get("allowed_files",[]):continue
+        if output not in allowed:continue
         inputs={}
         for name in receipt.get("sources",{}):
             if name in receipt.get("engine_inputs",[]):continue
-            path=Path(name)
-            try:
-                rel=path.resolve().relative_to(project.resolve()).as_posix()
-                digest=files.get(rel)
-            except ValueError:
-                digest=None
-            inputs[name]=digest if digest is not None else _sha256(path) if path.is_file() else None
+            if name not in source_identities:
+                path = Path(name)
+                try:
+                    rel = path.resolve().relative_to(resolved_project).as_posix()
+                    digest = files.get(rel)
+                except ValueError:
+                    digest = None
+                source_identities[name] = digest if digest is not None else _sha256(path) if path.is_file() else None
+            inputs[name] = source_identities[name]
         observed[output]={"inputs":inputs,"entrypoints":receipt.get("entrypoints",[]),"parameters":receipt.get("parameters",{})}
     payload = {"files": {r: h for r, h in files.items() if not renewable(r)},
                "engine": engine, "decisions": state.data.get("decisions", {}),
@@ -139,15 +198,19 @@ def guard_outputs(project: Path, outputs: list[Path]) -> None:
             raise ValueError(f"out-of-scope build: {rel}; declare its dependency before writing")
 
 
-def scope_problems(project: Path, revision: dict, files: dict | None = None) -> list[str]:
-    before, now = revision.get("baseline", {}), snapshot(project) if files is None else files
+def scope_problems(project: Path, revision: dict, files: dict | None = None, *, reference_problems=None, check_journal_items=True) -> list[str]:
+    before, now = project_baseline(revision), snapshot(project) if files is None else files
     allowed = set(revision.get("allowed_files", []))
     changed = {rel for rel in set(before) | set(now) if before.get(rel) != now.get(rel)}
+    archived = revision.get("journal_archive_files", {})
+    archived_origins = {"08_submission/" + rel.split("/", 3)[-1] for rel in archived}
     # Only renewable source receipts/cache and backstage QC can be control maintenance.
     # Manuscripts, results, scripts, figures and tables are never exempt.
     def maintenance(rel):
         if renewable(rel):
             return True
+        if rel in archived_origins and rel in before and rel not in now:
+            return True  # Restoration/drift of the archived copy is checked separately below.
         # A new journal may preserve the old integration/bundle, but only as byte-identical
         # new archive files. Existing archived attempts are never mutable control records.
         if (any(i["kind"] in {"journal", "journal-switch"} for i in revision["items"]) and rel not in before
@@ -155,10 +218,18 @@ def scope_problems(project: Path, revision: dict, files: dict | None = None) -> 
             tail = rel.split("/", 3)[-1]
             return before.get("08_submission/" + tail) == now.get(rel)
         return False
-    problems = [f"unplanned change: {rel}" for rel in sorted(changed - allowed) if not maintenance(rel)]
+    problems = [f"unplanned change: {rel}" for rel in sorted(changed - allowed - archived.keys()) if not maintenance(rel)]
+    problems.extend(f"journal archive missing or changed: {rel}" for rel, expected in sorted(archived.items()) if now.get(rel) != expected)
+    if check_journal_items:
+        from .journalrevision import obsolete_items
+        obsolete = obsolete_items(project, revision)
+        if obsolete:
+            problems.append("Obsolete journal items need explicit settlement with rework.py supersede-journal: " + ", ".join(obsolete))
     if revision.get("presentation_candidate"):
-        from .evidence import reference_renewal_problems
-        problems.extend(reference_renewal_problems(project, before, now))
+        if reference_problems is None:
+            from .evidence import reference_renewal_problems
+            reference_problems = reference_renewal_problems(project, before, now)
+        problems.extend(reference_problems)
     narrative_guard = revision.get("discussion_notes_guard")
     if narrative_guard:
         from .discussion import notes_outside_discussion_hash
@@ -192,8 +263,8 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
     if journal_change:
         # Choosing a different journal legitimately affects its whole derived package,
         # never the accepted scientific master. It still does not replay completed stages.
-        rebuild.update(rel for rel in revision["baseline"] if rel.startswith("08_submission/") and
-                       not rel.startswith(("08_submission/releases/", "08_submission/journal_archives/")))
+        from .journalrevision import managed_path
+        rebuild.update(rel for rel in revision["baseline"] if managed_path(rel) and (project / rel).is_file())
         rebuild.update(output for sid in ("S20_journal", "S21_authors", "S22_polish", "S23_package")
                        for output in pipeline.stage(sid).outputs if output.startswith("08_submission/"))
     # Never automatically rewrite a journal layer while scientific approval is pending.
@@ -230,10 +301,14 @@ def plan_scope(project: Path, pipeline, revision: dict) -> None:
             stages.add("S12_reconcile")
     stages.discard(revision["review_stage"])
     stages.update(revision.get("extra_validation_stages", []))
-    if revision["review_stage"] == "S12_reconcile":
+    early_checkpoint = revision["review_stage"] in {"S07_artifacts", "S08_methods", "S10_tables", "S11_figures", "S12_reconcile"}
+    if early_checkpoint:
         # Early scientific corrections cannot demand a not-yet-written manuscript
         # or construct future publication assets just because they are consumers.
-        stages = {sid for sid in stages if pipeline.stage(sid).index <= pipeline.stage("S12_reconcile").index}
+        cutoff = pipeline.stage(revision["review_stage"]).index
+        stages = {sid for sid in stages if pipeline.stage(sid).index <= cutoff}
+        if revision["review_stage"] != "S12_reconcile":
+            stages.add(revision["review_stage"])
         rebuild = {rel for rel in rebuild if (project/rel).exists() or rel in sources}
     # A copyedit owned by S19 still uses content checks, not S19's approval lifecycle.
     checks = []

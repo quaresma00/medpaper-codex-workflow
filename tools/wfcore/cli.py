@@ -209,8 +209,10 @@ def cmd_status(args) -> int:
             print("Versions: engine={engine}, state={state}, completed-gate pin={pin} (wf migrate changes pin)".format(**payload["versions"]))
             print("Missing outputs: " + (", ".join(missing) or "none"))
             print(f"Feedback: {active or 'none'} {revision.get('status', '')}")
-            if revision.get("rebuild_files"):
-                print("Affected: " + ", ".join(revision["rebuild_files"]))
+            if payload["affected_count"]:
+                print(f"Affected ({payload['affected_count']}): " + ", ".join(payload["affected_files"]))
+                if payload["affected_files_omitted"]:
+                    print(f"Additional paths: {payload['affected_files_omitted']}. Use rework preflight --full for detail.")
             if payload["last_check"]:
                 print("Previous check (not rerun): " + "; ".join(cached.get("failures", [])))
             print("Next: " + payload["next"])
@@ -349,8 +351,8 @@ def cmd_handoff(args) -> int:
     revision=json.loads((st.dir/"revisions"/(active+".json")).read_text(encoding="utf-8")) if active else {}
     print(f"Stage: {stage.id} | {stage.title}")
     print(f"Versions: engine={pipe.meta['version']}; state={st.data.get('pipeline_version')}; pin={st.data.get('engine_pin')}")
-    from .journalcontext import enabled,CONTEXT
-    if enabled(project):
+    from .journalcontext import CONTEXT
+    if (project/CONTEXT).is_file():
         journal=json.loads((project/CONTEXT).read_text(encoding="utf-8"))
         print("Active journal (recorded): "+json.dumps(journal.get("identity",{}),ensure_ascii=False)+
               "; context="+str(journal.get("context_id",""))+"; guide sealed="+str(bool(journal.get("seal"))))
@@ -358,10 +360,11 @@ def cmd_handoff(args) -> int:
         if handoff.get("status")=="waiting_for_user":
             print("Guide browser handoff pending: "+str(handoff.get("reason",""))+" at "+
                   str(handoff.get("url",""))[:500]+"; capture actual guide after the user completes it")
-        if journal.get("delivery"):
-            from .journalportal import delivery_status
-            delivery=delivery_status(project)
-            print("Current upload copy: "+str(delivery.get("directory"))+"; "+delivery["status"]+"; preparation only, not submitted")
+        from .journalportal import delivery_status
+        delivery=delivery_status(project,verify_files=False)
+        if delivery.get("directory"):
+            print("Current delivery: "+str(delivery["directory"])+" | "+delivery["status"])
+            print("File roles and sources: tools/journal.py delivery-files")
     print("Card: "+str(stage.card_path()))
     detail=paths.repo_root()/"reference/stage_details"/stage.card_path().name
     if detail.is_file(): print("Details (read relevant procedure once): "+str(detail))
@@ -378,7 +381,8 @@ def cmd_handoff(args) -> int:
         if record:
             status="closed" if record.get("closed_at") else "open"
             print(f"Review {scope}: {record['id']} {status}; answer="+str((record.get("user_decision") or {}).get("value","pending")))
-    print("Next: "+("rework.py status -> scoped correction/check; preserve checkpoint" if active else "card -> required work -> check -> advance; review approvals need actual author words"))
+    print("Interpreter: "+sys.executable)
+    print("Next: "+("rework.py preflight -> scoped correction/check at this checkpoint" if active else "card -> required work -> check -> advance; review approvals need actual author words"))
     print("Logs: "+str(st.dir/"processes")+"; original user data and accepted sources stay unchanged.")
     return 0
 
@@ -507,7 +511,7 @@ def cmd_rebuild(args) -> int:
     _, _, project = _load()
     from .rebuild import run
     try:
-        return run(project, dry=args.dry_run)
+        return run(project, dry=args.dry_run, only=getattr(args,"only",None))
     except (OSError,ValueError,TypeError,KeyError,subprocess.SubprocessError) as exc:
         print(f"package rebuild stopped: {exc}", file=sys.stderr)
         return 2
@@ -787,6 +791,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("rebuild", help="rebuild stale managed DOCX uploads from actual receipts; preserve manual edits")
     p.add_argument("--dry-run", action="store_true", help="show the actual affected consumers before building")
+    p.add_argument("--only", action="append", help="exact manifest upload path; include actual dependencies and defer package-wide evidence work")
     p.set_defaults(fn=cmd_rebuild)
 
     p = sub.add_parser("config", help="view or override per-project targets")

@@ -231,19 +231,33 @@ Never restart analysis or replay the stage tail for a journal-only change.
 
 ## Hand off a journal- and date-named upload directory
 
-After final builds and checks, run `journal.py deliver`. It copies only manifest-listed
+Run `journal.py deliver` for an editable author working copy. It copies manifest-listed
 uploads into `08_submission/submission_packages/<Journal_Name>_<YYYY-MM-DD>/`, using the
 Asia/Shanghai **preparation** date. Another changed package on that date receives `_02`,
 `_03`, etc.; a different journal gets its own context and directory. The tool reports the
 exact active path; no actual submission date is claimed before Submit occurs.
 
-These are read-only upload/reading copies, not a second authoring source. Keep corrections
-in the existing managed source/bundle revision path and regenerate only affected consumers.
-Unchanged files/context reuse the existing directory. Previously exported packages and
-author edits are never overwritten; a changed/missing handoff copy must be inspected and
-reconciled before another export. Show its exact location alongside the current S24 editable
-source/bundle location so users do not mistake the copy for the workflow's editing source.
-No convenience ZIP, preview, lock file, internal checklist or evidence enters this directory.
+Use `deliver --mode read-only` for a separately requested reading copy. The actual
+author-confirmed freeze and independent S25 review still use the managed upload inventory.
+Use `journal.py delivery-files` to locate the exact file, role and recorded source. Return
+author edits through the scoped source/bundle revision and `author_revision.py inspect`.
+Exact unchanged copies may be reused. Investigate edited or missing files before re-export.
+
+For a requested additional editable format, identify whether the user wants a working
+attachment or a change to the actual upload format. Use `journal.py attach-format --help`
+for a working attachment associated with an existing manifest upload. Its separate inventory
+keeps the original upload role intact. Actual upload replacements use the scoped manifest
+and current journal rules. Stage conversions away from the named delivery directory and
+promote only the requested deliverable. Keep SDK logs, previews, Office locks and checklists
+out of the upload inventory. Use the original editable source when available, verify table
+continuations, units, values and notes against the reference document, and keep zero,
+missing values and not applicable distinct.
+
+Report the sources actually obtained and the current gaps before costly final builds. Distinguish
+an official excerpt from a complete captured guide, and public requirements from observed portal
+fields. A failed fetch or text search of an image-based list leaves the corresponding check open.
+Present a usable draft with the remaining requirements identified. Apply the existing final gates
+before freezing or reporting final approval.
 
 Primary interfaces checked 2026-11-06: [Trafilatura](https://github.com/adbar/trafilatura),
 [Crawl4AI](https://docs.crawl4ai.com/core/simple-crawling/),

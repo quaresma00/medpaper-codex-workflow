@@ -71,6 +71,7 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
     problems = []
     count = 0
     latest_receipts: dict[str, tuple[str, str, str]] = {}
+    locations = None
     for path in sorted(directory.glob("R*.json")):
         count += 1
         try:
@@ -81,14 +82,36 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
         if revision.get("schema_version") not in {1, 2} or revision.get("status") != "complete":
             problems.append(f"{path.name}: not a completed supported revision round")
             continue
+        owner = revision.get("closed_journal_context_id")
+        archive = None
+        if owner:
+            from ..journalrevision import archive_locations, context_for_items
+            try:
+                if owner != context_for_items(ctx.project).get("context_id"):
+                    if locations is None:
+                        locations = archive_locations(ctx.project)
+                    archive = locations.get(owner)
+                    if not archive:
+                        raise ValueError("closed journal attempt archive is missing")
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                problems.append(f"{path.name}: {exc}")
+                continue
+
+        def retain(rel, item_id, receipt):
+            if not renewable(rel):
+                if archive:
+                    from ..journalrevision import historical_path
+                    rel = historical_path(rel, archive)
+                    receipt = {**receipt, "path": rel}
+                latest_receipts[rel] = (path.name, str(item_id), receipt)
+
         if revision.get("schema_version") == 2:
             proof = revision.get("validation", {})
             if not proof.get("ok") or not proof.get("input_signature") or not proof.get("results"):
                 problems.append(f"{path.name}: no actual scoped-check evidence")
             for rel, expected in proof.get("artifact_hashes", {}).items():
-                if not renewable(rel):
-                    latest_receipts[rel] = (path.name, "scoped validation", {"path":rel, "sha256":expected,
-                                             "content_sha256":proof.get("artifact_content", {}).get(rel)})
+                retain(rel, "scoped validation", {"path":rel, "sha256":expected,
+                                                 "content_sha256":proof.get("artifact_content", {}).get(rel)})
         items = revision.get("items")
         if not isinstance(items, list) or not items:
             problems.append(f"{path.name}: no revision items")
@@ -112,8 +135,7 @@ def revision_rounds_closed(ctx: Ctx) -> Result:
                 # A later completed revision may legitimately supersede the same source.
                 # Keep every old receipt as history, but compare the working tree only with
                 # the newest completed receipt for each path.
-                if not renewable(str(rel)):
-                    latest_receipts[str(rel)] = (path.name, str(item_id), receipt)
+                retain(str(rel), item_id, receipt)
     for rel, (round_name, item_id, expected) in latest_receipts.items():
         source = ctx.project / rel
         if isinstance(expected, dict) and expected.get("deleted"):

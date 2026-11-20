@@ -29,6 +29,10 @@ def command(project: Path, rel: str, receipt: dict) -> list[str]:
         inputs = [p for p in receipt.get("entrypoints", []) if _path(project, p) != table]
     if not inputs or not params.get("kind") or not params.get("style"):
         raise ValueError(f"{rel}: incomplete build arguments; do not guess a source by file role")
+    buildproof.persistent_inputs(project, [*map(Path,receipt.get("sources",{})), *(_path(project,p) for p in inputs)])
+    for src in inputs:
+        if not _path(project, src).is_file():
+            raise ValueError(f"{rel}: recorded build input is missing: {src}")
     tools = Path(__file__).resolve().parents[1]
     cmd = [sys.executable, str(tools / "manuscript/build_docx.py"), "build", "--kind", params["kind"],
            "--output", str(_path(project, rel)), "--style-config", str(_path(project, params["style"]))]
@@ -43,19 +47,34 @@ def command(project: Path, rel: str, receipt: dict) -> list[str]:
     return cmd
 
 
-def plan(project: Path) -> list[dict]:
+def plan(project: Path, *, only=None) -> list[dict]:
     from .revision import guard_outputs
     from .journalcontext import guard,build_identity
     guard(project); current_identity=build_identity(project)
     uploads = expected_files(project, require_exists=False)
     receipts = buildproof.load(project)
+    selected = set(only or uploads)
+    if selected - uploads.keys():
+        raise ValueError("Select exact manifest upload paths: " + ", ".join(sorted(selected - uploads.keys())))
+    if only:
+        # Check real upload prerequisites; leave independent files alone.
+        while True:
+            required = {rel for rel in uploads if any(str(uploads[rel].resolve()) in
+                        receipts.get(output, {}).get("sources", {}) for output in selected)}
+            if required <= selected:
+                break
+            selected |= required
     pending = []
     for rel, output in uploads.items():
+        if rel not in selected:
+            continue
         rec = receipts.get(rel)
         if not rec:
             if output.suffix.lower() == ".docx" or not output.is_file():
                 raise ValueError(f"{rel}: no real build receipt; preserve the file and register its actual producer")
             continue  # Images/PDFs/workbooks stay with their own producer and scoped QA.
+        if rec.get("tool") == "tools/manuscript/build_docx.py":
+            buildproof.persistent_inputs(project, map(Path,rec.get("sources",{})))
         if output.is_file() and _sha256(output) != rec.get("sha256"):
             raise ValueError(f"{rel}: changed outside its recorded build; preserve author edits and resolve them first")
         if output.is_file() and buildproof.inputs_current(rec) and all(rec.get(k)==v for k,v in current_identity.items()):
@@ -71,6 +90,7 @@ def plan(project: Path) -> list[dict]:
             break
         for rel in consumers:
             guard_outputs(project, [uploads[rel]])
+            buildproof.replacement_baseline(project, uploads[rel])
             pending.append({"output": rel, "command": command(project, rel, receipts[rel])})
             affected.add(rel)
     # Topological order from the real receipt sources, not an assumed manuscript-first order.
@@ -86,7 +106,7 @@ def plan(project: Path) -> list[dict]:
     return ordered
 
 
-def run(project: Path, *, dry: bool = False, execute=None) -> int:
+def run(project: Path, *, dry: bool = False, execute=None, only=None) -> int:
     from .dependencies import guard_build
     from .revision import active, baseline_capture_allowed
     from .state import State
@@ -106,7 +126,7 @@ def run(project: Path, *, dry: bool = False, execute=None) -> int:
             result = classify(project, round_record)
             if result["class"] != "presentation":
                 raise ValueError("Resolve source meaning/science classification before an expensive rebuild; use rework.py preview and the existing owner rules")
-    jobs = plan(project)  # Preflight every output before the first expensive build.
+    jobs = plan(project, only=only) if only else plan(project)
     if dry:
         print(json.dumps({"affected_uploads": [r["output"] for r in jobs], "commands": jobs}, ensure_ascii=False, indent=2))
         return 0
@@ -132,6 +152,9 @@ def run(project: Path, *, dry: bool = False, execute=None) -> int:
                 raise ValueError(f"{label} failed ({result.returncode}); stopped before downstream evidence updates; details: {log}")
         for row in jobs:
             step(row["output"], row["command"])
+        if only:
+            print(f"Rebuilt {len(jobs)} selected DOCX upload(s) and actual consumers. Package measurements and affected visual review remain pending.")
+            return 0
         step("DOCX audit", [sys.executable, str(tools/"manuscript/build_docx.py"), "audit",
              "--manifest", str(project/"08_submission/bundle/manifest.json"),
              "--style-config", str(project/"08_submission/docx_style.json")])
